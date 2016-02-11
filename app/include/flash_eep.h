@@ -141,4 +141,6 @@ bool read_tcp_client_url(void) ICACHE_FLASH_ATTR;
 uint32 read_user_const(uint8 idx); // чтение пользовательских констант (0 < idx < 4)
 bool write_user_const(uint8 idx, uint32 data); // запись пользовательских констант (0 < idx < 4)
 
+int32 current_cfg_length(void) ICACHE_FLASH_ATTR;
+
 #endif /* __FLASH_EEP_H_ */

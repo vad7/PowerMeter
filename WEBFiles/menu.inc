@@ -2,7 +2,6 @@
 <div class="menu">
 	<div>
 		<a href="/index.htm">Main</a>
-		<a href="/protect/uart.htm">TCP-UART Settings</a>
 		<a href="/protect/wifi.htm">WiFi settings</a>
 		<a href="/protect/scan.htm">WiFi Scan</a>
 		<a href="/protect/upload.htm">WebFS Upload</a>

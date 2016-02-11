@@ -3,7 +3,7 @@
 
 #include "sdk/sdk_config.h"
 
-#define SYS_VERSION "0.5.7"
+#define SYS_VERSION "0.5.6"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define WEB_DEFAULT_SOFTAP_IP	DEFAULT_SOFTAP_IP // ip 192.168.4.1
@@ -13,7 +13,7 @@
 #define WEB_DEFAULT_STATION_MASK  0x00FFFFFF // mask 255.255.255.0
 #define WEB_DEFAULT_STATION_GW    0x0101A8C0 // gw 192.168.1.1
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define PROGECT_NUMBER 0
+#define PROGECT_NUMBER 2
 // 0 -> проект "TCP2UART"
 // 1 -> проект MODBUS-"RS485"
 // 2 -> пустой web+websocket
@@ -89,12 +89,13 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #elif PROGECT_NUMBER == 2
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Конфигурация для проекта WEB+WEBSOCEK
+// Конфигурация для проекта WEB+WEBSOCK
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define USE_WEB		80 // включить в трансялцию порт Web, если =0 - по умолчанию выключен
 #define WEBSOCKET_ENA // включить WEBSOCKET
-#define USE_NETBIOS	1 // включить в трансялцию драйвер NETBIOS, если =0 - по умолчанию выключен.
+#define USE_NETBIOS	0 // включить в трансялцию драйвер NETBIOS, если =0 - по умолчанию выключен.
 #define USE_SNTP	1 // включить в трансялцию драйвер SNTP, если =0 - по умолчанию выключен, = 1 - по умолчанию включен.
+#define USE_GPIOs_intr
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #endif // PROGECT_NAME

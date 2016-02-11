@@ -423,5 +423,19 @@ bool ICACHE_FLASH_ATTR write_user_const(uint8 idx, uint32 data) {
 	return flash_save_cfg(&ret, ID_CFG_KVDD + idx, 4);
 }
 
+// Возвращает размер текущей сохраненной конфигурации в байтах
+int32 ICACHE_FLASH_ATTR current_cfg_length(void)
+{
+	fobj_head fobj;
+	uint32 base_addr = get_addr_bscfg(false); // поиск текушего сегмента
+	if(base_addr < 4) return -base_addr; // error
+	uint32 faddr = base_addr + 4;
+	do {
+		if(flash_read(faddr, &fobj, fobj_head_size)) return -4; // последовательное чтение из сегмента
+		if(fobj.x == fobj_x_free) break;
+		faddr += align(fobj_head_size + (fobj.n.size > MAX_FOBJ_SIZE ? MAX_FOBJ_SIZE : fobj.n.size));
+	} while(faddr <= (base_addr + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size+1)));
+	return faddr - base_addr;
+}
 
 
