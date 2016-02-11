@@ -69,6 +69,10 @@ typedef union // заголовок объекта сохранения
 //  fasle - поиск текушего сегмента
 //  true - поиск нового сегмента для записи (pack)
 // Returns     : новый адрес сегмента для записи
+// В начале сегмента код (uint32) - чем меньше, тем свежее данные
+// Поиск нового сегмента - с самым большим кодом
+// код уменьшается на 1 во время записи данных в новый сегмент
+// при первом чтении на пустой памяти - инициализация кода = 0xfffffffe
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 {
@@ -78,18 +82,16 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 	do {
 		if(flash_read(faddr, &x2, 4)) return 1;
 		if(flg) { // поиск нового сегмента для записи (pack)
-			if(x2 > x1 || x2 == 0xFFFFFFFF) {
+			if(x2 > x1) {
 				x1 = x2;
 				reta = faddr; // новый адрес сегмента для записи
 			}
-		}
-		else if(x2 < x1) { // поиск текушего сегмента
+		} else if(x2 < x1) { // поиск текушего сегмента
 			x1 = x2;
 			reta = faddr; // новый адрес сегмента для записи
 		};
 		faddr += FMEMORY_SCFG_BANK_SIZE;
 	} while(faddr < (FMEMORY_SCFG_BASE_ADDR + FMEMORY_SCFG_BANKS * FMEMORY_SCFG_BANK_SIZE));
-
 	if((!flg)&&(x1 == 0xFFFFFFFF)&&(reta == FMEMORY_SCFG_BASE_ADDR)) {
 		x1--;
 		if(flash_write(reta, &x1, 4)) return 1;
@@ -135,32 +137,29 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj(uint32 base, fobj_head *obj, bool f
 }
 //-----------------------------------------------------------------------------
 // FunctionName : get_addr_fend
-// Поиск последнего адреса в сегменте для записи объекта
+// Поиск последнего пустого места в сегменте для записи объекта
 // Returns : адрес для записи объекта
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj_save(uint32 base, fobj_head obj)
 {
 	fobj_head fobj;
 	uint32 faddr = base + 4;
-	uint32 fend = base + FMEMORY_SCFG_BANK_SIZE - align(obj.n.size + fobj_head_size);
+	uint32 fend = faddr + FMEMORY_SCFG_BANK_SIZE - align(obj.n.size + fobj_head_size);
 	do {
 		if(flash_read(faddr, &fobj, fobj_head_size)) return 1; // ошибка
 		if(fobj.x == fobj_x_free) {
-			if(faddr < fend) {
-				return faddr;
-			}
-			return 0; // не влезет, на pack
+			return faddr; // нашли
 		}
 		if(fobj.n.size <= MAX_FOBJ_SIZE) {
 			faddr += align(fobj.n.size + fobj_head_size);
 		}
 		else faddr += align(MAX_FOBJ_SIZE + fobj_head_size);
-	}
-	while(faddr < fend);
+	} while(faddr < fend);
 	return 0; // не влезет, на pack
 }
 //=============================================================================
 // FunctionName : pack_cfg_fmem
+// Перенос данных, кроме объекта в новый сегмент, уменьшение кода нового сегмента
 // Returns      : адрес для записи объекта
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
@@ -204,6 +203,8 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 }
 //=============================================================================
 //- Сохранить объект в flash --------------------------------------------------
+//  Дописывает объект в конец в пустое место в сегменте, 
+//  если нет места - переносим данные и пишем в новый сегмент
 //  Returns	: false/true
 //-----------------------------------------------------------------------------
 bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
