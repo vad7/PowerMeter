@@ -1,4 +1,4 @@
-# PorwerMeter
+# PowerMeter
 ---
 
 Schematics: 
