@@ -15,6 +15,7 @@
 #include "web_iohw.h"
 #include "tcp2uart.h"
 #include "webfs.h"
+#include "sdk/libmain.h"
 
 #ifdef USE_WEB
 #include "web_srv.h"
@@ -52,6 +53,11 @@ static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 void ICACHE_FLASH_ATTR init_done_cb(void)
 {
     os_printf("\nSDK Init - Ok\nCurrent 'heap' size: %d bytes\n", system_get_free_heap_size());
+    os_printf("Current config size: %d bytes\n", current_cfg_length());
+	struct ets_store_wifi_hdr whd;
+	spi_flash_read(((flashchip->chip_size/flashchip->sector_size)-1)*flashchip->sector_size, &whd, sizeof(whd));
+	os_printf("Last sectors rewrite count: %u\n\n", whd.wr_cnt);
+
 #ifdef USE_WEB
 	web_fini(sysinifname);
 #endif
