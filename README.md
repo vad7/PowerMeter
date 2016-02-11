@@ -2,5 +2,5 @@
 ---
 
 Schematics: 
-![SCH](https://github.com/vad7/PowerMeter/PowerMaster.jpg)
+![SCH](https://github.com/vad7/PowerMeter/PowerMeter.jpg)
 
