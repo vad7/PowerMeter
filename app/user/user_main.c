@@ -17,6 +17,8 @@
 #include "webfs.h"
 #include "sdk/libmain.h"
 
+extern void power_meter_init(void);
+
 #ifdef USE_WEB
 #include "web_srv.h"
 #endif
@@ -91,6 +93,12 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
 	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
 	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
+	// vad7
+	power_meter_init();
+
+
+
+	//
 	uart_init();
 	system_timer_reinit();
 #if (DEBUGSOO > 0 && defined(USE_WEB))
