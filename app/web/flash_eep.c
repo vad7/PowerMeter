@@ -3,6 +3,17 @@
  *
  *  Created on: 19/01/2015
  *      Author: PV`
+ *
+ * Описание добавлено vad7:
+ * В начале сегмента код (uint32) - чем меньше, тем свежее сегмент
+ * Код сегмента уменьшается на 1 во время записи данных нового сегмента
+ * Данные идут после заголовка (ИД, размер), в сегменте могут быть несколько записей с одинаковым ИД,
+ * свежие данные - последние.
+ * Если заголовок данных = fobj_x_free (0xFFFFFFFF) - конец конфигурации в сегменте
+ * Записываемые данные добавляются в конец на свободное место, пока оно не закончится, тогда
+ * копируем только свежие данные в новый сегмент, код которого наибольший
+ * Максимальный размер данных MAX_FOBJ_SIZE (512) байт
+ *
  */
 
 #include "user_config.h"
@@ -69,10 +80,8 @@ typedef union // заголовок объекта сохранения
 //  fasle - поиск текушего сегмента
 //  true - поиск нового сегмента для записи (pack)
 // Returns     : новый адрес сегмента для записи
-// В начале сегмента код (uint32) - чем меньше, тем свежее данные
 // Поиск нового сегмента - с самым большим кодом
-// код уменьшается на 1 во время записи данных в новый сегмент
-// при первом чтении на пустой памяти - инициализация кода = 0xfffffffe
+// При первом чтении на пустой памяти - инициализация кода = 0xfffffffe
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 {
@@ -203,7 +212,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 }
 //=============================================================================
 //- Сохранить объект в flash --------------------------------------------------
-//  Дописывает объект в конец в пустое место в сегменте, 
+//  Дописывает объект в конец в пустое место в сегменте,
 //  если нет места - переносим данные и пишем в новый сегмент
 //  Returns	: false/true
 //-----------------------------------------------------------------------------
@@ -403,7 +412,7 @@ bool ICACHE_FLASH_ATTR read_tcp_client_url(void)
 #endif
 
 /*
- *  Чтение пользовательских констант (0 < idx < 4)
+ *  Чтение пользовательских констант (0 < idx < MAX_IDX_USER_CONST)
  */
 uint32 ICACHE_FLASH_ATTR read_user_const(uint8 idx) {
 #ifdef USE_FIX_SDK_FLASH_SIZE
@@ -417,7 +426,7 @@ uint32 ICACHE_FLASH_ATTR read_user_const(uint8 idx) {
 #endif
 }
 /*
- * Запись пользовательских констант (0 < idx < 4)
+ * Запись пользовательских констант (0 < idx < MAX_IDX_USER_CONST)
  */
 bool ICACHE_FLASH_ATTR write_user_const(uint8 idx, uint32 data) {
 	if (idx >= MAX_IDX_USER_CONST)	return false;
@@ -425,18 +434,19 @@ bool ICACHE_FLASH_ATTR write_user_const(uint8 idx, uint32 data) {
 	return flash_save_cfg(&ret, ID_CFG_KVDD + idx, 4);
 }
 
+// vad7
 // Возвращает размер текущей сохраненной конфигурации в байтах
 int32 ICACHE_FLASH_ATTR current_cfg_length(void)
 {
 	fobj_head fobj;
 	uint32 base_addr = get_addr_bscfg(false); // поиск текушего сегмента
 	if(base_addr < 4) return -base_addr; // error
-	uint32 faddr = base_addr + 4;
+	uint32 faddr = (base_addr += 4);
 	do {
 		if(flash_read(faddr, &fobj, fobj_head_size)) return -4; // последовательное чтение из сегмента
 		if(fobj.x == fobj_x_free) break;
 		faddr += align(fobj_head_size + (fobj.n.size > MAX_FOBJ_SIZE ? MAX_FOBJ_SIZE : fobj.n.size));
-	} while(faddr <= (base_addr + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size+1)));
+	} while(faddr <= (base_addr + FMEMORY_SCFG_BANK_SIZE - 4 - align(fobj_head_size+1)));
 	return faddr - base_addr;
 }
 
