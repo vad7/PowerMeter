@@ -9,9 +9,9 @@
 
 #define DEBUGSOO	2  // 0 - откл вывода, 1 - минимум, 2 - норма, >3 - текушая отладка, >4 - удалить что найдется :)
 
-#define DEBUG_UART 1 // включить вывод в загрузчике сообщений, номер UART
-#define DEBUG_UART0_BAUD 115200
-#define DEBUG_UART1_BAUD 230400
+#define DEBUG_UART 0 // включить вывод в загрузчике сообщений, номер UART
+#define DEBUG_UART0_BAUD 74880 //115200
+#define DEBUG_UART1_BAUD 460800
 
 #define STARTUP_CPU_CLK 160
 

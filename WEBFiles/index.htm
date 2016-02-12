@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html><head>
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
-	<title>ESP8266</title>
+	<title>PowerMeter</title>
 	<link rel="stylesheet" href="/style.css">
 </head><body>
 ~inc:menu.inc~
 <div class="content">
 <p class="center">
-Name: ~wifi_ap_ssid~ Password: ~wifi_ap_psw~<br>
-TCP2UART connect: ~tcp_remote~, Web connect: ~web_remote~,<br>
-Modbus TCP Connection: ~mdb_remote~<br>
+Name: ~wifi_ap_ssid~<br>
 WEB ver: ~sys_webver~, SDK ver: ~sys_sdkver~.<br>
 Power: <span title="Calculate and adjust the division ratio for sys_vdd33 in 'Debug and Test'!" id='syspower'>?</span> V<br>
 ChipID: ~sys_cid~.<br><br>
