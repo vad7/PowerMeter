@@ -4,7 +4,11 @@
 #
 #############################################################
 
+<<<<<<< Upstream, based on esp8266web/master
 ESPOPTION ?= -p COM2 -b 460800
+=======
+ESPOPTION ?= -p COM9 -b 460800
+>>>>>>> f26d801 working 2...
 
 # SPI_SPEED = 40MHz or 80MHz
 SPI_SPEED?=80

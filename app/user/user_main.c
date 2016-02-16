@@ -104,7 +104,7 @@ void ICACHE_FLASH_ATTR user_init(void) {
 #if (DEBUGSOO > 0 && defined(USE_WEB))
 	os_printf("\nSimple WEB version: " WEB_SVERSION "\nOpenLoaderSDK v1.2\n");
 #endif
-	if(syscfg.cfg.b.pin_clear_cfg_enable) test_pin_clr_wifi_config();
+	//if(syscfg.cfg.b.pin_clear_cfg_enable) test_pin_clr_wifi_config(); // сброс настроек, если замкнут пин RX
 	set_cpu_clk(); // select cpu frequency 80 or 160 MHz
 #ifdef USE_GDBSTUB
 extern void gdbstub_init(void);
