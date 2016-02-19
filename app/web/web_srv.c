@@ -224,7 +224,7 @@ const char HTTPfsupload[] ICACHE_RODATA_ATTR = "<html><body style='margin:100px'
 #define sizeHTTPfsupload 220
 const char HTTPdefault[] ICACHE_RODATA_ATTR = "<html><h3>ESP8266 Built-in Web server <sup><i>&copy</i></sup></h3></html>";
 #define sizeHTTPdefault 73
-const char HTTPfserror[] ICACHE_RODATA_ATTR = "<html><h3>Web-disk error. Use url /fsupload</h3></html>";
+const char HTTPfserror[] ICACHE_RODATA_ATTR = "<html><h3>Web-disk error. Use /fsupload</h3></html>";
 #define sizeHTTPfserror 62
 
 const char HTTPAccessControlAllowOrigin[] ICACHE_RODATA_ATTR = "Access-Control-Allow-Origin: *\r\n";
@@ -1541,7 +1541,7 @@ LOCAL bool ICACHE_FLASH_ATTR web_rx_buf(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_co
 			if(CheckSCB(SCB_REDIR)) {
 				HTTP_UPLOAD *pupload = (HTTP_UPLOAD *)ts_conn->pbufo;
 				if(pupload != NULL) {
-					os_memcpy(CurHTTP->pFilename, pupload->filename, VarNameSize);
+					os_memcpy(CurHTTP->pFilename, pupload->filename, mMIN(VarNameSize,FileNameSize));
 //					SetSCB(SCB_DISCONNECT);
 				}
 			}
@@ -1554,7 +1554,7 @@ LOCAL bool ICACHE_FLASH_ATTR web_rx_buf(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_co
 //					return false; // ok 200 + file
 			}
 		}
-//?		SetSCB(SCB_DISCONNECT);
+		SetSCB(SCB_DISCONNECT);
 		return false; // неизвестный content или end
 	}
 	else {
