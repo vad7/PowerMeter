@@ -4,11 +4,7 @@
 #
 #############################################################
 
-<<<<<<< Upstream, based on esp8266web/master
-ESPOPTION ?= -p COM2 -b 460800
-=======
 ESPOPTION ?= -p COM9 -b 460800
->>>>>>> f26d801 working 2...
 
 # SPI_SPEED = 40MHz or 80MHz
 SPI_SPEED?=80
@@ -203,6 +199,7 @@ else
 	@dd if=../bin/rapid_loader_40m.bin >../bin/$(ADDR_FW1).bin
 endif	
 	@dd if=../bin/0.bin >>../bin/$(ADDR_FW1).bin
+	@../bin/make_firmware_image.py ../bin/
 
 all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS) 
 

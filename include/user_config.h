@@ -92,13 +92,14 @@
 // Конфигурация для проекта WEB+WEBSOCK
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define USE_WEB		80 // включить в трансялцию порт Web, если =0 - по умолчанию выключен
-#define WEBSOCKET_ENA // включить WEBSOCKET
-#define USE_NETBIOS	0 // включить в трансялцию драйвер NETBIOS, если =0 - по умолчанию выключен.
+//#define WEBSOCKET_ENA // включить WEBSOCKET
+//#define USE_NETBIOS	1 // включить в трансялцию драйвер NETBIOS, если =0 - по умолчанию выключен.
 #define USE_SNTP	1 // включить в трансялцию драйвер SNTP, если =0 - по умолчанию выключен, = 1 - по умолчанию включен.
-#define USE_GPIOs_intr
-
+//#define USE_GPIOs_intr
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #endif // PROGECT_NAME
+
+#define MAX_SYS_CONST_BLOCK 0x400 // for write some info for bootloader
 
 #if DEBUGSOO > 0
 #if !(defined(USE_RS485DRV) || defined(USE_TCP2UART))

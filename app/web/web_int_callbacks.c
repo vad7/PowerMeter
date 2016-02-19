@@ -459,7 +459,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 #ifdef USE_NETBIOS
 	if(syscfg.cfg.b.netbios_ena) tcp_strcpy(netbios_name);
 	else {
-		if(ip == 0) tcp_strcpy_fd("esp8266.ru"); 
+		if(ip == 0) tcp_strcpy_fd("ESP8266"); 
 		else tcp_puts(IPSTR, IP2STR(&ip));
 	};
 #else

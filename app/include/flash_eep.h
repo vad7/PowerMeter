@@ -57,8 +57,8 @@ struct uartx_bits_config {
 #define UART1_REGCONFIG0MASK	0x1F8C03F
 #define UART0_REGCONFIG0DEF		0x000001C
 #define UART1_REGCONFIG0DEF		0x000001C
-#define UART0_DEFBAUD  115200
-#define UART1_DEFBAUD  230400
+#define UART0_DEFBAUD  74880  //115200
+#define UART1_DEFBAUD  460800 //230400
 
 struct  UartxCfg { // структура сохранения настроек Uart в Flash
 	uint32 baud;
