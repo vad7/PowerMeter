@@ -11,9 +11,13 @@
 #include "user_config.h"
 //-----------------------------------------------------------------------------
 
-#define FMEMORY_SCFG_BASE_ADDR 0x79000 // 0x3B000, 0x3C000, 0x3D000 / 0x79000, 0x7A000, 0x7B000
+#define FMEMORY_SCFG_BANKS 1 //3 // кол-во секторов для сохранения
+#if FMEMORY_SCFG_BANKS == 1
+#define FMEMORY_SCFG_BASE_ADDR 0x7B000
+#else
+#define FMEMORY_SCFG_BASE_ADDR 0x79000 //0x79000 // 0x3B000, 0x3C000, 0x3D000 / 0x79000, 0x7A000, 0x7B000
+#endif
 #define FMEMORY_SCFG_BANK_SIZE 0x01000 // размер сектора, 4096 bytes
-#define FMEMORY_SCFG_BANKS 3 // кол-во секторов для сохранения
 
 //-----------------------------------------------------------------------------
 
@@ -120,8 +124,30 @@ struct SystemCfg { // структура сохранения системных
 #endif
 } __attribute__((packed));
 
-
 //-----------------------------------------------------------------------------
+#if ((FMEMORY_SCFG_BASE_ADDR + (FMEMORY_SCFG_BANK_SIZE*FMEMORY_SCFG_BANKS)) < FLASH_CACHE_MAX_SIZE)
+#include "sdk/rom2ram.h"
+#define flash_read(a, d, s) (copy_s4d1((unsigned char *)(d), (void *)((a) + FLASH_BASE), s) != 0)
+#else
+#define flash_read(a, d, s) (spi_flash_read(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
+#endif
+#define flash_write(a, d, s) (spi_flash_write(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
+#define flash_erase_sector(a) (spi_flash_erase_sector(a>>12) != SPI_FLASH_RESULT_OK)
+
+#define align(a) ((a + 3) & 0xFFFFFFFC)
+
+typedef union // заголовок объекта сохранения
+{
+	struct {
+	uint16 size;
+	uint16 id;
+	} __attribute__((packed)) n;
+	uint32 x;
+} __attribute__((packed)) fobj_head;
+
+#define fobj_head_size 4
+#define fobj_x_free 0xffffffff
+#define MAX_FOBJ_SIZE 512 // максимальный размер сохраняемых объeктов
 
 sint16 flash_read_cfg(void *ptr, uint16 id, uint16 maxsize) ICACHE_FLASH_ATTR; // возврат: размер объекта последнего сохранения, -1 - не найден, -2 - error
 bool flash_save_cfg(void *ptr, uint16 id, uint16 size) ICACHE_FLASH_ATTR;

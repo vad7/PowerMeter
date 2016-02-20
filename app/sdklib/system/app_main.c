@@ -23,6 +23,7 @@
 #include "phy/phy.h"
 #include "sdk/sys_const.h"
 #include "sdk/rom2ram.h"
+
 //=============================================================================
 // Define
 //-----------------------------------------------------------------------------
@@ -433,7 +434,7 @@ void ICACHE_FLASH_ATTR startup(void)
 #endif
 #ifdef DEBUG_UART
 	startup_uart_init();
-	os_printf("\n\nmeSDK %s\n", SDK_VERSION);
+	//os_printf("\n\nmeSDK %s\n", SDK_VERSION);
 #endif
 	// Очистка сегмента bss //	mem_clr_bss();
 	uint8 * ptr = &_bss_start;
@@ -466,6 +467,14 @@ void ICACHE_FLASH_ATTR startup(void)
 	iram_buf_init(); // определить и разметить свободную IRAM
 	//
 	prvHeapInit(); // инициализация менеджера памяти heap
+	// GPIO init
+	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
+	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
+	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
+	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
+	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
+	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
+	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
 	//
 	read_wifi_config(); // чтение последних установок wifi (последние 3 сектора flash)
 	//

@@ -29,4 +29,6 @@ void user_uart_wait_tx_fifo_empty(uint32 uart_num, uint32 x);
 void uart1_write_char(char c);
 void uart0_write_char(char c);
 
+extern void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
+
 #endif /* _INCLUDE_APP_MAIN_H_ */

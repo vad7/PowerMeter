@@ -17,7 +17,7 @@
 #include "webfs.h"
 #include "sdk/libmain.h"
 
-extern void power_meter_init(void);
+void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 
 #ifdef USE_WEB
 #include "web_srv.h"
@@ -52,13 +52,21 @@ extern void web_fini(const uint8 * fname);
 static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 #endif
 
+extern volatile uint32 PowerCnt;
+
 void ICACHE_FLASH_ATTR init_done_cb(void)
 {
-    os_printf("\nSDK Init - Ok\nCurrent 'heap' size: %d bytes\n", system_get_free_heap_size());
+#if DEBUGSOO > 0
+	os_printf("\nSDK Init - Ok\nCurrent 'heap' size: %d bytes\n", system_get_free_heap_size());
     os_printf("Current config size: %d bytes\n", current_cfg_length());
 	struct ets_store_wifi_hdr whd;
 	spi_flash_read(((flashchip->chip_size/flashchip->sector_size)-1)*flashchip->sector_size, &whd, sizeof(whd));
 	os_printf("Last sectors rewrite count: %u\n\n", whd.wr_cnt);
+
+	os_printf("PowerCnt = %d\n", PowerCnt);
+#endif
+
+	power_meter_init(1); // init timer/tasks
 
 #ifdef USE_WEB
 	web_fini(sysinifname);
@@ -86,16 +94,17 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 void ICACHE_FLASH_ATTR user_init(void) {
 	sys_read_cfg();
 	if(!syscfg.cfg.b.debug_print_enable) system_set_os_print(0);
-	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
-	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
-	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
-	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
-	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
-	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
-	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
+//	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
+//	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
+//	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
+//	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
+//	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
+//	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
+//	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
 	// vad7
-	power_meter_init();
+	//power_meter_init();
 
+	power_meter_init(0); // Init GPIO interrupts
 
 
 	//
@@ -123,7 +132,8 @@ extern void gdbstub_init(void);
 #ifdef USE_WDRV
     init_wdrv();
 #endif
-	WEBFSInit(); // файловая система
+
+    WEBFSInit(); // файловая система
 
 	system_deep_sleep_set_option(0);
 	system_init_done_cb(init_done_cb);

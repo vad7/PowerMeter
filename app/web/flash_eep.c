@@ -4,7 +4,9 @@
  *  Created on: 19/01/2015
  *      Author: PV`
  *
- * Описание добавлено vad7:
+ * Добавлено vad7
+ * Режим 1 сектора (4096) - пишеться в один сектор по кругу, когда закончилось место - упаковка в памяти
+ * Описание :
  * В начале сегмента код (uint32) - чем меньше, тем свежее сегмент
  * Код сегмента уменьшается на 1 во время записи данных нового сегмента
  * Данные идут после заголовка (ИД, размер), в сегменте могут быть несколько записей с одинаковым ИД,
@@ -45,35 +47,7 @@
 #endif
 
 //-----------------------------------------------------------------------------
-
 #define mMIN(a, b)  ((a<b)?a:b)
-
-typedef union // заголовок объекта сохранения
-{
-	struct {
-	uint16 size;
-	uint16 id;
-	} __attribute__((packed)) n;
-	uint32 x;
-} __attribute__((packed)) fobj_head;
-
-#define fobj_head_size 4
-#define fobj_x_free 0xffffffff
-#define MAX_FOBJ_SIZE 512 // максимальный размер сохраняемых объeктов
-
-//-----------------------------------------------------------------------------
-
-#define align(a) ((a + 3) & 0xFFFFFFFC)
-
-//-----------------------------------------------------------------------------
-#if ((FMEMORY_SCFG_BASE_ADDR + (FMEMORY_SCFG_BANK_SIZE*FMEMORY_SCFG_BANKS)) < FLASH_CACHE_MAX_SIZE)
-#include "sdk/rom2ram.h"
-#define flash_read(a, d, s) (copy_s4d1((unsigned char *)(d), (void *)((a) + FLASH_BASE), s) != 0)
-#else
-#define flash_read(a, d, s) (spi_flash_read(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
-#endif
-#define flash_write(a, d, s) (spi_flash_write(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
-#define flash_erase_sector(a) (spi_flash_erase_sector(a>>12) != SPI_FLASH_RESULT_OK)
 //-----------------------------------------------------------------------------
 // FunctionName : get_addr_bscfg
 // Опции:
@@ -83,6 +57,11 @@ typedef union // заголовок объекта сохранения
 // Поиск нового сегмента - с самым большим кодом
 // При первом чтении на пустой памяти - инициализация кода = 0xfffffffe
 //-----------------------------------------------------------------------------
+#if FMEMORY_SCFG_BANKS == 1 // only 1 sector
+#define get_addr_bscfg(f) FMEMORY_SCFG_BASE_ADDR
+#define bank_head_size 0
+#else
+#define bank_head_size 4
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 {
 	uint32 x1 = (flg)? 0 : 0xFFFFFFFF, x2;
@@ -111,6 +90,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 #endif
 	return reta;
 }
+#endif
 //-----------------------------------------------------------------------------
 // FunctionName : get_addr_fobj
 // Опции:
@@ -123,7 +103,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj(uint32 base, fobj_head *obj, bool f
 {
 //	if(base == 0) return 0;
 	fobj_head fobj;
-	uint32 faddr = base + 4;
+	uint32 faddr = base + bank_head_size;
 	uint32 fend = base + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size);
 	uint32 reta = 0;
 	do {
@@ -152,7 +132,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj(uint32 base, fobj_head *obj, bool f
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj_save(uint32 base, fobj_head obj)
 {
 	fobj_head fobj;
-	uint32 faddr = base + 4;
+	uint32 faddr = base + bank_head_size;
 	uint32 fend = faddr + FMEMORY_SCFG_BANK_SIZE - align(obj.n.size + fobj_head_size);
 	do {
 		if(flash_read(faddr, &fobj, fobj_head_size)) return 1; // ошибка
@@ -168,12 +148,47 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj_save(uint32 base, fobj_head obj)
 }
 //=============================================================================
 // FunctionName : pack_cfg_fmem
-// Перенос данных, кроме объекта в новый сегмент, уменьшение кода нового сегмента
+// Перенос данных, кроме нового объекта в новый сегмент, уменьшение кода нового сегмента
 // Returns      : адрес для записи объекта
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 {
 	fobj_head fobj;
+#if FMEMORY_SCFG_BANKS == 1 // only 1 sector
+	uint8 *buffer = os_malloc(FMEMORY_SCFG_BANK_SIZE);
+	if(buffer == NULL) return 0;
+	os_memset(buffer, 0xFF, FMEMORY_SCFG_BANK_SIZE);
+	uint32 baseseg = get_addr_bscfg(false);
+	uint32 faddr = baseseg;
+	uint16 len = 0;
+	do {
+		if(flash_read(faddr, &fobj, fobj_head_size)) return 1; // последовательное чтение id из старого сегмента
+		if(fobj.x == fobj_x_free) break; // конец
+		if(fobj.n.size > MAX_FOBJ_SIZE) break; // мусор в cfg
+		faddr += align(fobj.n.size + fobj_head_size);
+		if(fobj.n.id != obj.n.id) { // кроме нового
+			// найдем, сохранили ли мы его уже?
+			uint8 *chkaddr = buffer;
+			while(chkaddr < buffer + FMEMORY_SCFG_BANK_SIZE && ((fobj_head *)chkaddr)->x != fobj_x_free) {
+				if(((fobj_head *)chkaddr)->n.id == fobj.n.id) {
+					chkaddr = NULL;
+					break;
+				}
+				chkaddr += align(((fobj_head *)chkaddr)->n.size + fobj_head_size);
+			}
+			if(chkaddr != NULL && chkaddr < buffer + FMEMORY_SCFG_BANK_SIZE ) { // не сохранили
+				uint32 xaddr = get_addr_fobj(baseseg, &fobj, false); // найдем последнее сохранение объекта в старом сегменте
+				if(xaddr < 4) return xaddr; // ???
+				if(flash_read(xaddr, chkaddr, align(fobj.n.size + fobj_head_size))) return 1; // прочитаем заголовок с телом объекта в конец буфера
+				len += align(fobj.n.size + fobj_head_size);
+			}
+		}
+	} while(faddr < (baseseg + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size+1)));
+	if(flash_erase_sector(baseseg)) return 1;
+	if(flash_write(baseseg, buffer, len)) return 1;
+	os_free(buffer);
+	return baseseg + len; // адрес для записи объекта;
+#else
 	uint8 buf[align(MAX_FOBJ_SIZE + fobj_head_size)];
 	uint32 fnewseg = get_addr_bscfg(true); // поиск нового сегмента для записи (pack)
 	if(fnewseg < 4) return fnewseg; // error
@@ -183,7 +198,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 	uint32 xaddr;
 	uint16 len;
 	if(flash_erase_sector(fnewseg)) return 1;
-	faddr += 4;
+	faddr += bank_head_size;
 	do {
 		if(flash_read(faddr, &fobj, fobj_head_size)) return 1; // последовательное чтение id из старого сегмента
 		if(fobj.x == fobj_x_free) break;
@@ -194,8 +209,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 				xaddr = get_addr_fobj(foldseg, &fobj, false); // найдем последнее сохранение объекта в старом сенгменте, size изменен
 				if(xaddr < 4) return xaddr; // ???
 				// прочитаем заголовок с телом объекта в буфер
-				os_memcpy(buf, &fobj, fobj_head_size);
-				if(flash_read(xaddr + fobj_head_size, &buf[fobj_head_size], fobj.n.size)) return 1;
+				if(flash_read(xaddr, buf, align(fobj_head_size + fobj.n.size))) return 1;
 				xaddr = get_addr_fobj_save(fnewseg, fobj); // адрес для записи объекта
 				if(xaddr < 4) return xaddr; // ???
 				// запишем заголовок с телом объекта во flash
@@ -209,12 +223,13 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 	xaddr--;
 	if(flash_write(fnewseg, &xaddr, 4))	return 1;
 	return get_addr_fobj_save(fnewseg, obj); // адрес для записи объекта;
+#endif
 }
 //=============================================================================
 //- Сохранить объект в flash --------------------------------------------------
 //  Дописывает объект в конец в пустое место в сегменте,
 //  если нет места - переносим данные и пишем в новый сегмент
-//  Returns	: false/true
+//  Returns	: true - ok, false - error
 //-----------------------------------------------------------------------------
 bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
 {
@@ -240,9 +255,8 @@ bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
 	faddr = get_addr_fobj_save(faddr, fobj);
 	if(faddr == 0) {
 		faddr = pack_cfg_fmem(fobj);
-		if(faddr == 0) return false; // error
 	}
-	else if(faddr < 4) return false; // error
+	if(faddr < 4) return false; // error
 	uint16 len = align(size + fobj_head_size);
 	os_memcpy(buf, &fobj, fobj_head_size);
 	os_memcpy(&buf[fobj_head_size], ptr, size);
@@ -440,13 +454,11 @@ int32 ICACHE_FLASH_ATTR current_cfg_length(void)
 	fobj_head fobj;
 	uint32 base_addr = get_addr_bscfg(false); // поиск текушего сегмента
 	if(base_addr < 4) return -base_addr; // error
-	uint32 faddr = (base_addr += 4);
+	uint32 faddr = (base_addr += bank_head_size);
 	do {
 		if(flash_read(faddr, &fobj, fobj_head_size)) return -4; // последовательное чтение из сегмента
 		if(fobj.x == fobj_x_free) break;
 		faddr += align(fobj_head_size + (fobj.n.size > MAX_FOBJ_SIZE ? MAX_FOBJ_SIZE : fobj.n.size));
-	} while(faddr <= (base_addr + FMEMORY_SCFG_BANK_SIZE - 4 - align(fobj_head_size+1)));
+	} while(faddr <= (base_addr + FMEMORY_SCFG_BANK_SIZE - bank_head_size - align(fobj_head_size+1)));
 	return faddr - base_addr;
 }
-
-
