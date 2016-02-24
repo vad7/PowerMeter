@@ -1,12 +1,10 @@
 /*
-    Driver for the 24xx32 series serial EEPROM from ATMEL
-    Official repository: https://github.com/CHERTS/esp8266-i2c_24xx32
+    Driver for the series serial EEPROM from ATMEL
     Base on https://github.com/husio-org/AT24C512C and https://code.google.com/p/arduino-at24c1024/
     This driver depends on the I2C driver https://github.com/zarya/esp8266_i2c_driver/
+	Added some modifications...
 
     Device start address 0x50 to 0x57
-
-    Copyright (C) 2014 Mikhail Grigorev (CHERTS)
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +22,7 @@
 */
 
 #include "driver/i2c.h"
-#include "driver/i2c_24xx32.h"
-
+#include "driver/i2c_eeprom.h"
 #include "ets_sys.h"
 #include "osapi.h"
 
@@ -33,15 +30,16 @@
  * Read a single byte from the EEPROM
  * uint8 address        : The i2c address
  * uint32_t  location   : The memory location to read
+ * RETURN 0 if an error!
  */
 uint8 ICACHE_FLASH_ATTR
-eeprom_readByte(uint8 address, uint32_t location)
+i2c_eeprom_read_byte(uint8 address, uint32_t location)
 {
-    uint8 write_address;
+    uint8 write_address = address << 1;
     uint8 data;
 
     i2c_start();
-    i2c_writeByte(address << 1);     
+    i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
         i2c_stop();
@@ -62,9 +60,7 @@ eeprom_readByte(uint8 address, uint32_t location)
     }
 
     i2c_start();
-    write_address = address << 1;
-    write_address |= 1;
-    i2c_writeByte(write_address);
+    i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
         i2c_stop();
@@ -80,16 +76,16 @@ eeprom_readByte(uint8 address, uint32_t location)
  * Read multiple bytes from the EEPROM
  * uint8 address       : The i2c address
  * uint32_t location   : The memory location to read
+ * uint8 *data		   : Out data
  * uint32_t len        : Number of bytes to read
  */
-char ICACHE_FLASH_ATTR
-*eeprom_readPage(uint8 address, uint32_t location, uint32_t len)
+uint8 ICACHE_FLASH_ATTR
+i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t len)
 {
-    static char data[256];
-    uint8 write_address;
+    uint8 write_address = address << 1;
 
     i2c_start();
-    i2c_writeByte(address << 1);
+    i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
         i2c_stop();
@@ -110,9 +106,7 @@ char ICACHE_FLASH_ATTR
     }
 
     i2c_start();
-    write_address = address << 1;
-    write_address |= 1;
-    i2c_writeByte(write_address);
+    i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
         i2c_stop();
@@ -128,7 +122,7 @@ char ICACHE_FLASH_ATTR
     }
     i2c_send_ack(0); // NOACK
     i2c_stop();
-    return data;
+    return 1;
 }
 
 /**
@@ -138,7 +132,7 @@ char ICACHE_FLASH_ATTR
  * uint8 data          : Data to write to the EEPROM
  */
 uint8 ICACHE_FLASH_ATTR
-eeprom_writeByte(uint8 address, uint32_t location, uint8 data)
+i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
 {
     i2c_start();
     //Write address
@@ -182,7 +176,7 @@ eeprom_writeByte(uint8 address, uint32_t location, uint8 data)
  * uint32_t len        : The lenght of the data
  */
 uint8 ICACHE_FLASH_ATTR
-eeprom_writePage(uint8 address, uint32_t location, char data[], uint32_t len)
+i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t len)
 {
     i2c_start();
     i2c_writeByte(address << 1);     

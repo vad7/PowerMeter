@@ -16,6 +16,7 @@
 #include "tcp2uart.h"
 #include "webfs.h"
 #include "sdk/libmain.h"
+#include "../include/driver/i2c_eeprom.h"
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 
@@ -54,6 +55,12 @@ static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 
 extern volatile uint32 PowerCnt;
 
+void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run_new
+{
+
+
+}
+
 void ICACHE_FLASH_ATTR init_done_cb(void)
 {
 #if DEBUGSOO > 0
@@ -66,8 +73,66 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 	os_printf("PowerCnt = %d\n", PowerCnt);
 #endif
 
-	power_meter_init(1); // init timer/tasks
+	ets_set_idle_cb(user_idle, NULL);
 
+	#define eblen 1024
+	uint8 *buf = os_malloc(eblen);
+	if(buf == NULL) {
+		os_printf("Error malloc some bytes!\n");
+	} else {
+		uint8 i;
+		os_printf("Test 32KB FRAM\n");
+		ets_intr_lock();
+		uint64 mt = get_mac_time();
+		for(i = 0; i < 32; i++) {
+			if(i2c_eeprom_read_block(0xA0, i * eblen, buf, eblen) == 0) {
+				os_printf("Error read block: %d\n", i);
+				break;
+			}
+		}
+		mt -= get_mac_time();
+		ets_intr_unlock();
+		os_printf("Reading time: %d us\n", mt);
+		//os_memset(buf, 0, eblen);
+		spi_flash_read(1000, buf, eblen);
+		ets_intr_lock();
+		mt = get_mac_time();
+		for(i = 0; i < 32; i++) {
+			if(i2c_eeprom_write_block(0xA0, i * eblen, buf, eblen) == 0) {
+				os_printf("Error write block: %d\n", i);
+				break;
+			}
+		}
+		mt -= get_mac_time();
+		ets_intr_unlock();
+		os_printf("Write time: %d us\n", mt);
+		uint8 *buf2 = os_malloc(eblen);
+		if(buf == NULL) {
+			os_printf("Error malloc some bytes! 2\n");
+		} else {
+			os_memcpy(buf2, buf, eblen);
+			ets_intr_lock();
+			uint64 mt = get_mac_time();
+			uint8 eq = 0;
+			for(i = 0; i < 32; i++) {
+				if(i2c_eeprom_read_block(0xA0, i * eblen, buf, eblen) == 0) {
+					os_printf("Error read block: %d\n", i);
+					break;
+				}
+				eq = os_memcmp(buf, buf2, eblen) == 0;
+			}
+			mt -= get_mac_time();
+			ets_intr_unlock();
+			os_printf("Compare time: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
+			os_free(buf2);
+		}
+		os_free(buf);
+	}
+
+
+	//
+	power_meter_init(3); // init timer/tasks
+	//
 #ifdef USE_WEB
 	web_fini(sysinifname);
 #endif
@@ -103,10 +168,6 @@ void ICACHE_FLASH_ATTR user_init(void) {
 //	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
 	// vad7
 	//power_meter_init();
-
-	power_meter_init(0); // Init GPIO interrupts
-
-
 	//
 	uart_init();
 	system_timer_reinit();

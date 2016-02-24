@@ -43,9 +43,9 @@ static void gpio_int_handler(void)
 
 void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 {
-	if(index == 0) {
+	ets_isr_mask(1 << ETS_GPIO_INUM); // запрет прерываний GPIOs
+	if(index & 1) {
 		// setup interrupt and os_task
-	//	ets_isr_mask(1 << ETS_GPIO_INUM); // запрет прерываний GPIOs
 		uint32 pins_mask = (1<<SENSOR_PIN);
 		gpio_output_set(0,0,0, pins_mask); // настроить GPIOx на ввод
 		set_gpiox_mux_func_ioport(SENSOR_PIN); // установить функцию GPIOx в режим порта i/o
@@ -54,10 +54,11 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_EDGE); // GPIO_PIN_INTR_NEGEDGE
 		// разрешить прерывания GPIOs
 		GPIO_STATUS_W1TC = pins_mask;
-		ets_isr_unmask(1 << ETS_GPIO_INUM);
-	} else {
+	}
+	if(index & 2) {
 		system_os_task(GPIO_Task_NewData, USER_TASK_PRIO_1, GPIO_TaskQueue, GPIO_Tasks);
 	}
+	ets_isr_unmask(1 << ETS_GPIO_INUM);
 
 //	os_printf("-------- read cfg  ------------\n");
 //	char buf[50];
