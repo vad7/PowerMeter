@@ -70,13 +70,15 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run_new
 		if(buf == NULL) {
 			os_printf("Error malloc some bytes!\n");
 		} else {
+			os_printf("Current 'heap' size: %d bytes\n", system_get_free_heap_size());
 			os_printf("Test 32KB FRAM - %x\n", user_idle_flag);
-			ets_intr_lock();
+			WDT_FEED = WDT_FEED_MAGIC; // WDT
+			uart_wait_tx_fifo_empty();			ets_intr_lock();
 			//ets_isr_mask(0xFFFFFFFF);
 			if(user_idle_flag == 0) {
-				WDT_FEED = WDT_FEED_MAGIC; // WDT
-				uart_wait_tx_fifo_empty();
-				i2c_init();
+				if(PowerCntLast == 0) {
+					i2c_init();
+				}
 
 				os_memset(buf, 0, eblen);
 				mt = system_get_time();
@@ -90,24 +92,22 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run_new
 				mt = system_get_time() - mt;
 				os_printf("Reading time: %d us\n", mt);
 
-				for(i = 0; i < eblen; i++) {
-					os_printf("%x ", buf[i]);
-				}
-				os_printf("\n");
-				WDT_FEED = WDT_FEED_MAGIC; // WDT
+//				for(i = 0; i < eblen; i++) {
+//					os_printf("%x ", buf[i]);
+//				}
+//				os_printf("\n");
 			} else if(user_idle_flag == 1) {
 				spi_flash_read(0x1000, buf, eblen);
 				mt = system_get_time(); //get_mac_time();
 				for(i = 0; i < 32; i++) {
-					WDT_FEED = WDT_FEED_MAGIC; // WDT
 					if(i2c_eeprom_write_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
 						os_printf("Error write block: %d\n", i);
 						break;
 					}
+					WDT_FEED = WDT_FEED_MAGIC; // WDT
 				}
 				mt = system_get_time() - mt; //get_mac_time();
 				os_printf("Write time: %d us\n", mt);
-				WDT_FEED = WDT_FEED_MAGIC; // WDT
 			} else {
 				uint8 *buf2 = os_malloc(eblen);
 				if(buf2 == NULL) {
@@ -118,24 +118,27 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run_new
 					mt = system_get_time();
 					uint8 eq = 0;
 					for(i = 0; i < 32; i++) {
-						WDT_FEED = WDT_FEED_MAGIC; // WDT
-						if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf2, eblen) == 0) {
+						if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
 							os_printf("Error read block: %d\n", i);
 							break;
 						}
+						WDT_FEED = WDT_FEED_MAGIC; // WDT
 						eq = os_memcmp(buf, buf2, eblen) == 0;
+						if(!eq) break;
+						os_printf("Heap: %d ", system_get_free_heap_size());
 					}
 					mt = system_get_time() - mt;
-					os_printf("Compare time: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
 					os_free(buf2);
+					os_printf("Compare time: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
 				}
 			}
 			ets_intr_unlock();
 			//ets_isr_unmask(0xFFFFFFFF);
 			//os_memset(buf, 0, eblen);
 			os_free(buf);
+			WDT_FEED = WDT_FEED_MAGIC; // WDT
 		}
-		if(++user_idle_flag > 2) user_idle_flag = 0;
+		if(++user_idle_flag > 1) user_idle_flag = 0;
 
 		PowerCntLast = PowerCnt;
 	}
