@@ -24,6 +24,14 @@
 #include "sdk/sys_const.h"
 #include "sdk/rom2ram.h"
 
+
+
+extern volatile uint32 PowerCnt;
+
+void user_idle(void) ICACHE_FLASH_ATTR;
+
+
+
 //=============================================================================
 // Define
 //-----------------------------------------------------------------------------
@@ -44,7 +52,7 @@ extern int chip_v6_set_chan_offset(int, int);
 extern uint8 phy_rx_gain_dc_flag;
 extern uint8 * phy_rx_gain_dc_table;
 extern sint16 TestStaFreqCalValInput;
-extern struct rst_info rst_inf;
+//extern struct rst_info rst_inf;
 #endif
 #if DEF_SDK_VERSION >= 1200
 uint8 SDK_VERSION[] = {SDK_VERSION_TXT};
@@ -468,7 +476,7 @@ void ICACHE_FLASH_ATTR startup(void)
 	//
 	prvHeapInit(); // инициализация менеджера памяти heap
 	// GPIO init
-	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
+	//GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
 	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
 	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
 	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
@@ -644,16 +652,16 @@ void ICACHE_FLASH_ATTR puts_buf(uint8 ch)
 const char aFATAL_ERR_R6PHY[] ICACHE_RODATA_ATTR = "register_chipv6_phy";
 void ICACHE_FLASH_ATTR init_wifi(uint8 * init_data, uint8 * mac)
 {
-#ifdef DEBUG_UART
-	uart_wait_tx_fifo_empty();
-	UartDev.trx_buff.TrxBuffSize = 0;
-	ets_install_putc1(puts_buf);
-#endif
+//#ifdef DEBUG_UART
+//	uart_wait_tx_fifo_empty();
+//	UartDev.trx_buff.TrxBuffSize = 0;
+//	ets_install_putc1(puts_buf);
+//#endif
 	if(register_chipv6_phy(init_data)){
 		fatal_error(FATAL_ERR_R6PHY, init_wifi, (void *)aFATAL_ERR_R6PHY);
 	}
 #ifdef DEBUG_UART
-	startup_uart_init();
+//	startup_uart_init();
 	if(UartDev.trx_buff.TrxBuffSize) os_printf_plus(UartDev.trx_buff.pTrxBuff);
 	UartDev.trx_buff.TrxBuffSize = TX_BUFF_SIZE;
 #endif

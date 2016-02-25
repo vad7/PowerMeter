@@ -24,6 +24,7 @@
 
 #include "ets_sys.h"
 #include "osapi.h"
+#include "i2c.h"
 
 #define WORD_MASK 0xFFFF
 

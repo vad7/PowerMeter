@@ -16,9 +16,10 @@
 #include "tcp2uart.h"
 #include "webfs.h"
 #include "sdk/libmain.h"
-#include "../include/driver/i2c_eeprom.h"
+#include "driver/i2c_eeprom.h"
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
+void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 
 #ifdef USE_WEB
 #include "web_srv.h"
@@ -55,10 +56,89 @@ static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 
 extern volatile uint32 PowerCnt;
 
+uint32 PowerCntLast = 0;
+uint8 user_idle_flag = 0;
+
 void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run_new
 {
+	uint16 i;
+	if(PowerCnt > PowerCntLast) {
 
+		#define eblen 1024
+		uint32 mt = 0;
+		uint8 *buf = os_malloc(eblen);
+		if(buf == NULL) {
+			os_printf("Error malloc some bytes!\n");
+		} else {
+			os_printf("Test 32KB FRAM - %x\n", user_idle_flag);
+			ets_intr_lock();
+			//ets_isr_mask(0xFFFFFFFF);
+			if(user_idle_flag == 0) {
+				WDT_FEED = WDT_FEED_MAGIC; // WDT
+				uart_wait_tx_fifo_empty();
+				i2c_init();
 
+				os_memset(buf, 0, eblen);
+				mt = system_get_time();
+				for(i = 0; i < 32; i++) {
+					if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
+						os_printf("Error read block: %d\n", i);
+						break;
+					}
+					WDT_FEED = WDT_FEED_MAGIC; // WDT
+				}
+				mt = system_get_time() - mt;
+				os_printf("Reading time: %d us\n", mt);
+
+				for(i = 0; i < eblen; i++) {
+					os_printf("%x ", buf[i]);
+				}
+				os_printf("\n");
+				WDT_FEED = WDT_FEED_MAGIC; // WDT
+			} else if(user_idle_flag == 1) {
+				spi_flash_read(0x1000, buf, eblen);
+				mt = system_get_time(); //get_mac_time();
+				for(i = 0; i < 32; i++) {
+					WDT_FEED = WDT_FEED_MAGIC; // WDT
+					if(i2c_eeprom_write_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
+						os_printf("Error write block: %d\n", i);
+						break;
+					}
+				}
+				mt = system_get_time() - mt; //get_mac_time();
+				os_printf("Write time: %d us\n", mt);
+				WDT_FEED = WDT_FEED_MAGIC; // WDT
+			} else {
+				uint8 *buf2 = os_malloc(eblen);
+				if(buf2 == NULL) {
+					os_printf("Error malloc some bytes! 2\n");
+				} else {
+					spi_flash_read(0x1000, buf2, eblen);
+					//ets_intr_lock();
+					mt = system_get_time();
+					uint8 eq = 0;
+					for(i = 0; i < 32; i++) {
+						WDT_FEED = WDT_FEED_MAGIC; // WDT
+						if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf2, eblen) == 0) {
+							os_printf("Error read block: %d\n", i);
+							break;
+						}
+						eq = os_memcmp(buf, buf2, eblen) == 0;
+					}
+					mt = system_get_time() - mt;
+					os_printf("Compare time: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
+					os_free(buf2);
+				}
+			}
+			ets_intr_unlock();
+			//ets_isr_unmask(0xFFFFFFFF);
+			//os_memset(buf, 0, eblen);
+			os_free(buf);
+		}
+		if(++user_idle_flag > 2) user_idle_flag = 0;
+
+		PowerCntLast = PowerCnt;
+	}
 }
 
 void ICACHE_FLASH_ATTR init_done_cb(void)
@@ -72,66 +152,9 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 
 	os_printf("PowerCnt = %d\n", PowerCnt);
 #endif
-
-	ets_set_idle_cb(user_idle, NULL);
-
-	#define eblen 1024
-	uint8 *buf = os_malloc(eblen);
-	if(buf == NULL) {
-		os_printf("Error malloc some bytes!\n");
-	} else {
-		uint8 i;
-		os_printf("Test 32KB FRAM\n");
-		ets_intr_lock();
-		uint64 mt = get_mac_time();
-		for(i = 0; i < 32; i++) {
-			if(i2c_eeprom_read_block(0xA0, i * eblen, buf, eblen) == 0) {
-				os_printf("Error read block: %d\n", i);
-				break;
-			}
-		}
-		mt -= get_mac_time();
-		ets_intr_unlock();
-		os_printf("Reading time: %d us\n", mt);
-		//os_memset(buf, 0, eblen);
-		spi_flash_read(1000, buf, eblen);
-		ets_intr_lock();
-		mt = get_mac_time();
-		for(i = 0; i < 32; i++) {
-			if(i2c_eeprom_write_block(0xA0, i * eblen, buf, eblen) == 0) {
-				os_printf("Error write block: %d\n", i);
-				break;
-			}
-		}
-		mt -= get_mac_time();
-		ets_intr_unlock();
-		os_printf("Write time: %d us\n", mt);
-		uint8 *buf2 = os_malloc(eblen);
-		if(buf == NULL) {
-			os_printf("Error malloc some bytes! 2\n");
-		} else {
-			os_memcpy(buf2, buf, eblen);
-			ets_intr_lock();
-			uint64 mt = get_mac_time();
-			uint8 eq = 0;
-			for(i = 0; i < 32; i++) {
-				if(i2c_eeprom_read_block(0xA0, i * eblen, buf, eblen) == 0) {
-					os_printf("Error read block: %d\n", i);
-					break;
-				}
-				eq = os_memcmp(buf, buf2, eblen) == 0;
-			}
-			mt -= get_mac_time();
-			ets_intr_unlock();
-			os_printf("Compare time: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
-			os_free(buf2);
-		}
-		os_free(buf);
-	}
-
-
 	//
 	power_meter_init(3); // init timer/tasks
+	ets_set_idle_cb(user_idle, NULL);
 	//
 #ifdef USE_WEB
 	web_fini(sysinifname);

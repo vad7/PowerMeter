@@ -91,7 +91,9 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
         i2c_stop();
         return 0;
     }
-
+#if DEBUGSOO > 5
+    os_printf("i2c-r\n");
+#endif
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
@@ -185,6 +187,9 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
         i2c_stop();
         return 0;
     }
+#if DEBUGSOO > 5
+    os_printf("i2c-w\n");
+#endif
 
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())

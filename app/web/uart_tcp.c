@@ -148,6 +148,9 @@ void ICACHE_FLASH_ATTR update_mux_uart0(void)
 //-----------------------------------------------------------------------------
 void ICACHE_FLASH_ATTR update_mux_txd1(void)
 {
+#if DEBUG00 > 5
+	os_printf("update_mux_txd1 - %x\n", syscfg.cfg.b.debug_print_enable);
+#endif	
 	MEMW();
 	uint32 x = MUX_TX_UART1 & (~MASK_MUX);
 	if(syscfg.cfg.b.debug_print_enable) {
@@ -344,6 +347,7 @@ void ICACHE_FLASH_ATTR uart_init(void)
 		}
 		rs485_drv_init();
 #endif
+#ifdef USE_UART1
 // UART1
     	UART1_INT_ENA = 0;
 		uart_read_fcfg(2);
@@ -353,6 +357,7 @@ void ICACHE_FLASH_ATTR uart_init(void)
 		MEMW();
 
 	    os_install_putc1((void *)uart1_write_char); // install uart1 putc callback
+#endif
 #ifdef USE_TCP2UART
 		ets_isr_attach(ETS_UART_INUM, uart_intr_handler, NULL);
 		ets_isr_unmask(1 << ETS_UART_INUM);

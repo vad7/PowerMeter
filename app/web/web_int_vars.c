@@ -345,7 +345,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			val &= 1;
 			syscfg.cfg.b.debug_print_enable = val;
 			system_set_os_print(val);
-			update_mux_txd1();
+//			update_mux_txd1();
 		}
 		else ifcmp("save") {
 			if(val == 2) SetSCB(SCB_SYSSAVE); // по закрытию соединения вызвать sys_write_cfg()
@@ -554,9 +554,9 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
             else os_printf(" - none! ");
 #endif
         }
-#if DEBUGSOO > 5
-        else os_printf(" - none! ");
-#endif
+//#if DEBUGSOO > 5
+//        else os_printf(" - none! ");
+//#endif
     }
     else ifcmp("gpio") {
         cstr+=4;
