@@ -27,6 +27,7 @@
 #include "i2c.h"
 
 #define WORD_MASK 0xFFFF
+uint8	I2C_EEPROM_Error;
 
 uint8 i2c_eeprom_read_byte(uint8 address, uint32_t location) ICACHE_FLASH_ATTR; // RETURN 0 if an error!
 uint8 i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t len) ICACHE_FLASH_ATTR;

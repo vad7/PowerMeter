@@ -293,11 +293,6 @@ inc:menu.inc
 hexdmpb
 inc:menu.inc
 hexdmpd
-bin_mdb
-inc:menu.inc
-inc:footer.inc
-xml_mdb
-xml_mdbh
 wifi_prrq_xml
 bin_ram
 inc:menu.inc

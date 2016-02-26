@@ -38,10 +38,12 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     uint8 write_address = address << 1;
     uint8 data;
 
+    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -49,12 +51,14 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -63,6 +67,7 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -78,16 +83,19 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
  * uint32_t location   : The memory location to read
  * uint8 *data		   : Out data
  * uint32_t len        : Number of bytes to read
+ * RETURN 1 if OK!
  */
 uint8 ICACHE_FLASH_ATTR
 i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t len)
 {
     uint8 write_address = address << 1;
 
+    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -97,12 +105,14 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -111,6 +121,7 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
     i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 1;
         i2c_stop();
         return 0;
     }
@@ -132,15 +143,18 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
  * uint8 address       : I2C Device address
  * uint32_t location   : Memory location
  * uint8 data          : Data to write to the EEPROM
+ * RETURN 1 if OK!
  */
 uint8 ICACHE_FLASH_ATTR
 i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
 {
+    I2C_EEPROM_Error = 0;
     i2c_start();
     //Write address
     i2c_writeByte(address << 1);     
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
@@ -149,12 +163,14 @@ i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
@@ -163,6 +179,7 @@ i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
     i2c_writeByte(data);
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
@@ -176,14 +193,17 @@ i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
  * uint32_t location   : Start on this memory address
  * char data           : The data to be writen to the EEPROM
  * uint32_t len        : The lenght of the data
+ * RETURN 1 if OK!
  */
 uint8 ICACHE_FLASH_ATTR
 i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t len)
 {
+    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(address << 1);     
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
@@ -194,12 +214,14 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
+        I2C_EEPROM_Error = 2;
         i2c_stop();
         return 0;
     }
@@ -210,6 +232,7 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
         i2c_writeByte(data[i]);
         if (!i2c_check_ack())
         {
+            I2C_EEPROM_Error = 2;
             i2c_stop();
             return 0;
         }

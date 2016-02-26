@@ -28,6 +28,8 @@
 #define ID_CFG_UURL  0x5552 // id для сохранения строки tcp_client_url
 #define ID_CFG_KVDD  0x564B // id для сохранения калибровочных констант (делитель для VDD)
 
+#define ID_CFG_METER 0x524D // id для настроек Power Meter
+
 //-----------------------------------------------------------------------------
 
 struct uartx_bits_config {

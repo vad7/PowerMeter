@@ -224,7 +224,7 @@ const char HTTPfsupload[] ICACHE_RODATA_ATTR = "<html><body style='margin:100px'
 #define sizeHTTPfsupload 220
 const char HTTPdefault[] ICACHE_RODATA_ATTR = "<html><h3>ESP8266 Built-in Web server <sup><i>&copy</i></sup></h3></html>";
 #define sizeHTTPdefault 73
-const char HTTPfserror[] ICACHE_RODATA_ATTR = "<html><h3>Web-disk error. Use /fsupload</h3></html>";
+const char HTTPfserror[] ICACHE_RODATA_ATTR = "<html><h3>Web-disk error. Use <a href='/fsupload'>fsupload</a></h3></html>";
 #define sizeHTTPfserror 62
 
 const char HTTPAccessControlAllowOrigin[] ICACHE_RODATA_ATTR = "Access-Control-Allow-Origin: *\r\n";
