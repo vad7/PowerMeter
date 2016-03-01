@@ -3,12 +3,12 @@
 
 Have the webserver, Over-The-Air firmware updating.
 
-Schematics: 
+Schematic: 
 ![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter.jpg)
 
 VCC - 3.3V<br> 
-Q1 - photo transistor<br> 
-FM24V05 - FRAM memory<br> 
+Q1 - Photo transistor<br> 
+FM24* - I2C FRAM memory<br> 
 
 ESP-01 module: 
 

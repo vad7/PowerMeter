@@ -24,7 +24,7 @@
 #include "osapi.h"
 #include "gpio.h"
 
-#define I2C_SLEEP_TIME 3 // 3 = 333KHz // 10 = 100KHz
+#define I2C_SLEEP_TIME 10 //3 // 3 = 333KHz // 10 = 100KHz
 
 // SDA on GPIO2
 #define I2C_SDA_PIN 2
