@@ -57,7 +57,9 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 {
 #if DEBUGSOO > 0
 	os_printf("\nSDK Init - Ok\nCurrent 'heap' size: %d bytes\n", system_get_free_heap_size());
+	os_printf("Flash ID: %08x, size: %u\n", spi_flash_get_id(), spi_flash_real_size());
     os_printf("Current config size: %d bytes\n", current_cfg_length());
+
 	struct ets_store_wifi_hdr whd;
 	spi_flash_read(((flashchip->chip_size/flashchip->sector_size)-1)*flashchip->sector_size, &whd, sizeof(whd));
 	os_printf("Last sectors rewrite count: %u\n\n", whd.wr_cnt);

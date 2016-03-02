@@ -41,7 +41,7 @@ typedef struct __attribute__((packed)) {
 	uint8 Cnt3;
 	uint8 Cnt4;
 } CNT_CURRENT;
-CNT_CURRENT CntCurrent;
+CNT_CURRENT CntCurrent = {0, 0, 0, 0};
 
 void NextPtrCurrent(uint8 cnt)
 {
@@ -52,15 +52,6 @@ void NextPtrCurrent(uint8 cnt)
 
 void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 {
-	if(FRAM_STORE_Readed < 2) { // First time
-		if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, 2)) {
-			#if DEBUGSOO > 2
-				os_printf("Error read FRAM at: %u\n", 0);
-			#endif
-			return;
-		}
-		FRAM_STORE_Readed = 2;
-	}
 	ets_intr_lock();
 	uint32 pcnt = fram_store.PowerCnt;
 	if(pcnt > 1) {
@@ -109,24 +100,18 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		}
 	}
 	if(to_save) {
-		uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
-		if(to_save > cnt) { // overflow
-			if(i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt) == 0) {
-				#if DEBUGSOO > 2
-			   		os_printf("Error write i2c current\n");
-				#endif
-			   	return;
-			}
+		uint32 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
+		if(cnt > to_save) cnt = to_save;
+		if(!i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
+			#if DEBUGSOO > 2
+		   		os_printf("Error write i2c current\n");
+			#endif
+		   	return;
+		}
+		if(cnt < to_save) { // overflow
 			if(i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts, ((uint8 *)&CntCurrent) + cnt, to_save - cnt) == 0) {
 				#if DEBUGSOO > 2
 			   		os_printf("Error write i2c current2\n");
-				#endif
-			   	return;
-			}
-		} else {
-			if(i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, to_save) == 0) {
-				#if DEBUGSOO > 2
-			   		os_printf("Error write i2c current3\n");
 				#endif
 			   	return;
 			}
@@ -155,7 +140,11 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 	if(time && time - fram_store.LastTime >= 60) {
 		ets_set_idle_cb(NULL, NULL);
 		ets_intr_unlock();
-		update_cnts(time);
+		if(fram_store.LastTime == 0) { // first time run
+			fram_store.LastTime = time;
+		} else {
+			update_cnts(time);
+		}
 		ets_set_idle_cb(user_idle, NULL);
 	}
 #if DEBUGSOO > 2
@@ -195,7 +184,7 @@ static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
     	case GPIO_Int_Signal:
     		if(e->par == SENSOR_PIN) { // new data
 #if DEBUGSOO > 2
-   				os_printf("* INT GPIO%d, PowerCnt=%d\n", SENSOR_PIN, PowerCnt);
+   				os_printf("* INT GPIO%d, Time: %u, PowerCnt=%d\n", SENSOR_PIN, PowerCntTime, PowerCnt);
 #endif
    				// update current PowerCnt
    				ets_intr_lock();
@@ -319,10 +308,38 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 		}
 		i2c_init();
-		if(i2c_eeprom_read_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store)) == 0) {
-#if DEBUGSOO > 2
-			os_printf("Error read FRAM at: %u\n", 0);
-#endif
+		// restore workspace from FRAM
+		if(!i2c_eeprom_read_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
+			#if DEBUGSOO > 2
+				os_printf("Error read fram_store\n");
+			#endif
+		} else {
+			if(fram_store.LastTime == 0xFFFFFFFF) { // new memory
+				os_memset(&fram_store, 0, sizeof(fram_store));
+				if(!i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
+					#if DEBUGSOO > 2
+						os_printf("Error init fram_store\n");
+					#endif
+				}
+			} else if(fram_store.LastTime) { // LastTime must be filled
+				uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
+				if(cnt > 2) cnt = 2;
+				if(!i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
+					#if DEBUGSOO > 2
+				   		os_printf("Error read i2c current\n");
+					#endif
+				} else if(cnt < 2) {
+					if(!i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts, (uint8 *)&CntCurrent.Cnt2, 1)) {
+						#if DEBUGSOO > 2
+							os_printf("Error read i2c current2\n");
+						#endif
+					}
+				}
+			}
+			#if DEBUGSOO > 4
+				os_printf("PCnt= %u, TCnt= %u, Ptr= %u, LTime= %u\n", fram_store.PowerCnt, fram_store.TotalCnt, fram_store.PtrCurrent, fram_store.LastTime);
+				os_printf("Cnt1= %u, Cnt2= %u\n", CntCurrent.Cnt1, CntCurrent.Cnt2);
+			#endif
 		}
 	}
 #if DEBUGSOO > 2
