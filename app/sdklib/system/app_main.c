@@ -480,7 +480,9 @@ void ICACHE_FLASH_ATTR startup(void)
 	//
 #ifdef USE_OPEN_LWIP	
 	default_hostname = true; // используется default_hostname
-#endif	
+#endif
+	//
+	uart_wait_tx_fifo_empty();
 	//
 	// IO_RTC_4 = 0xfe000000;
 	sleep_reset_analog_rtcreg_8266();
@@ -536,13 +538,14 @@ void ICACHE_FLASH_ATTR startup(void)
 	if(buf[0] != 5) { // первый байт esp_init_data_default.bin не равен 5 ? - бардак!
 #ifdef DEBUG_UART
 		os_printf("\nError esp_init_data! Set default.\n");
+		uart_wait_tx_fifo_empty();
 #endif
 		ets_memcpy(buf, esp_init_data_default, esp_init_data_default_size);
 	}
 //	system_restoreclock(); // STARTUP_CPU_CLK
 	init_wifi(buf, info.st_mac); // инициализация оборудования WiFi
 #if DEF_SDK_VERSION >= 1400
-/* vad7 skip saving to EEPROM
+/* skip saving to EEPROM */
 	if(buf[0xf8] == 1 || phy_rx_gain_dc_flag == 1) { // сохранить новые калибровки RF/VCC33 ?
 #ifdef DEBUG_UART
 		os_printf("\nSave rx_gain_dc table (%u, %u)\n", buf[0xf8], phy_rx_gain_dc_flag );
@@ -550,7 +553,7 @@ void ICACHE_FLASH_ATTR startup(void)
 
 		wifi_param_save_protect_with_check(esp_init_data_default_sec, flashchip_sector_size, buf, SIZE_SAVE_SYS_CONST);
 	}
-*/
+// skip saving to EEPROM */
 #endif
 	os_free(buf);
 	//
