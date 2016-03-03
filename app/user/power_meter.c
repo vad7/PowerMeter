@@ -138,8 +138,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	NextPtrCurrent(to_add);
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += 60;  // seconds
-	if(!i2c_eeprom_write_block(I2C_FRAM_ID, (uint8 *)&fram_store.TotalCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.TotalCnt,
-								sizeof(fram_store.TotalCnt) + sizeof(fram_store.PtrCurrent) + sizeof(fram_store.LastTime))) {
+	if(!i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
 		#if DEBUGSOO > 2
 	   		os_printf("EW f_s\n");
 		#endif
