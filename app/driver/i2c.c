@@ -21,6 +21,7 @@
 #include "osapi.h"
 #include "gpio.h"
 #include "driver/i2c.h"
+#include "hw/eagle_soc_.h"
 
 /**
  * Set SDA to state

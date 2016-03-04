@@ -2,9 +2,10 @@
  * ESP8266 registers
  */
 
-#ifndef _EAGLE_SOC_H_
-#define _EAGLE_SOC_H_
+#ifndef _EAGLE_SOC_H__
+#define _EAGLE_SOC_H__
 
+#ifndef _EAGLE_SOC_H_
 //Register	Bits{{
 #define	BIT31	0x80000000
 #define	BIT30	0x40000000
@@ -58,6 +59,7 @@
 #define	UART_CLK_FREQ	APB_CLK_FREQ
 #define	TIMER_CLK_FREQ	(APB_CLK_FREQ>>8)	//divided	by	256
 //}}
+#endif
 
 //Peripheral	device	base	address	define{{
 #define	PERIPHS_DPORT_BASEADDR	0x3ff00000
@@ -67,11 +69,13 @@
 #define	PERIPHS_IO_MUX			0x60000800
 //}}
 
+#ifndef _EAGLE_SOC_H_
 //Interrupt	remap	control	registers	define{{
 #define	EDGE_INT_ENABLE_REG		(PERIPHS_DPORT_BASEADDR+0x04)
 #define	TM1_EDGE_INT_ENABLE()	SET_PERI_REG_MASK(EDGE_INT_ENABLE_REG, BIT1)
 #define	TM1_EDGE_INT_DISABLE()	CLEAR_PERI_REG_MASK(EDGE_INT_ENABLE_REG, BIT1)
 //}}
+#endif
 
 //GPIO	reg	{{
 #define	GPIO_REG_READ(reg)			READ_PERI_REG(PERIPHS_GPIO_BASEADDR + reg)
@@ -283,4 +287,4 @@
 
 //}}
 
-#endif	//_EAGLE_SOC_H_
+#endif	//_EAGLE_SOC_H__

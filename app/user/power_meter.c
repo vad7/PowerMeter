@@ -10,6 +10,7 @@
 #include "power_meter.h"
 #include "driver/i2c_eeprom.h"
 #include "sntp.h"
+#include "hw/gpio_register.h"
 
 #define GPIO_Tasks 		1
 #define GPIO_Int_Signal 1
