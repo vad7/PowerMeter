@@ -76,7 +76,7 @@ OBINS := $(GEN_BINS:%=$(BINODIR)/%)
 OUTBIN1 := ./$(FIRMWAREDIR)/$(ADDR_FW1).bin
 OUTBIN2 := ./$(FIRMWAREDIR)/$(ADDR_FW2).bin
 
-CCFLAGS += \
+CCFLAGS += -g \
 	-std=gnu90	\
 	-Os	\
 	-Wall	\

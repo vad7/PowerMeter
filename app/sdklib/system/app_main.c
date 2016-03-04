@@ -474,6 +474,7 @@ void ICACHE_FLASH_ATTR startup(void)
 	default_hostname = true; // используется default_hostname
 #endif
 	//
+	//uart_wait_tx_fifo_empty();
 	// IO_RTC_4 = 0xfe000000;
 	sleep_reset_analog_rtcreg_8266();
 	// создать два MAC адреса для AP и SP
@@ -528,6 +529,7 @@ void ICACHE_FLASH_ATTR startup(void)
 	if(buf[0] != 5) { // первый байт esp_init_data_default.bin не равен 5 ? - бардак!
 #ifdef DEBUG_UART
 		os_printf("\nError esp_init_data! Set default.\n");
+		uart_wait_tx_fifo_empty();
 #endif
 		ets_memcpy(buf, esp_init_data_default, esp_init_data_default_size);
 	}
@@ -579,7 +581,7 @@ void ICACHE_FLASH_ATTR startup(void)
 	wdt_init();
 #endif
 #ifdef DEBUG_UART
-	uart_wait_tx_fifo_empty();
+	//uart_wait_tx_fifo_empty();
 #endif
 	user_init();
 	user_init_flag = true;
@@ -646,7 +648,7 @@ void ICACHE_FLASH_ATTR init_wifi(uint8 * init_data, uint8 * mac)
 		fatal_error(FATAL_ERR_R6PHY, init_wifi, (void *)aFATAL_ERR_R6PHY);
 	}
 #ifdef DEBUG_UART
-	//startup_uart_init();
+	startup_uart_init();
 	if(UartDev.trx_buff.TrxBuffSize) os_printf_plus(UartDev.trx_buff.pTrxBuff); // output buffer
 	UartDev.trx_buff.TrxBuffSize = TX_BUFF_SIZE;
 #endif
