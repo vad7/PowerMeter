@@ -56,13 +56,13 @@ static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 void ICACHE_FLASH_ATTR init_done_cb(void)
 {
 #if DEBUGSOO > 0
-	os_printf("\nSDK Init - Ok\nCurrent 'heap' size: %d bytes\n", system_get_free_heap_size());
+	os_printf("\nSDK Init - Ok\nHeap size: %d bytes\n", system_get_free_heap_size());
 	os_printf("Flash ID: %08x, size: %u\n", spi_flash_get_id(), spi_flash_real_size());
-    os_printf("Current config size: %d bytes\n", current_cfg_length());
+    os_printf("Curr cfg size: %d b\n", current_cfg_length());
 
 	struct ets_store_wifi_hdr whd;
 	spi_flash_read(((flashchip->chip_size/flashchip->sector_size)-1)*flashchip->sector_size, &whd, sizeof(whd));
-	os_printf("Last sectors rewrite count: %u\n\n", whd.wr_cnt);
+	os_printf("Last sec rw count: %u\n\n", whd.wr_cnt);
 #endif
 	//
 	power_meter_init(3); // init timer/tasks
@@ -94,20 +94,20 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 void ICACHE_FLASH_ATTR user_init(void) {
 	sys_read_cfg();
 	if(!syscfg.cfg.b.debug_print_enable) system_set_os_print(0);
-//	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
-//	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
-//	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
-//	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
-//	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
-//	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
-//	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
+	GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
+	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
+	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
+	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
+	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
+	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
+	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
 	// vad7
 	//power_meter_init();
 	//
 	uart_init();
 	system_timer_reinit();
 #if (DEBUGSOO > 0 && defined(USE_WEB))
-	os_printf("\nSimple WEB version: " WEB_SVERSION "\nOpenLoaderSDK v1.2\n");
+	os_printf("\nSWEB v" WEB_SVERSION "\nOLSDK v1.2\n");
 #endif
 	//if(syscfg.cfg.b.pin_clear_cfg_enable) test_pin_clr_wifi_config(); // сброс настроек, если замкнут пин RX
 	set_cpu_clk(); // select cpu frequency 80 or 160 MHz
@@ -116,13 +116,13 @@ extern void gdbstub_init(void);
 	gdbstub_init();
 #endif
 #if DEBUGSOO > 0
-	if(eraminfo.size > 0) os_printf("Found free IRAM: base: %p, size: %d bytes\n", eraminfo.base,  eraminfo.size);
-	os_printf("System memory:\n");
+	if(eraminfo.size > 0) os_printf("Free IRAM: base: %p, size: %d bytes\n", eraminfo.base,  eraminfo.size);
+	os_printf("Sys memory:\n");
     system_print_meminfo();
-    os_printf("Start 'heap' size: %d bytes\n", system_get_free_heap_size());
+    os_printf("Heap size: %d bytes\n", system_get_free_heap_size());
 #endif
 #if DEBUGSOO > 0
-	os_printf("Set CPU CLK: %u MHz\n", ets_get_cpu_frequency());
+	os_printf("Set CPU: %u MHz\n", ets_get_cpu_frequency());
 #endif
 	Setup_WiFi();
 #ifdef USE_WDRV

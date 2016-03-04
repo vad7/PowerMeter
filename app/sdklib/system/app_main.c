@@ -467,22 +467,12 @@ void ICACHE_FLASH_ATTR startup(void)
 	iram_buf_init(); // определить и разметить свободную IRAM
 	//
 	prvHeapInit(); // инициализация менеджера памяти heap
-	// GPIO init
-	//GPIO0_MUX = VAL_MUX_GPIO0_SDK_DEF;
-	GPIO4_MUX = VAL_MUX_GPIO4_SDK_DEF;
-	GPIO5_MUX = VAL_MUX_GPIO5_SDK_DEF;
-	GPIO12_MUX = VAL_MUX_GPIO12_SDK_DEF;
-	GPIO13_MUX = VAL_MUX_GPIO13_SDK_DEF;
-	GPIO14_MUX = VAL_MUX_GPIO14_SDK_DEF;
-	GPIO15_MUX = VAL_MUX_GPIO15_SDK_DEF;
 	//
 	read_wifi_config(); // чтение последних установок wifi (последние 3 сектора flash)
 	//
 #ifdef USE_OPEN_LWIP	
 	default_hostname = true; // используется default_hostname
 #endif
-	//
-	uart_wait_tx_fifo_empty();
 	//
 	// IO_RTC_4 = 0xfe000000;
 	sleep_reset_analog_rtcreg_8266();
@@ -538,19 +528,19 @@ void ICACHE_FLASH_ATTR startup(void)
 	if(buf[0] != 5) { // первый байт esp_init_data_default.bin не равен 5 ? - бардак!
 #ifdef DEBUG_UART
 		os_printf("\nError esp_init_data! Set default.\n");
-		uart_wait_tx_fifo_empty();
 #endif
 		ets_memcpy(buf, esp_init_data_default, esp_init_data_default_size);
 	}
 //	system_restoreclock(); // STARTUP_CPU_CLK
 	init_wifi(buf, info.st_mac); // инициализация оборудования WiFi
+	//
+	//
 #if DEF_SDK_VERSION >= 1400
 /* skip saving to EEPROM */
 	if(buf[0xf8] == 1 || phy_rx_gain_dc_flag == 1) { // сохранить новые калибровки RF/VCC33 ?
 #ifdef DEBUG_UART
-		os_printf("\nSave rx_gain_dc table (%u, %u)\n", buf[0xf8], phy_rx_gain_dc_flag );
+		os_printf("\nSave rx_gain_dc (%u, %u)\n", buf[0xf8], phy_rx_gain_dc_flag );
 #endif
-
 		wifi_param_save_protect_with_check(esp_init_data_default_sec, flashchip_sector_size, buf, SIZE_SAVE_SYS_CONST);
 	}
 // skip saving to EEPROM */
@@ -647,17 +637,17 @@ void ICACHE_FLASH_ATTR puts_buf(uint8 ch)
 const char aFATAL_ERR_R6PHY[] ICACHE_RODATA_ATTR = "register_chipv6_phy";
 void ICACHE_FLASH_ATTR init_wifi(uint8 * init_data, uint8 * mac)
 {
-//#ifdef DEBUG_UART
-//	uart_wait_tx_fifo_empty();
-//	UartDev.trx_buff.TrxBuffSize = 0;
-//	ets_install_putc1(puts_buf);
-//#endif
+#ifdef DEBUG_UART // Prepare for catching UART output from sdk to the buffer
+	uart_wait_tx_fifo_empty();
+	UartDev.trx_buff.TrxBuffSize = 0;
+	ets_install_putc1(puts_buf);
+#endif
 	if(register_chipv6_phy(init_data)){
 		fatal_error(FATAL_ERR_R6PHY, init_wifi, (void *)aFATAL_ERR_R6PHY);
 	}
 #ifdef DEBUG_UART
-//	startup_uart_init();
-	if(UartDev.trx_buff.TrxBuffSize) os_printf_plus(UartDev.trx_buff.pTrxBuff);
+	//startup_uart_init();
+	if(UartDev.trx_buff.TrxBuffSize) os_printf_plus(UartDev.trx_buff.pTrxBuff); // output buffer
 	UartDev.trx_buff.TrxBuffSize = TX_BUFF_SIZE;
 #endif
 	phy_disable_agc();

@@ -20,6 +20,13 @@ uint32 PowerCntTime = 0;
 uint8 FRAM_Status = 1; // 0 - Ok, 1 - Not initialized, 2 - Error
 
 typedef struct __attribute__((packed)) {
+	uint32 Fram_Size;
+	uint16 PulsesPerKWt; // 600
+//	char sntp_server[20];
+} CFG_METER;
+CFG_METER cfg_meter;
+
+typedef struct __attribute__((packed)) {
 	uint32 PowerCnt;
 	uint32 TotalCnt;
 	uint32 PtrCurrent;
@@ -32,12 +39,7 @@ FRAM_STORE fram_store;
 uint8	FRAM_STORE_Readed	= 0;
 
 typedef struct __attribute__((packed)) {
-	uint32 Fram_Size;
-//	char sntp_server[20];
-} CFG_METER;
-CFG_METER cfg_meter;
-typedef struct __attribute__((packed)) {
-	uint8 Cnt1; // if = 0, Cnt2 = minutes of zero
+	uint8 Cnt1; // if = 0, Cnt2 = minutes of zero; otherwise pulses in minute (max = 255)
 	uint8 Cnt2;
 	uint8 Cnt3;
 	uint8 Cnt4;
@@ -155,7 +157,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 {
 	//FRAM_speed_test();
 	time_t time = get_sntp_time();
-	if(time && (time - fram_store.LastTime >= 60 || fram_store.PowerCnt)) { // Passed 1 min or spread PowerCnt
+	if(time && (time - fram_store.LastTime >= 60)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
 		ets_intr_unlock();
 		if(fram_store.LastTime == 0) { // first time run
@@ -307,6 +309,7 @@ void FRAM_Store_Init(void)
 	if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter)) != sizeof(cfg_meter)) {
 		// defaults
 		cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
+		cfg_meter.PulsesPerKWt = 600;
 	}
 	i2c_init();
 	// restore workspace from FRAM
