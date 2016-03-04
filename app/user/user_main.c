@@ -106,7 +106,7 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	// vad7
 	//power_meter_init();
 	//
-	uart_init();
+	//uart_init(); // in tcp2uart.h
 	system_timer_reinit();
 #if (DEBUGSOO > 0 && defined(USE_WEB))
 	os_printf("\nSimple WEB version: " WEB_SVERSION "\n");
