@@ -85,6 +85,8 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 #endif
 }
 
+extern uint32 _lit4_start[]; // addr start BSS in IRAM
+extern uint32 _lit4_end[]; // addr end BSS in IRAM
 /******************************************************************************
  * FunctionName : user_init
  * Description  : entry of user application, init user function here
@@ -107,7 +109,7 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	uart_init();
 	system_timer_reinit();
 #if (DEBUGSOO > 0 && defined(USE_WEB))
-	os_printf("\nSWEB v" WEB_SVERSION "\nOLSDK v1.2\n");
+	os_printf("\nSimple WEB version: " WEB_SVERSION "\n");
 #endif
 	//if(syscfg.cfg.b.pin_clear_cfg_enable) test_pin_clr_wifi_config(); // сброс настроек, если замкнут пин RX
 	set_cpu_clk(); // select cpu frequency 80 or 160 MHz
@@ -116,19 +118,21 @@ extern void gdbstub_init(void);
 	gdbstub_init();
 #endif
 #if DEBUGSOO > 0
-	if(eraminfo.size > 0) os_printf("Free IRAM: base: %p, size: %d bytes\n", eraminfo.base,  eraminfo.size);
-	os_printf("Sys memory:\n");
+	if(eraminfo.size > 0) os_printf("Found free IRAM: base: %p, size: %d bytes\n", eraminfo.base,  eraminfo.size);
+	os_printf("System memory:\n");
     system_print_meminfo();
-    os_printf("Heap size: %d bytes\n", system_get_free_heap_size());
+    os_printf("bssi  : 0x%x ~ 0x%x, len: %d\n", &_lit4_start, &_lit4_end, (uint32)(&_lit4_end) - (uint32)(&_lit4_start));
+    os_printf("free  : 0x%x ~ 0x%x, len: %d\n", (uint32)(&_lit4_end), (uint32)(eraminfo.base) + eraminfo.size, (uint32)(eraminfo.base) + eraminfo.size - (uint32)(&_lit4_end));
+
+    os_printf("Start 'heap' size: %d bytes\n", system_get_free_heap_size());
 #endif
 #if DEBUGSOO > 0
-	os_printf("Set CPU: %u MHz\n", ets_get_cpu_frequency());
+	os_printf("Set CPU CLK: %u MHz\n", ets_get_cpu_frequency());
 #endif
 	Setup_WiFi();
 #ifdef USE_WDRV
     init_wdrv();
 #endif
-
     WEBFSInit(); // файловая система
 
 	system_deep_sleep_set_option(0);

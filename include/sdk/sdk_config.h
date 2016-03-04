@@ -26,6 +26,7 @@
 
 #ifndef USE_MAX_IRAM
 //	#define USE_MAX_IRAM  48 // использовать часть cache под IRAM, IRAM size = 49152 байт
+	#define USE_MAX_IRAM  32 // использовать часть IRAM под переменные LWIP (uint32_t only!)
 #endif
 
 /*  USE_FIX_QSPI_FLASH - использовать фиксированную частоту работы QPI
@@ -51,8 +52,8 @@
 	#define USE_US_TIMER
 #endif
 
-//#define USE_TIMER0 // использовать аппаратный таймер 0 (NMI или стандартное прерывание)
-//#define TIMER0_USE_NMI_VECTOR	// использовать NMI вектор для таймера 0 (перенаправление таблицы векторов CPU) (см main-vectors.c)
+// #define USE_TIMER0 // использовать аппаратный таймер 0 (NMI или стандартное прерывание)
+// #define TIMER0_USE_NMI_VECTOR	// использовать NMI вектор для таймера 0 (перенаправление таблицы векторов CPU) (см main-vectors.c)
 
 //#define USE_ETS_RUN_NEW // использовать ets_run_new() вместо ets_run()
 
