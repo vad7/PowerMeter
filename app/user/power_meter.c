@@ -18,7 +18,8 @@ ETSEvent GPIO_TaskQueue[GPIO_Tasks] DATA_IRAM_ATTR;
 
 uint32 PowerCnt = 0;
 uint32 PowerCntTime = 0;
-uint8 FRAM_Status = 1; // 0 - Ok, 1 - Not initialized, 2 - Error
+uint8  FRAM_Status = 1; 	// 0 - Ok, 1 - Not initialized, 2 - Error
+uint8  Sensor_Edge; 		// 0 - Front pulse edge, 1 - Back
 
 typedef struct __attribute__((packed)) {
 	uint32 Fram_Size;
@@ -222,86 +223,21 @@ static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
     }
 }
 
-void ICACHE_FLASH_ATTR FRAM_speed_test(void)
-{
-	#define eblen 1024
-	#define Test_KB 32
-
-	uint8 *buf = os_malloc(eblen);
-	if(buf == NULL) {
-		os_printf("Error malloc some bytes!\n");
-	} else {
-		os_printf("Test %dKB FRAM\n", Test_KB);
-		uart_wait_tx_fifo_empty();
-		wifi_set_opmode_current(WIFI_DISABLED);
-		ets_isr_mask(0xFFFFFFFF); // mask all interrupts
-		i2c_init();
-		//os_memset(buf, 0, eblen);
-		WDT_FEED = WDT_FEED_MAGIC; // WDT
-		uint16 i;
-		uint32 mt = system_get_time();
-		for(i = 0; i < Test_KB; i++) {
-			if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
-				os_printf("Error read block: %d\n", i);
-				break;
-			}
-			WDT_FEED = WDT_FEED_MAGIC; // WDT
-		}
-		mt = system_get_time() - mt;
-		os_printf("Reading time: %d us\n", mt);
-//		for(i = 0; i < eblen; i++) {
-//			os_printf("%x ", buf[i]);
-//		}
-//		os_printf("\n");
-		mt = system_get_time(); //get_mac_time();
-		uint32 pos = 0x2000 + (mt & 0xFFF);
-		spi_flash_read(pos, buf, eblen);
-		for(i = 0; i < Test_KB; i++) {
-			if(i2c_eeprom_write_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
-				os_printf("Error write block: %d\n", i);
-				break;
-			}
-			WDT_FEED = WDT_FEED_MAGIC; // WDT
-		}
-		mt = system_get_time() - mt; //get_mac_time();
-		os_printf("Write time: %d us\n", mt);
-		uint8 *buf2 = os_malloc(eblen);
-		if(buf2 == NULL) {
-			os_printf("Error malloc some bytes! 2\n");
-		} else {
-			mt = system_get_time();
-			uint8 eq = 0;
-			for(i = 0; i < Test_KB; i++) {
-				if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf2, eblen) == 0) {
-					os_printf("Error read block: %d\n", i);
-					break;
-				}
-				WDT_FEED = WDT_FEED_MAGIC; // WDT
-				eq = os_memcmp(buf, buf2, eblen) == 0;
-				if(!eq) break;
-			}
-			mt = system_get_time() - mt;
-			os_printf("Compare: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
-			uart_wait_tx_fifo_empty();
-			os_free(buf2);
-		}
-		os_free(buf);
-		while(1) WDT_FEED = WDT_FEED_MAGIC; // WDT
-	}
-}
-
 static void gpio_int_handler(void)
 {
 	uint32 gpio_status = GPIO_STATUS;
 	GPIO_STATUS_W1TC = gpio_status;
 	if(gpio_status & (1<<SENSOR_PIN)) {
 		uint32 tm = system_get_time();
-		if(tm - PowerCntTime > 70000) { // skip if interval less than 70ms
+		if(tm - PowerCntTime > 20000) { // skip if interval less than 20ms
 			PowerCntTime = tm;
-			PowerCnt++;
-			system_os_post(USER_TASK_PRIO_1, GPIO_Int_Signal, SENSOR_PIN);
+			if(!Sensor_Edge) { // Front edge
+				PowerCnt++;
+				system_os_post(SENSOR_TASK_PRIO, GPIO_Int_Signal, SENSOR_PIN);
+			}
+		    Sensor_Edge ^= 1; // next edge
 		}
-	    gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_EDGE); // GPIO_PIN_INTR_ANYEDGE GPIO_PIN_INTR_POSEDGE | GPIO_PIN_INTR_NEGEDGE ?
+	    gpio_pin_intr_state_set(SENSOR_PIN, Sensor_Edge ? SENSOR_BACK_EDGE : SENSOR_FRONT_EDGE);
 	}
 }
 
@@ -377,12 +313,13 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		set_gpiox_mux_func_ioport(SENSOR_PIN); // установить функцию GPIOx в режим порта i/o
 	//	GPIO_ENABLE_W1TC = pins_mask; // GPIO OUTPUT DISABLE отключить вывод в портах
 		ets_isr_attach(ETS_GPIO_INUM, gpio_int_handler, NULL);
-		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_EDGE); // GPIO_PIN_INTR_NEGEDGE
+		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
+		Sensor_Edge = 0; // Front
 		// разрешить прерывания GPIOs
 		GPIO_STATUS_W1TC = pins_mask;
 	}
 	if(index & 2) {
-		system_os_task(GPIO_Task_NewData, USER_TASK_PRIO_1, GPIO_TaskQueue, GPIO_Tasks);
+		system_os_task(GPIO_Task_NewData, SENSOR_TASK_PRIO, GPIO_TaskQueue, GPIO_Tasks);
 	}
 	ets_isr_unmask(1 << ETS_GPIO_INUM);
 	if(index & 1) {
@@ -446,4 +383,72 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 //		faddr += align(fobj.n.size + fobj_head_size);
 //	} while(faddr < FMEMORY_SCFG_BASE_ADDR + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size));
 //	os_printf("--------- read cfg END --------\n");
+}
+
+void ICACHE_FLASH_ATTR FRAM_speed_test(void)
+{
+	#define eblen 1024
+	#define Test_KB 32
+
+	uint8 *buf = os_malloc(eblen);
+	if(buf == NULL) {
+		os_printf("Error malloc some bytes!\n");
+	} else {
+		os_printf("Test %dKB FRAM\n", Test_KB);
+		uart_wait_tx_fifo_empty();
+		wifi_set_opmode_current(WIFI_DISABLED);
+		ets_isr_mask(0xFFFFFFFF); // mask all interrupts
+		i2c_init();
+		//os_memset(buf, 0, eblen);
+		WDT_FEED = WDT_FEED_MAGIC; // WDT
+		uint16 i;
+		uint32 mt = system_get_time();
+		for(i = 0; i < Test_KB; i++) {
+			if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
+				os_printf("Error read block: %d\n", i);
+				break;
+			}
+			WDT_FEED = WDT_FEED_MAGIC; // WDT
+		}
+		mt = system_get_time() - mt;
+		os_printf("Reading time: %d us\n", mt);
+//		for(i = 0; i < eblen; i++) {
+//			os_printf("%x ", buf[i]);
+//		}
+//		os_printf("\n");
+		mt = system_get_time(); //get_mac_time();
+		uint32 pos = 0x2000 + (mt & 0xFFF);
+		spi_flash_read(pos, buf, eblen);
+		for(i = 0; i < Test_KB; i++) {
+			if(i2c_eeprom_write_block(I2C_FRAM_ID, i * eblen, buf, eblen) == 0) {
+				os_printf("Error write block: %d\n", i);
+				break;
+			}
+			WDT_FEED = WDT_FEED_MAGIC; // WDT
+		}
+		mt = system_get_time() - mt; //get_mac_time();
+		os_printf("Write time: %d us\n", mt);
+		uint8 *buf2 = os_malloc(eblen);
+		if(buf2 == NULL) {
+			os_printf("Error malloc some bytes! 2\n");
+		} else {
+			mt = system_get_time();
+			uint8 eq = 0;
+			for(i = 0; i < Test_KB; i++) {
+				if(i2c_eeprom_read_block(I2C_FRAM_ID, i * eblen, buf2, eblen) == 0) {
+					os_printf("Error read block: %d\n", i);
+					break;
+				}
+				WDT_FEED = WDT_FEED_MAGIC; // WDT
+				eq = os_memcmp(buf, buf2, eblen) == 0;
+				if(!eq) break;
+			}
+			mt = system_get_time() - mt;
+			os_printf("Compare: %d us - %s\n", mt, eq ? "ok!" : "not equal!");
+			uart_wait_tx_fifo_empty();
+			os_free(buf2);
+		}
+		os_free(buf);
+		while(1) WDT_FEED = WDT_FEED_MAGIC; // WDT
+	}
 }

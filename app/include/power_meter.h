@@ -2,7 +2,9 @@
 #define _power_meter_
 
 #define SENSOR_PIN		3
-#define SENSOR_EDGE 	GPIO_PIN_INTR_POSEDGE // GPIO_PIN_INTR_NEGEDGE
+#define SENSOR_FRONT_EDGE 	GPIO_PIN_INTR_NEGEDGE
+#define SENSOR_BACK_EDGE 	GPIO_PIN_INTR_POSEDGE
+#define SENSOR_TASK_PRIO	USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
