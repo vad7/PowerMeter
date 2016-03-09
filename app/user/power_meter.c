@@ -9,7 +9,6 @@
 #include "sdk/libmain.h"
 #include "power_meter.h"
 #include "driver/i2c_eeprom.h"
-#include "sntp.h"
 #include "hw/gpio_register.h"
 
 #define GPIO_Tasks 		1
@@ -21,23 +20,6 @@ uint32 PowerCntTime = 0;
 uint8  FRAM_Status = 1; 	// 0 - Ok, 1 - Not initialized, 2 - Error
 uint8  Sensor_Edge; 		// 0 - Front pulse edge, 1 - Back
 
-typedef struct __attribute__((packed)) {
-	uint32 Fram_Size;
-	uint16 PulsesPerKWt; // 600
-//	char sntp_server[20];
-} CFG_METER;
-CFG_METER cfg_meter;
-
-typedef struct __attribute__((packed)) {
-	uint32 PowerCnt;
-	uint32 TotalCnt;
-	uint32 PtrCurrent;
-	time_t LastTime;
-	//uint8 Reserved[];
-} FRAM_STORE;
-FRAM_STORE fram_store;
-#define StartArrayOfCnts	32 // Start pos, packed: if [cell] = 0 and [cell+1] > 1, then [cell+1] = How many minutes was 0.
-#define	FRAM_SIZE_DEFAULT	32768
 uint8	FRAM_STORE_Readed	= 0;
 
 typedef struct __attribute__((packed)) {
@@ -63,8 +45,8 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		#if DEBUGSOO > 2
 			os_printf("FRAM Reinit\n");
 		#endif
-		//FRAM_Store_Init();
-		i2c_init();
+		FRAM_Store_Init();
+		//i2c_init();
 		if(FRAM_Status) return;
 	}
 	ets_intr_lock();
@@ -246,7 +228,7 @@ void FRAM_Store_Init(void)
 	if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter)) != sizeof(cfg_meter)) {
 		// defaults
 		cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
-		cfg_meter.PulsesPerKWt = 600;
+		cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 	}
 	i2c_init();
 	// restore workspace from FRAM
@@ -315,8 +297,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		ets_isr_attach(ETS_GPIO_INUM, gpio_int_handler, NULL);
 		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
 		Sensor_Edge = 0; // Front
-		// разрешить прерывания GPIOs
-		GPIO_STATUS_W1TC = pins_mask;
+		GPIO_STATUS_W1TC = pins_mask; // разрешить прерывания GPIOs
 	}
 	if(index & 2) {
 		system_os_task(GPIO_Task_NewData, SENSOR_TASK_PRIO, GPIO_TaskQueue, GPIO_Tasks);

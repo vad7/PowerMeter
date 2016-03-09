@@ -27,6 +27,7 @@
 #include "sdk/rom2ram.h"
 #include "sys_const_utils.h"
 #include "wifi_events.h"
+#include "power_meter.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -1108,6 +1109,14 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 #ifdef TEST_SEND_WAVE
         else ifcmp("test_adc") web_test_adc(ts_conn);
 #endif
+// PowerMeter
+        else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
+        else ifcmp("TotalCntTime") tcp_puts("%u", fram_store.LastTime);
+        else ifcmp("TotalKWT") {
+        	uint32 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
+        	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
+        }
+// PowerMeter
 		else tcp_put('?');
 }
 
