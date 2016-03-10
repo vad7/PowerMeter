@@ -1088,6 +1088,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 // PowerMeter
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("TotalCntTime") tcp_puts("%u", fram_store.LastTime);
+        else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
+        else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
+        else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
         else ifcmp("TotalKWT") {
         	uint32 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);

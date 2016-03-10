@@ -1,18 +1,10 @@
 <!DOCTYPE html>
 <html><head>
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
-	<title>ESP8266 Image Upload</title>
+	<title>ESP8266 WebFS Image Upload</title>
 	<link rel="stylesheet" href="../style.css">
 </head><body>
 ~inc:menu.inc~
-<form method='post' action='/fsupload' enctype='multipart/form-data' class="content">
-	<h2 class="title">Firmware Image Upload</h2>
-	<p class="center">
-	Select Firmware.bin file...<br><br>
-	<input type='file' name='firmware'><br><br>
-	<input type='submit' value='Upload' class="button">
-	</p>
-</form>
 <form method='post' action='/fsupload' enctype='multipart/form-data' class="content">
 	<h2 class="title">WebFS Image Upload</h2>
 	<p class="center">

@@ -27,6 +27,14 @@ typedef struct __attribute__((packed)) {
 FRAM_STORE fram_store;
 #define StartArrayOfCnts	32 // Start pos, packed: if [cell] = 0 and [cell+1] > 1, then [cell+1] = How many minutes was 0.
 
+typedef struct __attribute__((packed)) {
+	uint8 Cnt1; // if = 0, Cnt2 = minutes of zero; otherwise pulses in minute (max = 255)
+	uint8 Cnt2;
+	uint8 Cnt3;
+	uint8 Cnt4;
+} CNT_CURRENT;
+CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
+
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
 
