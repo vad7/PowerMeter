@@ -9,6 +9,6 @@ if(x2){
 var d2 = new Date(x2);
 document.getElementById('timecnt').innerHTML= d.toLocaleDateString()+" "+d.toLocaleTimeString();
 }
-var d = new Date(new Date()-(~sys_mactime~/1000));
-document.getElementById('starttime').innerHTML= d.toLocaleString();
+var d3 = new Date(new Date()-(~sys_mactime~/1000));
+document.getElementById('starttime').innerHTML= d3.toLocaleString();
 </script>

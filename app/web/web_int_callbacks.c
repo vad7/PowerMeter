@@ -28,6 +28,7 @@
 #include "sys_const_utils.h"
 #include "wifi_events.h"
 #include "power_meter.h"
+#include "driver/i2c_eeprom.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -343,6 +344,73 @@ void ICACHE_FLASH_ATTR web_hexdump(TCP_SERV_CONN *ts_conn)
     SetNextFunSCB(web_hexdump);
     return;
 }
+
+// Output history by 1 min from last record to previous
+void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
+{
+    WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+    // Check if this is a first round call
+    if(CheckSCB(SCB_RETRYCB)==0) {
+    	web_conn->udata_start = fram_store.PtrCurrent;
+#if DEBUGSOO > 2
+		os_printf("History from :%u ", web_conn->udata_start);
+#endif
+    }
+    // Get/put as many bytes as possible
+    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, 128); // Send max size 128 byte
+    uint32 c = cfg_meter.Fram_Size - StartArrayOfCnts - web_conn->udata_start;
+    if(len > c) len = c;
+#if DEBUGSOO > 2
+	os_printf("->%u, len: %u",web_conn->udata_start, len);
+#endif
+	tcp_puts("Empty csv file!");
+//    if(spi_flash_read(web_conn->udata_start, web_conn->msgbuf, len) == SPI_FLASH_RESULT_OK) {
+//      web_conn->udata_start += len;
+//      web_conn->msgbuflen += len;
+//      if(web_conn->udata_start < web_conn->udata_stop) {
+//        SetSCB(SCB_RETRYCB);
+//        SetNextFunSCB(web_get_history);
+//        return;
+//      };
+//    };
+    ClrSCB(SCB_RETRYCB);
+//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
+    return;
+}
+
+// Output i2c from eeprom web_conn->udata_start, end: web_conn->udata_stop
+void ICACHE_FLASH_ATTR web_get_i2c_eeprom(TCP_SERV_CONN *ts_conn)
+{
+    WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+    // Check if this is a first round call
+    if(CheckSCB(SCB_RETRYCB)==0) {
+    	if(web_conn->udata_start == web_conn->udata_stop) return;
+#if DEBUGSOO > 2
+		os_printf("i2c from:%u ", web_conn->udata_start);
+#endif
+    }
+    // Get/put as many bytes as possible
+    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, 128); // max 128 bytes
+#if DEBUGSOO > 2
+	os_printf("%u+%u ",web_conn->udata_start, len);
+#endif
+	if(!i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
+		os_printf("i2c R error\n");
+		//FRAM_Status = 2;
+	} else {
+		web_conn->udata_start += len;
+		web_conn->msgbuflen += len;
+		if(web_conn->udata_start < web_conn->udata_stop) {
+			SetSCB(SCB_RETRYCB);
+    		SetNextFunSCB(web_get_i2c_eeprom);
+    		return;
+    	}
+    }
+    ClrSCB(SCB_RETRYCB);
+//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
+    return;
+}
+
 /******************************************************************************
  * FunctionName : web saved flash
  * Description  : Processing the flash data send
@@ -915,6 +983,17 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         		web_get_ram(ts_conn);
         	}
 #endif
+        	// History.csv
+        	else ifcmp("history") {
+    			web_get_history(ts_conn);
+        	}
+        	// fram_all.bin
+        	else ifcmp("fram_all") {
+    			web_conn->udata_start = 0;
+    			web_conn->udata_stop = cfg_meter.Fram_Size;
+    			web_get_i2c_eeprom(ts_conn);
+        	}
+        	//
         	else tcp_put('?');
         }
         else ifcmp("hexdmp") {
@@ -1095,6 +1174,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	uint32 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
         }
+        else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
+        else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
 // PowerMeter
 		else tcp_put('?');
 }

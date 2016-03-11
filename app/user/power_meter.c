@@ -44,6 +44,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		}
 	}
 	uint32 SaveCurrentPtr = fram_store.PtrCurrent;
+	CNT_CURRENT SaveCntCurrent = CntCurrent;
 	//ets_intr_lock();
 	uint32 pcnt = fram_store.PowerCnt;
 	if(pcnt > 1) {
@@ -125,11 +126,13 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
    		fram_store.TotalCnt -= pcnt;
    		fram_store.LastTime -= 60;  // seconds
 xError:
+		CntCurrent = SaveCntCurrent;
 		fram_store.PtrCurrent = SaveCurrentPtr;
 		fram_store.PowerCnt += pcnt;
 		FRAM_Status = 2;
 	   	return;
 	}
+	FRAM_Status = 0;
 }
 
 #if DEBUGSOO > 2
@@ -193,6 +196,10 @@ static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
    				fram_store.PowerCnt += PowerCnt;
    				PowerCnt = 0;
    				ets_intr_unlock();
+   				if(FRAM_Status) {
+   					i2c_init();
+   					FRAM_Status = 0;
+   				}
    				if(!i2c_eeprom_write_block(I2C_FRAM_ID, (uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
 #if DEBUGSOO > 2
    					os_printf("EW PrCnt\n");
@@ -368,6 +375,42 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 //		faddr += align(fobj.n.size + fobj_head_size);
 //	} while(faddr < FMEMORY_SCFG_BASE_ADDR + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size));
 //	os_printf("--------- read cfg END --------\n");
+}
+
+bool ICACHE_FLASH_ATTR write_power_meter_cfg(void) {
+	return flash_save_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter));
+}
+
+
+void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
+{
+	#define buflen 512
+#if DEBUGSOO > 0
+	os_printf("* Clear all fram data!\n");
+#endif
+	wifi_set_opmode_current(WIFI_DISABLED);
+	ets_isr_mask(0xFFFFFFFF); // mask all interrupts
+	uint8 *buf = os_malloc(buflen);
+	if(buf != NULL) {
+		os_memset(buf, 0, buflen);
+		uint32 i;
+		for(i = 0; i < cfg_meter.Fram_Size; i += buflen) {
+			if(!i2c_eeprom_write_block(I2C_FRAM_ID, i, buf, buflen)) {
+				#if DEBUGSOO > 0
+					os_printf("Error i2c write at: %d\n", i);
+				#endif
+				break;
+			}
+			#if DEBUGSOO > 0
+				os_printf("WR %d\n", i);
+			#endif
+			WDT_FEED = WDT_FEED_MAGIC; // WDT
+		}
+		#if DEBUGSOO > 0
+			uart_wait_tx_fifo_empty();
+		#endif
+		while(1) ; // reset by wdt.
+	}
 }
 
 void ICACHE_FLASH_ATTR FRAM_speed_test(void)

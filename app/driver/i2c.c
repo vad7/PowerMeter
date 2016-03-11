@@ -31,10 +31,13 @@ i2c_sda(uint8 state)
 {
     state &= 0x01;
     //Set SDA line to state
-    if (state)
+	ets_intr_lock();
+    if (state) {
         gpio_output_set(1 << I2C_SDA_PIN, 0, 1 << I2C_SDA_PIN, 0);
-    else
+    } else {
         gpio_output_set(0, 1 << I2C_SDA_PIN, 1 << I2C_SDA_PIN, 0);
+    }
+    ets_intr_unlock();
 }
 
 /**
@@ -44,10 +47,13 @@ LOCAL void ICACHE_FLASH_ATTR
 i2c_sck(uint8 state)
 {
     //Set SCK line to state
-    if (state)
+	ets_intr_lock();
+    if (state) {
         gpio_output_set(1 << I2C_SCK_PIN, 0, 1 << I2C_SCK_PIN, 0);
-    else
+    } else {
         gpio_output_set(0, 1 << I2C_SCK_PIN, 1 << I2C_SCK_PIN, 0);
+    }
+    ets_intr_unlock();
 }
 
 /**
@@ -58,7 +64,7 @@ void ICACHE_FLASH_ATTR
 i2c_init(void)
 {
     //Disable interrupts
-    ETS_GPIO_INTR_DISABLE();
+	ets_intr_lock();
 
     //Set pin functions
     PIN_FUNC_SELECT(I2C_SDA_MUX, I2C_SDA_FUNC);
@@ -83,7 +89,7 @@ i2c_init(void)
     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SCK_PIN));
 
     //Turn interrupt back on
-    ETS_GPIO_INTR_ENABLE();
+    ets_intr_unlock();
 
     i2c_sda(1);
     i2c_sck(1);

@@ -2,10 +2,11 @@
 <div class="menu">
 	<div>
 		<a href="/index.htm">Main</a>
-		<a href="/settings.htm">Settings</a>
+		<a href="/history.htm">History</a>
 	</div>
 	<div>
-		<a href="/history.htm">History</a>
+		<a href="/protect/setmeter.htm">Setup meter</a>
+		<a href="/settings.htm">Settings</a>
 	</div>
 </div>
 <script type="text/javascript">

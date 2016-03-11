@@ -30,6 +30,7 @@
 #include "tcp2uart.h"
 #include "web_iohw.h"
 #include "wifi_events.h"
+#include "power_meter.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -329,6 +330,18 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			syscfg.cfg.b.debug_print_enable = val;
 			system_set_os_print(val);
 //			update_mux_txd1();
+		}
+		else ifcmp("meter_") {
+			cstr+=6;
+			ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
+			else ifcmp("TotalCnt") fram_store.TotalCnt = val;
+			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
+			else ifcmp("reset_data") {
+				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
+			}
+			else ifcmp("save") {
+				if(val == 1) write_power_meter_cfg();
+			}
 		}
 		else ifcmp("save") {
 			if(val == 2) SetSCB(SCB_SYSSAVE); // по закрытию соединения вызвать sys_write_cfg()

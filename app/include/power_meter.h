@@ -37,6 +37,8 @@ CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
+bool write_power_meter_cfg(void) ICACHE_FLASH_ATTR;
+void power_meter_clear_all_data(void) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 
