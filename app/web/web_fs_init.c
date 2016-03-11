@@ -72,7 +72,9 @@ void ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 		web_inc_fclose(web_conn);
 		return;
 	}
+#if DEBUGSOO > 1
 	user_uart_wait_tx_fifo_empty(DEBUG_UART,1000);
+#endif
 	while(1) {
 		web_conn->msgbufsize = ts_conn->sizeo;
 		web_conn->msgbuflen = 0;

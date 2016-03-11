@@ -99,6 +99,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		}
 	}
 	if(to_save) {
+		NextPtrCurrent(0); // set ptr = 0 if ptr garbage
 		uint32 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > to_save) cnt = to_save;
 		if(!i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
