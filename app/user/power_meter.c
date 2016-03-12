@@ -198,14 +198,17 @@ static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
    				PowerCnt = 0;
    				ets_intr_unlock();
    				if(FRAM_Status) {
-   					i2c_init();
    					FRAM_Status = 0;
+xRepeat:			i2c_init();
    				}
    				if(!i2c_eeprom_write_block(I2C_FRAM_ID, (uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
+   					if(FRAM_Status == 0) {
+   	   					FRAM_Status = 2;
+   						goto xRepeat;
+   					}
 #if DEBUGSOO > 2
    					os_printf("EW PrCnt\n");
 #endif
-   					FRAM_Status = 2;
    				}
     		}
     		break;

@@ -43,7 +43,8 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
+xError:
+		I2C_EEPROM_Error++;
         i2c_stop();
         return 0;
     }
@@ -51,25 +52,19 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
 
     i2c_start();
     i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     data = i2c_readByte();
     i2c_send_ack(0); // NOACK
@@ -95,7 +90,8 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
+xError:
+		I2C_EEPROM_Error++;
         i2c_stop();
         return 0;
     }
@@ -105,25 +101,19 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
 
     i2c_start();
     i2c_writeByte(write_address | 1);
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 1;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
 
     uint32_t i;
@@ -154,7 +144,8 @@ i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
     i2c_writeByte(address << 1);     
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
+xError:
+		I2C_EEPROM_Error++;
         i2c_stop();
         return 0;
     }
@@ -163,25 +154,19 @@ i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
 
     //Write data
     i2c_writeByte(data);
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     i2c_stop();
     return 1;
@@ -203,9 +188,10 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
     i2c_writeByte(address << 1);     
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+xError:
+		I2C_EEPROM_Error++;
+		i2c_stop();
+		return 0;
     }
 #if DEBUGSOO > 5
     os_printf("i2c-w\n");
@@ -214,16 +200,12 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
     i2c_writeByte((uint8_t)((location & WORD_MASK) >> 8)); // MSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
     i2c_writeByte((uint8_t)(location & 0xFF)); // LSB
     if (!i2c_check_ack())
     {
-        I2C_EEPROM_Error = 2;
-        i2c_stop();
-        return 0;
+    	goto xError;
     }
 
     uint32_t i;
@@ -232,9 +214,7 @@ i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t l
         i2c_writeByte(data[i]);
         if (!i2c_check_ack())
         {
-            I2C_EEPROM_Error = 2;
-            i2c_stop();
-            return 0;
+        	goto xError;
         }
     }
 

@@ -1165,8 +1165,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("test_adc") web_test_adc(ts_conn);
 #endif
 // PowerMeter
-        else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("TotalCntTime") tcp_puts("%u", fram_store.LastTime);
+        else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
         else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
@@ -1176,6 +1176,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         }
         else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
+        else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
 // PowerMeter
 		else tcp_put('?');
 }
