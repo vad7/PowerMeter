@@ -493,6 +493,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 	uint32 ip = 0;
 	uint32 ip_ap = 0;
 	uint32 ip_st = 0;
+//	int z  = NULL_MODE;
 	struct ip_info wifi_info;
 	WIFI_MODE opmode = wifi_get_opmode();
 	if(opmode == STATIONAP_MODE) {
@@ -512,7 +513,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 		};
 	};
 	opmode &= wificonfig.b.mode;
-	if(WIFI_DISABLED == opmode) opmode = wificonfig.b.mode;
+	if(opmode == WIFI_DISABLED) opmode = wificonfig.b.mode;
 	if(wificonfig.ap.ipinfo.ip.addr == 0 || (opmode & SOFTAP_MODE)) {
 		ip = wificonfig.ap.ipinfo.ip.addr;
 #ifdef USE_NETBIOS
@@ -527,7 +528,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 #ifdef USE_NETBIOS
 	if(syscfg.cfg.b.netbios_ena) tcp_strcpy(netbios_name);
 	else {
-		if(ip == 0) tcp_strcpy_fd("ESP8266"); 
+		if(ip == 0) tcp_strcpy_fd("esp8266.ru"); 
 		else tcp_puts(IPSTR, IP2STR(&ip));
 	};
 #else
