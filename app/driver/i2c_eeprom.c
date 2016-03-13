@@ -38,7 +38,6 @@ i2c_eeprom_read_byte(uint8 address, uint32_t location)
     uint8 write_address = address << 1;
     uint8 data;
 
-    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
@@ -85,7 +84,6 @@ i2c_eeprom_read_block(uint8 address, uint32_t location, uint8 *data, uint32_t le
 {
     uint8 write_address = address << 1;
 
-    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(write_address);
     if (!i2c_check_ack())
@@ -138,7 +136,6 @@ xError:
 uint8 ICACHE_FLASH_ATTR
 i2c_eeprom_write_byte(uint8 address, uint32_t location, uint8 data)
 {
-    I2C_EEPROM_Error = 0;
     i2c_start();
     //Write address
     i2c_writeByte(address << 1);     
@@ -183,7 +180,6 @@ xError:
 uint8 ICACHE_FLASH_ATTR
 i2c_eeprom_write_block(uint8 address, uint32_t location, uint8 *data, uint32_t len)
 {
-    I2C_EEPROM_Error = 0;
     i2c_start();
     i2c_writeByte(address << 1);     
     if (!i2c_check_ack())
