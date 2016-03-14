@@ -60,6 +60,15 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	uint8 to_save = 0; // bytes
 	uint8 to_add = 0;  // bytes after write
 	if(pcnt == 0) { // new zero
+		if(CntCurrent.Cnt1) { // Cnt1 filled, something going wrong
+			*(uint32 *)&CntCurrent = 0;
+			if(!i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, &CntCurrent.Cnt1, 1)) {
+				#if DEBUGSOO > 2
+			   		os_printf("EW Curr00\n");
+				#endif
+			   	goto xError2;
+			}
+		}
 		if(CntCurrent.Cnt2 == 255) { // overflow
 			// next packed
 			NextPtrCurrent(2);
@@ -92,7 +101,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 				to_save = 3;
 				to_add = 1;
 			}
-		} else {
+		} else { // 0,0
 			CntCurrent.Cnt1 = pcnt;
 			to_save = 3;
 			to_add = 1;
@@ -118,6 +127,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		}
 	}
 	NextPtrCurrent(to_add);
+	if(to_add) *(uint32 *)&CntCurrent = 0; // clear for next
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += 60;  // seconds
 	if(!i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
@@ -129,6 +139,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 xError:
 		CntCurrent = SaveCntCurrent;
 		fram_store.PtrCurrent = SaveCurrentPtr;
+xError2:
 		fram_store.PowerCnt += pcnt;
 		FRAM_Status = 2;
 	   	return;
@@ -241,7 +252,7 @@ void FRAM_Store_Init(void)
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 		}
-		os_memset(&CntCurrent, 0, sizeof(CntCurrent));
+		*(uint32 *)&CntCurrent = 0;
 	}
 	i2c_init();
 	// restore workspace from FRAM

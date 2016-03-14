@@ -29,6 +29,7 @@
 #include "wifi_events.h"
 #include "power_meter.h"
 #include "driver/i2c_eeprom.h"
+#include "sntp.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -346,24 +347,50 @@ void ICACHE_FLASH_ATTR web_hexdump(TCP_SERV_CONN *ts_conn)
 }
 
 // Output history by 1 min from last record to previous
+// dd.mm.yyyy;hh:mm;nnn
 void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 {
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
     // Check if this is a first round call
     if(CheckSCB(SCB_RETRYCB)==0) {
-    	web_conn->udata_start = fram_store.PtrCurrent;
 #if DEBUGSOO > 2
 		os_printf("History from :%u ", web_conn->udata_start);
 #endif
+		web_conn->udata_stop = fram_store.LastTime;
+		//		struct tm * sntp_localtime(const time_t * tim_p) ICACHE_FLASH_ATTR;
+//		struct tm *tm = sntp_localtime(&fram_store.LastTime);
+//		tcp_puts("%02d.%02d.%04d;%02d:%02d:%04d", tm->tm_mday, tm->tm_mon, tm->tm_year, tm->tm_hour, tm->tm_min, tm->tm_sec);
     }
     // Get/put as many bytes as possible
-    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, 128); // Send max size 128 byte
-    uint32 c = cfg_meter.Fram_Size - StartArrayOfCnts - web_conn->udata_start;
-    if(len > c) len = c;
+	uint32 len = mMIN(FRAM_MAX_BLOCK_AT_ONCE, cfg_meter.Fram_Size - StartArrayOfCnts - web_conn->udata_start);
+    len = mMIN(len, (web_conn->msgbufsize - web_conn->msgbuflen) / 24);
 #if DEBUGSOO > 2
 	os_printf("->%u, len: %u",web_conn->udata_start, len);
 #endif
-	tcp_puts("Empty csv file!");
+	uint32 i;
+	uint8 * buf = os_malloc(len);
+	if(buf != NULL) {
+		if(!i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + web_conn->udata_start, buf, len)) {
+			os_printf("i2c R error\n");
+			//FRAM_Status = 2;
+		} else {
+			SetNextFunSCB(web_get_history);
+			for(i = 0; i < len; i--) { // !!!!!!!!!!
+
+				uint8 n = buf[i];
+				if(n == 0) {
+					if(i+1 == len) break;
+					if(buf[i+1] == 0) { // end
+						SetNextFunSCB(NULL);
+						break;
+					}
+					if(--buf[i+1] == 0) i++; else i--;
+				}
+				tcp_puts("%u;%d\n", web_conn->udata_stop, n);
+				web_conn->udata_stop -= 60;
+			}
+		}
+	}
 //    if(spi_flash_read(web_conn->udata_start, web_conn->msgbuf, len) == SPI_FLASH_RESULT_OK) {
 //      web_conn->udata_start += len;
 //      web_conn->msgbuflen += len;
@@ -390,7 +417,7 @@ void ICACHE_FLASH_ATTR web_get_i2c_eeprom(TCP_SERV_CONN *ts_conn)
 #endif
     }
     // Get/put as many bytes as possible
-    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, 128); // max 128 bytes
+    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, FRAM_MAX_BLOCK_AT_ONCE);
 #if DEBUGSOO > 2
 	os_printf("%u+%u ",web_conn->udata_start, len);
 #endif
@@ -984,8 +1011,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         		web_get_ram(ts_conn);
         	}
 #endif
-        	// History.csv
+        	// history.bin
         	else ifcmp("history") {
+        		web_conn->udata_start = fram_store.PtrCurrent;
     			web_get_history(ts_conn);
         	}
         	// fram_all.bin

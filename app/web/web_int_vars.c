@@ -553,9 +553,6 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
             else os_printf(" - none! ");
 #endif
         }
-#if DEBUGSOO > 5
-        else os_printf(" - none! ");
-#endif
     }
     else ifcmp("gpio") {
         cstr+=4;

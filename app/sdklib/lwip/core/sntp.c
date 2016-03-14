@@ -340,18 +340,6 @@ static const int year_lengths[2] = {
   365,
   366
 } ;
-struct tm
-{
-  int	tm_sec;
-  int	tm_min;
-  int	tm_hour;
-  int	tm_mday;
-  int	tm_mon;
-  int	tm_year;
-  int	tm_wday;
-  int	tm_yday;
-  int	tm_isdst;
-};
 
 struct tm res_buf;
 typedef struct __tzrule_struct

@@ -29,7 +29,7 @@ text-align:center;
 }
 .menu{
 border-top:#fab548 5px solid;
-background:#f1f1ed url(esp.gif) no-repeat 10px 10px;
+background:#f1f1ed;
 padding:5px 5px 5px 120px;
 margin:0 0 10px 0;
 min-height:120px;

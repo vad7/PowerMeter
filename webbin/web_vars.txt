@@ -75,7 +75,6 @@ sys_res_event
 inc:footer.inc
 sys_sleep_old
 bin_flash_const
-bin_fram_all
 bin_flash_all
 inc:menu.inc
 inc:footer.inc
@@ -197,12 +196,6 @@ wifi_st_bssid
 inc:footer.inc
 wifi_st_aucn
 wifi_scan
-inc:menu0.inc
-PulsesPerKWt
-TotalCnt
-PulsesPerKWt
-Fram_Size
-inc:footer.inc
 inc:menu.inc
 cfg_web_port
 cfg_web_twrec

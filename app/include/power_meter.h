@@ -3,12 +3,13 @@
 
 #include "sntp.h"
 
-#define SENSOR_PIN		3
-#define SENSOR_FRONT_EDGE 	GPIO_PIN_INTR_NEGEDGE
-#define SENSOR_BACK_EDGE 	GPIO_PIN_INTR_POSEDGE
-#define	FRAM_SIZE_DEFAULT	32768
+#define SENSOR_PIN					3
+#define SENSOR_FRONT_EDGE 			GPIO_PIN_INTR_NEGEDGE
+#define SENSOR_BACK_EDGE 			GPIO_PIN_INTR_POSEDGE
+#define	FRAM_SIZE_DEFAULT			32768
+#define FRAM_MAX_BLOCK_AT_ONCE 		128
 #define DEFAULT_PULSES_PER_0_01_KWT 6 // 600 per kWt
-#define SENSOR_TASK_PRIO	USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
+#define SENSOR_TASK_PRIO			USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
 
 typedef struct __attribute__((packed)) {
 	uint32 Fram_Size;
@@ -28,10 +29,10 @@ FRAM_STORE fram_store;
 #define StartArrayOfCnts	32 // Start pos, packed: if [cell] = 0 and [cell+1] > 1, then [cell+1] = How many minutes was 0.
 
 typedef struct __attribute__((packed)) {
-	uint8 Cnt1; // if = 0, Cnt2 = minutes of zero; otherwise pulses in minute (max = 255)
-	uint8 Cnt2;
-	uint8 Cnt3;
-	uint8 Cnt4;
+	uint8 Cnt1; // otherwise pulses in minute (max = 255)
+	uint8 Cnt2; // if Cnt1 == 0, Cnt2 = minutes of zero;
+	uint8 Cnt3; // always = 0
+	uint8 Cnt4; // always = 0
 } CNT_CURRENT;
 CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
