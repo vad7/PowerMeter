@@ -22,5 +22,6 @@ data2 = fin.read()
 fin.close()
 data = data + data2
 fout.write(data)
+fout.flush()
 fout.close()
 print "Make: " + fout_name

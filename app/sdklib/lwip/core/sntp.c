@@ -59,6 +59,7 @@
 #include "lwip/pbuf.h"
 #include "sdk/add_func.h"
 #include "sdk/os_printf.h"
+#include "time.h"
 
 #define os_sprintf ets_sprintf
 //#include <string.h>
@@ -342,16 +343,16 @@ static const int year_lengths[2] = {
 } ;
 
 struct tm res_buf;
-typedef struct __tzrule_struct
-{
-  char ch;
-  int m;
-  int n;
-  int d;
-  int s;
-  time_t change;
-  int offset;
-} __tzrule_type;
+//typedef struct __tzrule_struct
+//{
+//  char ch;
+//  int m;
+//  int n;
+//  int d;
+//  int s;
+//  time_t change;
+//  int offset;
+//} __tzrule_type;
 
 __tzrule_type sntp__tzrule[2];
 struct tm * ICACHE_FLASH_ATTR
@@ -381,7 +382,7 @@ sntp_mktm_r(const time_t * tim_p ,struct tm *res ,int is_gmtime)
     }
 
   /* compute hour, min, and sec */
-  res->tm_hour = (int) (rem / SECSPERHOUR);
+  (*res).tm_hour = (int) (rem / SECSPERHOUR);
   rem %= SECSPERHOUR;
   res->tm_min = (int) (rem / SECSPERMIN);
   res->tm_sec = (int) (rem % SECSPERMIN);

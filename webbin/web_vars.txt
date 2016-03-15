@@ -75,6 +75,7 @@ sys_res_event
 inc:footer.inc
 sys_sleep_old
 bin_flash_const
+bin_fram_all
 bin_flash_all
 inc:menu.inc
 inc:footer.inc
@@ -133,6 +134,7 @@ inc:menu.inc
 hexdmpb
 inc:menu.inc
 hexdmpd
+bin_history
 wifi_prrq_xml
 bin_ram
 inc:menu.inc

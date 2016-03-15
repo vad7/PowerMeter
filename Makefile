@@ -46,8 +46,9 @@ OBJDUMP := $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-objdump
 
 SDK_TOOLS	?= c:/Espressif/utils
 #ESPTOOL		?= $(SDK_TOOLS)/esptool
-ESPTOOL	?= C:/Python27/python.exe $(CWD)esptool.py
-OVLTOOL ?= C:/Python27/python.exe $(CWD)ovls.py
+PYTHON  ?= C:/Python27/python.exe
+ESPTOOL	?= $(PYTHON) $(CWD)esptool.py
+OVLTOOL ?= $(PYTHON) $(CWD)ovls.py
 
 CSRCS ?= $(wildcard *.c)
 ASRCs ?= $(wildcard *.s)
@@ -201,7 +202,7 @@ else
 	@dd if=../bin/rapid_loader_40m.bin >../bin/$(ADDR_FW1).bin
 endif	
 	@dd if=../bin/0.bin >>../bin/$(ADDR_FW1).bin
-	@../bin/make_firmware_image.py ../bin/
+	@$(PYTHON) ../bin/make_firmware_image.py ../bin/
 	@echo "Fullflash firmware.bin size  : " $(shell printf '%u\n' $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )
 	@echo "Max firmware.bin size for OTA: " $(shell printf '%u\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) )) )
 	@echo "*Space available to allow OTA: " $(shell printf '%d\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) - $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )) )
