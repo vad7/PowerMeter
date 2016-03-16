@@ -119,7 +119,7 @@ void ICACHE_FLASH_ATTR print_event_reason(int reason)
 
 #endif // PRINT_EVENT_REASON_ENABLE
 
-#define COUNT_RESCONN_ST 3 // кол-во непрерывных повторов попытки соединения ST модуля к внешней AP
+#define COUNT_RESCONN_ST 1 //3 // кол-во непрерывных повторов попытки соединения ST модуля к внешней AP
 
 int flg_open_all_service DATA_IRAM_ATTR; // default = false
 int st_reconn_count DATA_IRAM_ATTR;

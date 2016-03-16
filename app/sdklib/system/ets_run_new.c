@@ -54,15 +54,15 @@ void ICACHE_IRAM_ATTR ets_run_new(void) {
 			ets_intr_unlock();
 		};
 		ss_task * cur_task = &ets_tab_task[bnum - 1];
-		sargc_tsk * argc = &cur_task->argc[cur_task->cnts++];
-		if (cur_task->size == cur_task->cnts)
+		ETSEvent * argc = &cur_task->queue[cur_task->cnts++];
+		if (cur_task->qlen == cur_task->cnts)
 			cur_task->cnts = 0;
 		if (--cur_task->cnte == 0) {
 			ets_bit_count_task &= ~cur_task->bitn;
 		}
 		ets_bit_task_priority = bnum;
 		ets_intr_unlock();
-		cur_task->func(argc);
+		*(cur_task->task)(argc);
 		ets_bit_task_priority = bctp;
 	};
 }

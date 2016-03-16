@@ -20,6 +20,7 @@ uint32 PowerCntTime = 0;
 uint8  FRAM_Status = 1; 	// 0 - Ok, 1 - Not initialized, 2 - Error
 uint8  Sensor_Edge; 		// 0 - Front pulse edge, 1 - Back
 uint8  FRAM_STORE_Readed	= 0;
+uint8  user_idle_func_working = 0;
 
 void NextPtrCurrent(uint8 cnt)
 {
@@ -147,7 +148,7 @@ xError2:
 	FRAM_Status = 0;
 }
 
-#if DEBUGSOO > 2
+#if DEBUGSOO > 5
 uint8 print_i2c_page = 0;
 #endif
 
@@ -157,6 +158,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 	time_t time = get_sntp_time();
 	if(time && (time - fram_store.LastTime >= 60)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
+		user_idle_func_working = 1;
 		ets_intr_unlock();
 		if(fram_store.LastTime == 0) { // first time run
 			fram_store.LastTime = time;
@@ -164,8 +166,9 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 			update_cnts(time);
 		}
 		ets_set_idle_cb(user_idle, NULL);
+		user_idle_func_working = 0;
 	}
-#if DEBUGSOO > 2
+#if DEBUGSOO > 5
 	else if(print_i2c_page) { // 1..n
 		ets_set_idle_cb(NULL, NULL);
 		ets_intr_unlock();
@@ -188,6 +191,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 			}
 x1:			os_printf("\n");
 			if(++print_i2c_page > cfg_meter.Fram_Size / READSIZE) print_i2c_page = 0;
+			os_free(buf);
 		}
 		ets_set_idle_cb(user_idle, NULL);
 	}
@@ -220,6 +224,13 @@ xRepeat:			i2c_init();
 #if DEBUGSOO > 2
    					os_printf("EW PrCnt\n");
 #endif
+   				}
+   				if(user_idle_func_working == 0 && ets_idle_cb == NULL) {
+   	   				ets_set_idle_cb(user_idle, NULL); // sometimes idle func may be reset
+					#if DEBUGSOO > 2
+						os_printf("* user_idle was reseted, re-arm!\n");
+					#endif
+
    				}
     		}
     		break;
@@ -292,7 +303,7 @@ void FRAM_Store_Init(void)
 		}
 	}
 	FRAM_Status = 0;
-	#if DEBUGSOO > 4
+	#if DEBUGSOO > 3
 		os_printf("FSize=%u, PCnt= %u, TCnt= %u, Ptr= %u, LTime= %u\n", cfg_meter.Fram_Size, fram_store.PowerCnt, fram_store.TotalCnt, fram_store.PtrCurrent, fram_store.LastTime);
 		uint8 *buf = os_malloc(20);
 		if(buf != NULL) {
@@ -303,11 +314,12 @@ void FRAM_Store_Init(void)
 				} else {
 					uint8 i;
 					for(i = 0; i < cnt; i++) {
-						os_printf("%02x ", buf[i]);
+						os_printf("%d ", buf[i]);
 					}
 					os_printf("\n");
 				}
 			}
+			os_free(buf);
 		}
 		os_printf("Cnt1= %u, Cnt2= %u\n", CntCurrent.Cnt1, CntCurrent.Cnt2);
 	#endif
@@ -332,7 +344,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		ets_isr_unmask(1 << ETS_GPIO_INUM);
 		FRAM_Store_Init();
 	} else ets_isr_unmask(1 << ETS_GPIO_INUM);
-#if DEBUGSOO > 2
+#if DEBUGSOO > 5
 	os_printf("PCnt = %d\n", PowerCnt);
 	uint8 p3 = GPIO_INPUT_GET(GPIO_ID_PIN(3));
 	os_printf("Systime: %d, io3=%x\n", system_get_time(), p3);
@@ -371,6 +383,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 				}
 				os_printf(" = time: %d\n", mt);
 			}
+			//os_free(buf);
 			os_printf("\nHalt\n");
 			while(1) WDT_FEED = WDT_FEED_MAGIC; // halt
 		}
@@ -396,12 +409,11 @@ bool ICACHE_FLASH_ATTR write_power_meter_cfg(void) {
 	return flash_save_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter));
 }
 
-
 void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 {
 	#define buflen 512
 #if DEBUGSOO > 0
-	os_printf("* Clear all fram data!\n");
+	os_printf("* Clear all FRAM data!\n");
 #endif
 	wifi_set_opmode_current(WIFI_DISABLED);
 	ets_isr_mask(0xFFFFFFFF); // mask all interrupts
@@ -421,6 +433,7 @@ void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 			#endif
 			WDT_FEED = WDT_FEED_MAGIC; // WDT
 		}
+		//os_free(buf);
 		#if DEBUGSOO > 0
 			uart_wait_tx_fifo_empty();
 		#endif

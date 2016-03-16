@@ -94,6 +94,7 @@ static const char *httpFileExtensions[] = {
         "pdf",          // HTTP_PDF
         "zip",          // HTTP_ZIP
         "bin",          // HTTP_BIN
+		"csv",			// HTTP_CSV
         "\0\0\0"        // HTTP_UNKNOWN
 };
 
@@ -115,6 +116,7 @@ static const char *httpContentTypes[] = {
     "application/pdf",          // HTTP_PDF       "pdf",
     "application/zip",          // HTTP_ZIP       "zip",
     "application/octet-stream", // HTTP_BIN       "bin",
+	"text/csv",               	// HTTP_CSV       "csv",
     ""  // HTTP_UNKNOWN
 };
 /****************************************************************************
@@ -947,7 +949,7 @@ LOCAL void ICACHE_FLASH_ATTR webserver_send_fdata(TCP_SERV_CONN *ts_conn) {
 	if(CheckSCB(SCB_FCALBACK) == 0) { // передача файла без парсинга
 		// Get/put as many bytes as possible
 		web_conn->msgbuflen = WEBFSGetArray(web_conn->webfile, web_conn->msgbuf, web_conn->msgbufsize);
-		if(web_conn->msgbuflen < web_conn->msgbufsize ) SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
+		if(web_conn->msgbuflen <= web_conn->msgbufsize ) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // compare was '<'
 	}
 	else { // парсинг потока передачи
 		do { // начинаем с пустого буфера

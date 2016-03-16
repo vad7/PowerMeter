@@ -21,7 +21,8 @@
 #include "osapi.h"
 #include "gpio.h"
 #include "driver/i2c.h"
-#include "hw/eagle_soc_.h"
+//#include "hw/eagle_soc_.h"
+#include "hw/esp8266.h"
 
 /**
  * Set SDA to state
@@ -49,9 +50,9 @@ i2c_sck(uint8 state)
     //Set SCK line to state
 	ets_intr_lock();
     if (state) {
-        gpio_output_set(1 << I2C_SCK_PIN, 0, 1 << I2C_SCK_PIN, 0);
+        gpio_output_set(1 << I2C_SCL_PIN, 0, 1 << I2C_SCL_PIN, 0);
     } else {
-        gpio_output_set(0, 1 << I2C_SCK_PIN, 1 << I2C_SCK_PIN, 0);
+        gpio_output_set(0, 1 << I2C_SCL_PIN, 1 << I2C_SCL_PIN, 0);
     }
     ets_intr_unlock();
 }
@@ -63,36 +64,14 @@ i2c_sck(uint8 state)
 void ICACHE_FLASH_ATTR
 i2c_init(void)
 {
-    //Disable interrupts
 	ets_intr_lock();
-
-    //Set pin functions
-    PIN_FUNC_SELECT(I2C_SDA_MUX, I2C_SDA_FUNC);
-    PIN_FUNC_SELECT(I2C_SCK_MUX, I2C_SCK_FUNC);
-
-    //Set SDA as open drain
-    GPIO_REG_WRITE(
-        GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN)), 
-        GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SDA_PIN))) | 
-        GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
-    );
-
-    GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SDA_PIN));
-
-    //Set SCK as open drain
-    GPIO_REG_WRITE(
-        GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN)), 
-        GPIO_REG_READ(GPIO_PIN_ADDR(GPIO_ID_PIN(I2C_SCK_PIN))) | 
-        GPIO_PIN_PAD_DRIVER_SET(GPIO_PAD_DRIVER_ENABLE)
-    );
-
-    GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SCK_PIN));
-
-    //Turn interrupt back on
+	GPIOx_PIN(I2C_SCL_PIN) = GPIO_PIN_DRIVER;
+	GPIOx_PIN(I2C_SDA_PIN) = GPIO_PIN_DRIVER;
+	SET_PIN_FUNC(I2C_SCL_PIN, (MUX_FUN_IO_PORT(I2C_SCL_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
+	SET_PIN_FUNC(I2C_SDA_PIN, (MUX_FUN_IO_PORT(I2C_SDA_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
+	GPIO_OUT_W1TS = (1<<I2C_SCL_PIN) | (1<<I2C_SDA_PIN); // scl = 1, sda = 1
+	GPIO_ENABLE_W1TS = (1<<I2C_SCL_PIN) | (1<<I2C_SDA_PIN);
     ets_intr_unlock();
-
-    i2c_sda(1);
-    i2c_sck(1);
     return;
 }
 

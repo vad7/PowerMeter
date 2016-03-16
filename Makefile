@@ -238,6 +238,10 @@ FlashClearSetings: $(CLREEPBIN) $(DEFAULTBIN) $(BLANKBIN)
 FlashCode: $(OUTBIN1) $(OUTBIN2)
 	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2)
 
+FlashCode+User: $(OUTBIN1) $(OUTBIN2) $(USERFBIN)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2) $(USERFADDR) $(USERFBIN)
+
+
 $(USERFBIN):
 	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib" ./WEBFiles ./webbin WEBFiles.bin
 

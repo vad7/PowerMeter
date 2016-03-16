@@ -9,7 +9,7 @@
 #define DAYSPERWEEK	7
 #define MONSPERYEAR	12
 
-#define YEAR_BASE	1900
+#define YEAR_BASE		0 //1900
 #define EPOCH_YEAR      1970
 #define EPOCH_WDAY      4
 #define EPOCH_YEARS_SINCE_LEAP 2
@@ -28,7 +28,7 @@ static const int year_lengths[2] = {
   366
 } ;
 
-void sntp_localtime(const time_t * tim_p, struct tm * res)
+void _localtime(const time_t * tim_p, struct tm * res)
 {
   long days, rem;
   time_t lcltime;
@@ -94,6 +94,5 @@ void sntp_localtime(const time_t * tim_p, struct tm * res)
   res->tm_mday = days + 1;
 
   res->tm_isdst = 0;
-//  os_printf("res %d %d %d %d %d\n",res->tm_year,res->tm_mon,res->tm_mday,res->tm_yday,res->tm_hour);
   return;
 }
