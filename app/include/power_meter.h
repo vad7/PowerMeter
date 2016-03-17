@@ -3,11 +3,13 @@
 
 #include "sntp.h"
 
-#define SENSOR_PIN					3
-#define SENSOR_FRONT_EDGE 			GPIO_PIN_INTR_NEGEDGE
-#define SENSOR_BACK_EDGE 			GPIO_PIN_INTR_POSEDGE
-#define	FRAM_SIZE_DEFAULT			32768
-#define FRAM_MAX_BLOCK_AT_ONCE 		128
+#define I2C_SDA_PIN 			2
+#define I2C_SCL_PIN 			0
+#define SENSOR_PIN				3
+#define SENSOR_FRONT_EDGE 		GPIO_PIN_INTR_NEGEDGE
+#define SENSOR_BACK_EDGE 		GPIO_PIN_INTR_POSEDGE
+#define	FRAM_SIZE_DEFAULT		32768
+#define FRAM_MAX_BLOCK_AT_ONCE 	128
 #define DEFAULT_PULSES_PER_0_01_KWT 6 // 600 per kWt
 #define SENSOR_TASK_PRIO			USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
 
@@ -42,6 +44,7 @@ bool write_power_meter_cfg(void) ICACHE_FLASH_ATTR;
 void power_meter_clear_all_data(void) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
+void _localtime(const time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
 
 // GPIO_PIN_INTR_NEGEDGE - down
 // GPIO_PIN_INTR_POSEDGE - up

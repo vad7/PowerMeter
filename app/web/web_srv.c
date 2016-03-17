@@ -949,7 +949,7 @@ LOCAL void ICACHE_FLASH_ATTR webserver_send_fdata(TCP_SERV_CONN *ts_conn) {
 	if(CheckSCB(SCB_FCALBACK) == 0) { // передача файла без парсинга
 		// Get/put as many bytes as possible
 		web_conn->msgbuflen = WEBFSGetArray(web_conn->webfile, web_conn->msgbuf, web_conn->msgbufsize);
-		if(web_conn->msgbuflen <= web_conn->msgbufsize ) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // compare was '<'
+		if(web_conn->msgbuflen < web_conn->msgbufsize ) SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
 	}
 	else { // парсинг потока передачи
 		do { // начинаем с пустого буфера

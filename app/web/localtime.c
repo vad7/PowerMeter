@@ -1,3 +1,6 @@
+
+#include "bios.h"
+#include "hw/esp8266.h"
 #include "time.h"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -9,7 +12,7 @@
 #define DAYSPERWEEK	7
 #define MONSPERYEAR	12
 
-#define YEAR_BASE		0 //1900
+#define YEAR_BASE		1900
 #define EPOCH_YEAR      1970
 #define EPOCH_WDAY      4
 #define EPOCH_YEARS_SINCE_LEAP 2
@@ -28,7 +31,7 @@ static const int year_lengths[2] = {
   366
 } ;
 
-void _localtime(const time_t * tim_p, struct tm * res)
+void ICACHE_FLASH_ATTR _localtime(const time_t * tim_p, struct tm * res)
 {
   long days, rem;
   time_t lcltime;

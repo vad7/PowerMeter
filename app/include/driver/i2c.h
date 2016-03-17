@@ -28,27 +28,25 @@
 
 // SDA on GPIO2
 #define I2C_SDA_PIN 2
-#define I2C_SDA_MUX GPIO2_MUX //PERIPHS_IO_MUX_GPIO2_U
-#define I2C_SDA_FUNC FUNC_GPIO2
 
 // SCK on GPIO0
 #define I2C_SCL_PIN 0
-#define I2C_SCK_MUX GPIO0_MUX //PERIPHS_IO_MUX_GPIO0_U
-#define I2C_SCK_FUNC FUNC_GPIO0
 
-// SCK on GPIO14
-//#define I2C_SCK_MUX PERIPHS_IO_MUX_MTMS_U
-//#define I2C_SCK_FUNC FUNC_GPIO14
-//#define I2C_SCK_PIN 14
+uint32	I2C_EEPROM_Error;
 
-#define i2c_read() GPIO_IN & (1<<I2C_SDA_PIN);
+#define I2C_WRITE			0
+#define I2C_READ			1
+#define I2C_NOACK			1
+#define I2C_ACK				0
 
-void i2c_init(void);
-void i2c_start(void);
-void i2c_stop(void);
-void i2c_send_ack(uint8 state);
-uint8 i2c_check_ack(void);
-uint8 i2c_readByte(void);
-void i2c_writeByte(uint8 data);
+void 	i2c_Init(uint32 delay_us) ICACHE_FLASH_ATTR;
+uint8_t i2c_Start(uint8_t addr);
+void 	i2c_Stop(void);
+uint8_t i2c_WriteBit(uint8_t bit);
+uint8_t i2c_ReadBit(void);
+uint8_t i2c_Write(uint8_t data);
+uint8_t i2c_Read(uint8_t ack);
+uint8_t i2c_eeprom_read_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt) ICACHE_FLASH_ATTR;
+uint8_t i2c_eeprom_write_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt) ICACHE_FLASH_ATTR;
 
 #endif

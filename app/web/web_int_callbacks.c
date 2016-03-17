@@ -28,8 +28,8 @@
 #include "sys_const_utils.h"
 #include "wifi_events.h"
 #include "power_meter.h"
-#include "driver/i2c_eeprom.h"
-#include "localtime.h"
+#include "driver/i2c.h"
+#include "time.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -398,7 +398,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 	os_printf("->%u, len: %u ", hst->PtrCurrent, len);
 #endif
-	if(!i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
+	if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 		#if DEBUGSOO > 2
 			os_printf("i2c R error\n");
 		#endif
@@ -423,7 +423,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 				struct tm tm;
 xContinue:
 				_localtime(&hst->LastTime, &tm);
-				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:%02d,%d\n", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, packed_flag ? 0 : n);
+				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:%02d,%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, packed_flag ? 0 : n);
 				if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
 					hst->len = len;
 					hst->i = i;
@@ -477,7 +477,7 @@ void ICACHE_FLASH_ATTR web_get_i2c_eeprom(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 	os_printf("%u+%u ",web_conn->udata_start, len);
 #endif
-	if(!i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
+	if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
 		os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
 		//FRAM_Status = 2;
 	} else {

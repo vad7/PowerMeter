@@ -1,218 +1,205 @@
 /*
-    I2C driver for the ESP8266 
-    Copyright (C) 2014 Rudy Hardeman (zarya) 
+ * I2C.c
+ *
+ * Created: 17.01.2014 14:00:10
+ *  Author: Vadim Kulakov, vad7@yahoo.com
+ */
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+//#define IC2_MULTI_MASTER	// If other master(s) available, if omitted - only ONE master on I2C bus
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
-
-#include "ets_sys.h"
-#include "osapi.h"
-#include "gpio.h"
-#include "driver/i2c.h"
-//#include "hw/eagle_soc_.h"
+#include "os_type.h"
 #include "hw/esp8266.h"
+#include "bios.h"
+#include "user_interface.h"
+#include "driver/i2c.h"
 
-/**
- * Set SDA to state
- */
-LOCAL void ICACHE_FLASH_ATTR
-i2c_sda(uint8 state)
-{
-    state &= 0x01;
-    //Set SDA line to state
-	ets_intr_lock();
-    if (state) {
-        gpio_output_set(1 << I2C_SDA_PIN, 0, 1 << I2C_SDA_PIN, 0);
-    } else {
-        gpio_output_set(0, 1 << I2C_SDA_PIN, 1 << I2C_SDA_PIN, 0);
-    }
-    ets_intr_unlock();
-}
+#define I2C_DELAY_US		5 // 4.7us - 100kb, 1.3us - 400kb
 
-/**
- * Set SCK to state
- */
-LOCAL void ICACHE_FLASH_ATTR
-i2c_sck(uint8 state)
-{
-    //Set SCK line to state
-	ets_intr_lock();
-    if (state) {
-        gpio_output_set(1 << I2C_SCL_PIN, 0, 1 << I2C_SCL_PIN, 0);
-    } else {
-        gpio_output_set(0, 1 << I2C_SCL_PIN, 1 << I2C_SCL_PIN, 0);
-    }
-    ets_intr_unlock();
-}
+#define SET_SDA_LOW			GPIO_OUT_W1TC = (1<<I2C_SDA_PIN)
+#define SET_SDA_HI			GPIO_OUT_W1TS = (1<<I2C_SDA_PIN)
+#define GET_SDA				(GPIO_IN & (1<<I2C_SDA_PIN))
+#define SET_SCL_LOW			GPIO_OUT_W1TC = (1<<I2C_SCL_PIN)
+#define SET_SCL_HI			GPIO_OUT_W1TS = (1<<I2C_SCL_PIN)
 
-/**
- * I2C init function
- * This sets up the GPIO io
- */
-void ICACHE_FLASH_ATTR
-i2c_init(void)
+uint32 i2c_delay_time;
+#define GET_CCOUNT(x) __asm__ __volatile__("rsr.ccount %0" : "=r"(x))
+void i2c_delay(void)	{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); while(t2-t1 <= i2c_delay_time); }
+
+void ICACHE_FLASH_ATTR i2c_Init(uint32 delay_us)
 {
+	if(delay_us) { // re-calc delay
+		#if DEBUGSOO > 2
+			ets_intr_lock();
+			i2c_delay_time = 1000;
+			uint32 mt = system_get_time();
+			i2c_delay();
+			mt = system_get_time() - mt;
+			i2c_delay_time = 2000;
+			uint32 mt2 = system_get_time();
+			i2c_delay();
+			mt2 = system_get_time() - mt2;
+			ets_intr_unlock();
+			os_printf("i2c_delay(10): %d us\n", mt); // 13
+			os_printf("i2c_delay(20): %d us\n", mt2); // 26
+		#endif
+		i2c_delay_time = 250; //=143Khz //500; //= 75KHz ets_get_cpu_frequency();
+	}
 	ets_intr_lock();
-	GPIOx_PIN(I2C_SCL_PIN) = GPIO_PIN_DRIVER;
 	GPIOx_PIN(I2C_SDA_PIN) = GPIO_PIN_DRIVER;
-	SET_PIN_FUNC(I2C_SCL_PIN, (MUX_FUN_IO_PORT(I2C_SCL_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
+	GPIOx_PIN(I2C_SCL_PIN) = GPIO_PIN_DRIVER;
 	SET_PIN_FUNC(I2C_SDA_PIN, (MUX_FUN_IO_PORT(I2C_SDA_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
-	GPIO_OUT_W1TS = (1<<I2C_SCL_PIN) | (1<<I2C_SDA_PIN); // scl = 1, sda = 1
-	GPIO_ENABLE_W1TS = (1<<I2C_SCL_PIN) | (1<<I2C_SDA_PIN);
-    ets_intr_unlock();
-    return;
+	SET_PIN_FUNC(I2C_SCL_PIN, (MUX_FUN_IO_PORT(I2C_SCL_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
+	GPIO_OUT_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN); // Set HI
+	GPIO_ENABLE_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN);
+	ets_intr_unlock();
+	#if DEBUGSOO > 2
+	#endif
+#ifndef IC2_MULTI_MASTER
+	i2c_delay();
+	if(GET_SDA == 0) { // some problem here
+		i2c_Stop();
+	}
+#endif
 }
 
-/**
- * I2C Start signal 
- */
-void ICACHE_FLASH_ATTR
-i2c_start(void)
+void i2c_Stop(void)
 {
-    i2c_sda(1);
-    i2c_sck(1);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sda(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
+	SET_SDA_LOW;
+	SET_SCL_LOW;
+	i2c_delay();
+	SET_SCL_HI; // release
+	i2c_delay();
+	SET_SDA_HI; // release
+	i2c_delay();
 }
 
-/**
- * I2C Stop signal 
- */
-void ICACHE_FLASH_ATTR
-i2c_stop(void)
+// return: 1 - if write failed, 0 - ok
+uint8_t i2c_WriteBit(uint8_t bit)
 {
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(1);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sda(1);
-    os_delay_us(I2C_SLEEP_TIME);
+	//while(I2C_IN & I2C_SCL) ;
+	if(bit)
+		SET_SDA_HI;
+	else
+		SET_SDA_LOW;
+	i2c_delay();
+	SET_SCL_HI;
+	i2c_delay();
+	#ifdef IC2_MULTI_MASTER
+		if(bit && (GET_SDA) == 0) return 1; // other master active
+	#endif
+	SET_SCL_LOW;
+	return 0;
 }
 
-/**
- * Send I2C ACK to the bus
- * uint8 state 1 or 0
- *  1 for ACK
- *  0 for NACK
- */
-void ICACHE_FLASH_ATTR
-i2c_send_ack(uint8 state)
+uint8_t i2c_ReadBit(void)
 {
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    //Set SDA 
-    //  HIGH for NACK
-    //  LOW  for ACK
-    i2c_sda((state?0:1));
-
-    //Pulse the SCK
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(1);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-
-    i2c_sda(1);
-    os_delay_us(I2C_SLEEP_TIME);
+	SET_SDA_HI;
+	i2c_delay();
+	SET_SCL_HI;
+	i2c_delay();
+	uint8_t bit = (GET_SDA) != 0;
+	SET_SCL_LOW;
+	return bit;
 }
 
-/**
- * Receive I2C ACK from the bus
- * returns 1 or 0
- *  1 for ACK
- *  0 for NACK
- */
-uint8 ICACHE_FLASH_ATTR
-i2c_check_ack(void)
+// return: ACK, 1 - if write failed, 0 - ok
+uint8_t i2c_Write(uint8_t data)
 {
-    uint8 ack;
-    i2c_sda(1);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(1);
-    os_delay_us(I2C_SLEEP_TIME);
-
-    //Get SDA pin status
-    ack = i2c_read(); 
-
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    i2c_sda(0);
-    os_delay_us(I2C_SLEEP_TIME);
-
-    return (ack?0:1);
+	uint8_t i;
+	for(i = 0; i < 8; i++)
+	{
+		#ifdef IC2_MULTI_MASTER
+			if(i2c_WriteBit(data & 0x80)) return 2;
+		#else
+			i2c_WriteBit(data & 0x80);
+		#endif
+		data <<= 1;
+	}
+	return i2c_ReadBit();
 }
 
-/**
- * Receive byte from the I2C bus 
- * returns the byte 
- */
-uint8 ICACHE_FLASH_ATTR
-i2c_readByte(void)
+uint8_t i2c_Read(uint8_t ack)
 {
-    uint8 data = 0;
-    uint8 data_bit;
-    uint8 i;
-
-    i2c_sda(1);
-
-    for (i = 0; i < 8; i++)
-    {
-        os_delay_us(I2C_SLEEP_TIME);
-        i2c_sck(0);
-        os_delay_us(I2C_SLEEP_TIME);
-
-        i2c_sck(1);
-        os_delay_us(I2C_SLEEP_TIME);
-
-        data_bit = i2c_read();
-        os_delay_us(I2C_SLEEP_TIME);
-
-        data_bit <<= (7 - i);
-        data |= data_bit;
-    }
-    i2c_sck(0);
-    os_delay_us(I2C_SLEEP_TIME);
-    
-    return data;
+	uint8_t i, data = 0;
+	for(i = 0; i < 8; i++)
+	{
+		data = (data << 1) | i2c_ReadBit();
+	}
+	i2c_WriteBit(ack);
+	return data;
 }
 
-/**
- * Write byte to I2C bus
- * uint8 data: to byte to be writen
- */
-void ICACHE_FLASH_ATTR
-i2c_writeByte(uint8 data)
+// Return: 1 - failed, 0 - ok,
+uint8_t i2c_Start(uint8_t addr)
 {
-    uint8 data_bit;
-    sint8 i;
-
-    os_delay_us(I2C_SLEEP_TIME);
-
-    for (i = 7; i >= 0; i--) {
-        data_bit = data >> i;
-        i2c_sda(data_bit);
-        os_delay_us(I2C_SLEEP_TIME);
-        i2c_sck(1);
-        os_delay_us(I2C_SLEEP_TIME);
-        i2c_sck(0);
-        os_delay_us(I2C_SLEEP_TIME);
-    }
+#ifdef IC2_MULTI_MASTER
+	uint8_t i;
+	for(i = 1; i != 0; i++)
+	{
+		// Restart
+		SET_SDA_HI;
+		i2c_delay();
+		SET_SCL_HI;
+		i2c_delay();
+		if((GET_SDA) == 0) {
+			continue; // other master active
+		};
+		SET_SDA_LOW;
+		i2c_delay();
+		SET_SCL_LOW;
+		i2c_delay();
+		if(i2c_Write(addr) == 0) return 0;
+		i2c_Stop();
+	}
+	return 1;
+#else
+	SET_SDA_HI;
+	i2c_delay();
+	SET_SCL_HI;
+	i2c_delay();
+	if(GET_SDA == 0) return 1; // other master active
+	SET_SDA_LOW;
+	i2c_delay();
+	SET_SCL_LOW;
+	i2c_delay();
+	if(i2c_Write(addr) == 0) return 0;
+	i2c_Stop();
+	return 1;
+#endif
 }
+
+// return 0 - ok
+uint8_t ICACHE_FLASH_ATTR i2c_eeprom_read_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt)
+{
+	addr <<= 1;
+	if(i2c_Start(addr + I2C_WRITE) == 0) {
+		if (i2c_Write(pos / 256) == 0 && i2c_Write(pos & 255) == 0) {
+			if(i2c_Start(addr + I2C_READ) == 0) {
+				do {
+					cnt--;
+					*buffer++ = i2c_Read(cnt ? I2C_ACK : I2C_NOACK);
+				} while(cnt);
+			}
+		}
+	}
+	i2c_Stop();
+	if(cnt) I2C_EEPROM_Error++;
+	return cnt;
+}
+
+// return 0 - ok
+uint8_t ICACHE_FLASH_ATTR i2c_eeprom_write_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt)
+{
+	addr <<= 1;
+	if(i2c_Start(addr + I2C_WRITE) == 0) {
+		if (i2c_Write(pos / 256) == 0 && i2c_Write(pos & 255) == 0) {
+			for(; cnt; cnt--) {
+				if(i2c_Write(*buffer++)) break;
+			}
+		}
+	}
+	i2c_Stop();
+	if(cnt) I2C_EEPROM_Error++;
+	return cnt;
+}
+

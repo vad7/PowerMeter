@@ -16,7 +16,6 @@
 #include "tcp2uart.h"
 #include "webfs.h"
 #include "sdk/libmain.h"
-#include "driver/i2c_eeprom.h"
 
 #ifdef USE_WEB
 #include "web_srv.h"
