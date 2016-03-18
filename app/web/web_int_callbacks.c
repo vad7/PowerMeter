@@ -382,11 +382,16 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		os_memset(hst, 0, sizeof(history_output));
 		hst->PtrCurrent = fram_store.PtrCurrent;
+		if(CntCurrent.Cnt2) { // packed available
+			hst->PtrCurrent += 2;
+			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
+		}
 		hst->LastTime = fram_store.LastTime;
     } else hst = (history_output *)web_conn->udata_stop;
     // Get/put as many bytes as possible
+	SetNextFunSCB(web_get_history);
+    ClrSCB(SCB_RETRYCB);
 	if(hst->FlagContinue) {
-		SetNextFunSCB(web_get_history);
 		len = hst->len;
 		i = hst->i;
 		n = hst->n;
@@ -396,19 +401,26 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
     if(hst->PtrCurrent == 0) hst->PtrCurrent = cfg_meter.Fram_Size - StartArrayOfCnts; // jump to the end
 	len = mMIN(sizeof(hst->buf), hst->PtrCurrent);
 #if DEBUGSOO > 2
-	os_printf("->%u, len: %u ", hst->PtrCurrent, len);
+	os_printf("->%u, len: %u, ", hst->PtrCurrent, len);
 #endif
 	if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
+xErrorI2C:
 		#if DEBUGSOO > 2
 			os_printf("i2c R error\n");
 		#endif
+		SetNextFunSCB(NULL);
 		//FRAM_Status = 2;
 	} else {
-		SetNextFunSCB(web_get_history);
+		if(len == 1) {
+			hst->PtrCurrent = cfg_meter.Fram_Size - StartArrayOfCnts - 1;
+			if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
+
+		}
+
 		for(i = len - 1; i > 0; i--) { // first byte may be not proceeded
 			n = hst->buf[i];
 			#if DEBUGSOO > 2
-				os_printf(" %i=%d ", i, n);
+				os_printf(" %d=%d ", i, n);
 			#endif
 			packed_flag = hst->buf[i-1] == 0; // packed
 			if(packed_flag) {
@@ -423,7 +435,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 				struct tm tm;
 xContinue:
 				_localtime(&hst->LastTime, &tm);
-				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:%02d,%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, packed_flag ? 0 : n);
+				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00;%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, packed_flag ? 0 : n);
 				if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
 					hst->len = len;
 					hst->i = i;
@@ -433,7 +445,7 @@ xContinue:
 					#if DEBUGSOO > 2
 						os_printf("Buf full: %d, %d, %d\n", len, i, n);
 					#endif
-					break;
+					return;
 				}
 				os_memcpy(&web_conn->msgbuf[web_conn->msgbuflen], hst->str, L);
 				web_conn->msgbuflen += L;
@@ -453,12 +465,10 @@ xContinue:
 			hst->PtrCurrent -= len - 1 - i;
 			hst->FlagContinue = 0;
 			#if DEBUGSOO > 2
-				os_printf("H ptr_curr: %u, t%u", hst->PtrCurrent, hst->LastTime);
+				os_printf("H ptr_curr: %u, t%u\n", hst->PtrCurrent, hst->LastTime);
 			#endif
 		}
 	}
-    ClrSCB(SCB_RETRYCB);
-    return;
 }
 
 // Output i2c from eeprom web_conn->udata_start, end: web_conn->udata_stop

@@ -24,13 +24,8 @@
 #include "osapi.h"
 #include "gpio.h"
 
-#define I2C_SLEEP_TIME 3 //3 // 3 = 333KHz // 10 = 100KHz
-
-// SDA on GPIO2
-#define I2C_SDA_PIN 2
-
-// SCK on GPIO0
-#define I2C_SCL_PIN 0
+#define I2C_SDA_PIN 2 // SDA on GPIO2
+#define I2C_SCL_PIN 0 // SCL on GPIO0
 
 uint32	I2C_EEPROM_Error;
 

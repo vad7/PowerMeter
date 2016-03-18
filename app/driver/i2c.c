@@ -21,36 +21,23 @@
 #define SET_SCL_LOW			GPIO_OUT_W1TC = (1<<I2C_SCL_PIN)
 #define SET_SCL_HI			GPIO_OUT_W1TS = (1<<I2C_SCL_PIN)
 
-uint32 i2c_delay_time;
+uint32 i2c_delay_time = 357; // 100Khz at FCPU=80Mhz
 #define GET_CCOUNT(x) __asm__ __volatile__("rsr.ccount %0" : "=r"(x))
 void i2c_delay(void)	{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); while(t2-t1 <= i2c_delay_time); }
 
-void ICACHE_FLASH_ATTR i2c_Init(uint32 delay_us)
+// freq = 100..400 in kHzm if = 0 don't change/default
+void ICACHE_FLASH_ATTR i2c_Init(uint32 freq)
 {
-	if(delay_us) { // re-calc delay
-		#if DEBUGSOO > 2
-			ets_intr_lock();
-			i2c_delay_time = 1000;
-			uint32 mt = system_get_time();
-			i2c_delay();
-			mt = system_get_time() - mt;
-			i2c_delay_time = 2000;
-			uint32 mt2 = system_get_time();
-			i2c_delay();
-			mt2 = system_get_time() - mt2;
-			ets_intr_unlock();
-			os_printf("i2c_delay(10): %d us\n", mt); // 13
-			os_printf("i2c_delay(20): %d us\n", mt2); // 26
-		#endif
-		i2c_delay_time = 250; //=143Khz //500; //= 75KHz ets_get_cpu_frequency();
+	if(freq) { // re-calc delay
+		i2c_delay_time = 35750 / 80 * ets_get_cpu_frequency() / freq; // 89=400Khz, 250=143Khz, 357=100Khz, 500=75Khz
 	}
 	ets_intr_lock();
-	GPIOx_PIN(I2C_SDA_PIN) = GPIO_PIN_DRIVER;
-	GPIOx_PIN(I2C_SCL_PIN) = GPIO_PIN_DRIVER;
-	SET_PIN_FUNC(I2C_SDA_PIN, (MUX_FUN_IO_PORT(I2C_SDA_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
+	GPIOx_PIN(I2C_SDA_PIN) = GPIO_PIN_DRIVER; // Open-drain
+	GPIOx_PIN(I2C_SCL_PIN) = GPIO_PIN_DRIVER; // Open-drain
+	SET_PIN_FUNC(I2C_SDA_PIN, (MUX_FUN_IO_PORT(I2C_SDA_PIN) | (1 << GPIO_MUX_PULLUP_BIT))); // Pullup
 	SET_PIN_FUNC(I2C_SCL_PIN, (MUX_FUN_IO_PORT(I2C_SCL_PIN) | (1 << GPIO_MUX_PULLUP_BIT)));
-	GPIO_OUT_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN); // Set HI
-	GPIO_ENABLE_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN);
+	GPIO_OUT_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN); // Set HI (WO)
+	GPIO_ENABLE_W1TS = (1<<I2C_SDA_PIN) | (1<<I2C_SCL_PIN); // Enable output (WO)
 	ets_intr_unlock();
 	#if DEBUGSOO > 2
 	#endif

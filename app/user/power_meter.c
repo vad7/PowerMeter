@@ -7,9 +7,9 @@
 #include "flash_eep.h"
 #include "webfs.h"
 #include "sdk/libmain.h"
-#include "power_meter.h"
 #include "driver/i2c.h"
 #include "hw/gpio_register.h"
+#include "power_meter.h"
 
 #define GPIO_Tasks 		1
 #define GPIO_Int_Signal 1
@@ -30,7 +30,7 @@ void ICACHE_FLASH_ATTR NextPtrCurrent(uint8 cnt)
 {
 	fram_store.PtrCurrent += cnt;
 	if(fram_store.PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts)
-		fram_store.PtrCurrent = fram_store.PtrCurrent - cfg_meter.Fram_Size - StartArrayOfCnts;
+		fram_store.PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 }
 
 void FRAM_Store_Init(void) ICACHE_FLASH_ATTR;
@@ -54,6 +54,9 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	uint8 to_add = 0;  // bytes after write
 	uint32 pcnt = 0;
 	if(time - fram_store.LastTime > 60 * 60 * 24 * 30) { // run: first time or after a long time (30 days)
+		#if DEBUGSOO > 2
+			os_printf("%u - %u > 30 days\n", time, fram_store.LastTime);
+		#endif
 		fram_store.LastTime = time;
 		*(uint32 *)&CntCurrent = 0;
 		SaveCntCurrent = CntCurrent;
@@ -73,6 +76,9 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	}
 	if(pcnt == 0) { // new zero
 		if(CntCurrent.Cnt1) { // Cnt1 filled, something going wrong
+			#if DEBUGSOO > 2
+				os_printf("Suddenly Cnt1 = %d, zeroing\n", time, fram_store.LastTime);
+			#endif
 			*(uint32 *)&CntCurrent = 0;
 			SaveCntCurrent = CntCurrent;
 		}
@@ -218,6 +224,8 @@ xRepeat:   			fram_init();
    	   					FRAM_Status = 2;
    						goto xRepeat;
    					}
+   				} else {
+   					FRAM_Status = 0;
    				}
 xEnd: 			if(user_idle_func_working == 0 && ets_idle_cb == NULL) {
    	   				ets_set_idle_cb(user_idle, NULL); // sometimes idle func may be reset
@@ -338,11 +346,6 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 	}
 	if(index & 2) {
 		system_os_task(GPIO_Task_NewData, SENSOR_TASK_PRIO, GPIO_TaskQueue, GPIO_Tasks);
-
-		ets_isr_mask(0xFFFFFFFF); // mask all interrupts
-		uint32 mt = system_get_time();
-		while(system_get_time() - mt < 5000000) WDT_FEED = WDT_FEED_MAGIC; // WDT
-
 		FRAM_Store_Init();
 		#if DEBUGSOO > 4
 			os_printf("PCnt = %d\n", PowerCnt);
@@ -393,13 +396,6 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 				}
 			}
 		#endif
-
-
-		ets_isr_mask(0xFFFFFFFF); // mask all interrupts
-		while(1) WDT_FEED = WDT_FEED_MAGIC; // halt
-
-
-
 	}
 
 //	os_printf("-------- read cfg  ------------\n");
