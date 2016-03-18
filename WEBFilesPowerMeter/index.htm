@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head>
+	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+	<title>Power Meter</title>
+	<link rel="stylesheet" href="/style.css">
+</head><body>
+~inc:menu0.inc~
+<div class="content">
+<h2 class="title">~TotalKWT~ kWt</h2>
+<p class="center">
+<span id='timecnt'>?</span>
+</p>
+<br><br><br>
+Time: <span id='sntptime'>SNTP disable</span><br>
+Start time: <span id='starttime'>?</span><br>
+Power: <span title="Vdd" id='syspower'>?</span> V<br>
+<a href='/protect/history.csv'>Download history</a><br><br>
+</div>
+~inc:footer.inc~
+~inc:vdd.inc~
+~inc:time.inc~
+</body></html>
