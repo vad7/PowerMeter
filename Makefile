@@ -6,6 +6,10 @@
 
 ESPOPTION ?= -p COM9 -b 460800
 
+UPLOADADDR = http://aesp8266/fsupload
+
+UPLOADOVL = ./ovls/bin/udplog.ovl 
+
 # SPI_SPEED = 40MHz or 80MHz
 SPI_SPEED?=80
 # SPI_MODE: QIO, DIO, QOUT, DOUT
@@ -28,6 +32,8 @@ DEFAULTADDR := 0x7C000
 BLANKBIN := ./$(FIRMWAREDIR)/blank.bin
 BLANKADDR := 0x7E000
 
+WEB_BASE := $(subst \,/,$(CWD))
+
 # Base directory for the compiler
 XTENSA_TOOLS_ROOT ?= c:/Espressif/xtensa-lx106-elf/bin
 
@@ -49,6 +55,7 @@ SDK_TOOLS	?= c:/Espressif/utils
 PYTHON  ?= C:/Python27/python.exe
 ESPTOOL	?= $(PYTHON) $(CWD)esptool.py
 OVLTOOL ?= $(PYTHON) $(CWD)ovls.py
+UPLOADTOOL ?= $(PYTHON) $(WEB_BASE)uploader.py
 
 CSRCS ?= $(wildcard *.c)
 ASRCs ?= $(wildcard *.s)
@@ -189,7 +196,6 @@ $$(IMAGEODIR)/$(1).out: $$(OBJS) $$(DEP_OBJS_$(1)) $$(DEP_LIBS_$(1)) $$(DEPENDS_
 endef
 
 $(BINODIR)/%.bin: $(IMAGEODIR)/%.out
-	$(OVLTOOL) $< ../ld/labels.ld
 	@echo "------------------------------------------------------------------------------"
 	@mkdir -p ../$(FIRMWAREDIR)
 	@$(ESPTOOL) elf2image -o ../$(FIRMWAREDIR)/ $(flashimageoptions) $<
@@ -203,11 +209,13 @@ else
 endif	
 	@dd if=../bin/0.bin >>../bin/$(ADDR_FW1).bin
 	@$(PYTHON) ../bin/make_firmware_image.py ../bin/
+	$(OVLTOOL) $< ../ld/labels.ld
+	@make -C ../ovls
 	@echo "Fullflash firmware.bin size  : " $(shell printf '%u\n' $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )
 	@echo "Max firmware.bin size for OTA: " $(shell printf '%u\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) )) )
 	@echo "*Space available to allow OTA: " $(shell printf '%d\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) - $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )) )
 
-all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS)
+all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS) 
 
 $(SPECIAL_MKTARGETS): $(INPLIB) 
 	@$(RM) -f $@
@@ -241,9 +249,15 @@ FlashCode: $(OUTBIN1) $(OUTBIN2)
 FlashCode+User: $(OUTBIN1) $(OUTBIN2) $(USERFBIN)
 	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2) $(USERFADDR) $(USERFBIN)
 
+UploadOvl:
+	$(UPLOADTOOL) overlay $(UPLOADOVL) $(UPLOADADDR)
+
+UploadWeb: $(USERFBIN)
+	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
+	$(UPLOADTOOL) file ./webbin/WEBFiles.bin $(UPLOADADDR)
 
 $(USERFBIN):
-	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib" ./WEBFiles ./webbin WEBFiles.bin
+	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
 
 .subdirs:
 	@set -e; $(foreach d, $(SUBDIRS), $(MAKE) -C $(d);)
