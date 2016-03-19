@@ -333,9 +333,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		}
 		else ifcmp("meter_") {
 			cstr+=6;
-			ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
-			else ifcmp("TotalCnt") fram_store.TotalCnt = val;
+			ifcmp("TotalCnt") fram_store.TotalCnt = val;
+			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
+			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}

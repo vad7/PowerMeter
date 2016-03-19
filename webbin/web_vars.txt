@@ -16,6 +16,7 @@ inc:footer.inc
 inc:grfx1.inc
 inc:grfx2.inc
 sys_heap
+bin_history
 inc:menu0.inc
 inc:footer.inc
 inc:time.inc
@@ -134,7 +135,6 @@ inc:menu.inc
 hexdmpb
 inc:menu.inc
 hexdmpd
-bin_history
 wifi_prrq_xml
 bin_ram
 inc:menu.inc
@@ -203,6 +203,7 @@ PulsesPerKWt
 TotalCnt
 PulsesPerKWt
 Fram_Size
+Delim_csv
 inc:footer.inc
 inc:menu.inc
 cfg_web_port

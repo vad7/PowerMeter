@@ -60,6 +60,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		fram_store.LastTime = time;
 		*(uint32 *)&CntCurrent = 0;
 		SaveCntCurrent = CntCurrent;
+		to_save = 4;
 	} else {
 		//ets_intr_lock();
 		pcnt = fram_store.PowerCnt;
@@ -81,6 +82,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 			#endif
 			*(uint32 *)&CntCurrent = 0;
 			SaveCntCurrent = CntCurrent;
+			to_save = 4;
 		}
 		if(CntCurrent.Cnt2 == 255) { // overflow
 			// next packed
@@ -91,10 +93,9 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 			CntCurrent.Cnt2++;
 		}
 	} else {
-		if(CntCurrent.Cnt2) { // packed exist - next +2
-			if(CntCurrent.Cnt2 == 1) { // if 0,1 : next +2
+		if(CntCurrent.Cnt2) { // current packed
+			if(CntCurrent.Cnt2 == 1) { // if current 0,1 - write 0,n
 				*(uint32 *)&CntCurrent = 0;
-				CntCurrent.Cnt1 = 1;
 				CntCurrent.Cnt2 = pcnt;
 				to_save = 4;
 				to_add = 2;
@@ -264,6 +265,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			// defaults
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
+			cfg_meter.csv_delimiter = ',';
 		}
 		*(uint32 *)&CntCurrent = 0;
 		#if DEBUGSOO > 3
@@ -281,6 +283,13 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 	if(fram_store.LastTime == 0xFFFFFFFF) { // new memory
 		os_memset(&fram_store, 0, sizeof(fram_store));
 		if(i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
+			#if DEBUGSOO > 2
+				os_printf("EW init f_s\n");
+			#endif
+			return;
+		}
+		// write begin marker - 0,0
+		if(i2c_eeprom_write_block(I2C_FRAM_ID, cfg_meter.Fram_Size - 2, (uint8 *)&fram_store, 2)) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
 			#endif

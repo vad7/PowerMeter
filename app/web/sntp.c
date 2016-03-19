@@ -335,7 +335,8 @@ static void ICACHE_FLASH_ATTR sntp_process(u32_t *receive_timestamp) {
 #if DEBUGSOO > 1
 	os_printf("SNTP: Set time: %p - ", t);
 	struct tm tm;
-	_localtime(&t, &tm);
+	time_t lt = get_sntp_time();
+	_localtime(&lt, &tm);
 	os_printf("%04d-%02d-%02d %02d:%02d:%02d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 #endif
 	os_timer_disarm(&sntp->ntp_timer);
