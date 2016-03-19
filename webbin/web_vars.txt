@@ -19,7 +19,6 @@ sys_heap
 bin_history
 inc:menu0.inc
 inc:footer.inc
-inc:time.inc
 inc:menu0.inc
 TotalKWT
 inc:footer.inc
@@ -202,8 +201,9 @@ inc:menu0.inc
 PulsesPerKWt
 TotalCnt
 PulsesPerKWt
+csv_delim
 Fram_Size
-Delim_csv
+i2c_freq
 inc:footer.inc
 inc:menu.inc
 cfg_web_port

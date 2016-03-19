@@ -23,7 +23,7 @@ uint8  FRAM_STORE_Readed	= 0;
 uint8  user_idle_func_working = 0;
 
 void ICACHE_FLASH_ATTR fram_init(void) {
-	i2c_Init(100);
+	i2c_Init(cfg_meter.i2c_freq);
 }
 
 void ICACHE_FLASH_ATTR NextPtrCurrent(uint8 cnt)
@@ -266,6 +266,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 			cfg_meter.csv_delimiter = ',';
+			cfg_meter.i2c_freq = 400;
 		}
 		*(uint32 *)&CntCurrent = 0;
 		#if DEBUGSOO > 3

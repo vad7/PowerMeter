@@ -14,9 +14,10 @@
 #define SENSOR_TASK_PRIO			USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
 
 typedef struct __attribute__((packed)) {
-	uint32 	Fram_Size;
-	uint16 	PulsesPer0_01KWt; // 6
-	char	csv_delimiter; // ','
+	uint32 	Fram_Size;			// 32768
+	uint16 	PulsesPer0_01KWt; 	// 6
+	char	csv_delimiter; 		// ','
+	uint16  i2c_freq;			// 400 KHz
 //	char sntp_server[20];
 } CFG_METER;
 CFG_METER cfg_meter;

@@ -337,6 +337,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
+			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}

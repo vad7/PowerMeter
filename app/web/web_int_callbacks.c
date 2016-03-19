@@ -390,7 +390,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
-		tcp_puts("date,power\n"); // csv header
+		tcp_puts("date,power\r\n"); // csv header
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
     // Get/put as many bytes as possible
 	SetNextFunSCB(web_get_history);
@@ -438,7 +438,7 @@ xEnd:	os_free(hst);
 				struct tm tm;
 xContinue:
 				_localtime(&hst->LastTime, &tm);
-				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter, packed_flag ? 0 : n);
+				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c%d\r\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter, packed_flag ? 0 : n);
 				if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
 					hst->len = len;
 					hst->i = i;
@@ -1278,6 +1278,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
         else ifcmp("csv_delim") tcp_puts("%u", cfg_meter.csv_delimiter);
+        else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
 // PowerMeter
 		else tcp_put('?');
