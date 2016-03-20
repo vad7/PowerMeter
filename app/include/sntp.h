@@ -4,9 +4,10 @@
 #include "lwip/ip_addr.h"
 #include <time.h>
 
-bool sntp_inits(void);
-void sntp_close(void);
-time_t get_sntp_time(void);
+bool sntp_inits(int8_t UTC_offset) ICACHE_FLASH_ATTR;
+void sntp_close(void) ICACHE_FLASH_ATTR;
+time_t get_sntp_time(void) ICACHE_FLASH_ATTR;
+time_t get_sntp_localtime(void) ICACHE_FLASH_ATTR;
 
 extern ip_addr_t dhcp_sntp_server_address;
 

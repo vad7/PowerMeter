@@ -61,13 +61,13 @@ var brush = d3.svg.brush()
 	.on("brush", brushed);
 
 var area = d3.svg.area()
-	.interpolate("monotone")
+	.interpolate("linear")
 	.x(function(d) { return x(d.date); })
 	.y0(height)
 	.y1(function(d) { return y(d.power); });
 
 var area2 = d3.svg.area()
-	.interpolate("monotone")
+	.interpolate("linear")
 	.x(function(d) { return x2(d.date); })
 	.y0(height2)
 	.y1(function(d) { return y2(d.power); });
@@ -139,8 +139,14 @@ function type(d) {
 }
 </script>
 <br><br><br>
-<a href='/protect/fram_all.bin'>Download all FRAM memory</a><br><br>
-<br><br>
+<form method="post" action="history.htm">
+Max days: <input title='0 - all' name='ChartMaxDays' maxlength='10' value='~ChartMaxDays~'>
+<input type='submit' value='Refresh' class="button">
+</form>
+
+<br>
+<a href='history.csv'>Download history.csv</a><br>
+<a href='/protect/fram_all.bin'>Download all FRAM memory</a><br>
 </p></div>
 ~inc:footer.inc~
 </body></html>

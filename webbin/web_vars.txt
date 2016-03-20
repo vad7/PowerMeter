@@ -18,6 +18,7 @@ inc:grfx2.inc
 sys_heap
 bin_history
 inc:menu0.inc
+ChartMaxDays
 inc:footer.inc
 inc:menu0.inc
 TotalKWT
