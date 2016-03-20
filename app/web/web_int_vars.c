@@ -357,7 +357,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 #ifdef USE_SNTP
 		else ifcmp("sntp") {
 			syscfg.cfg.b.sntp_ena = (val)? 1 : 0;
-			if(syscfg.cfg.b.sntp_ena) sntp_inits();
+			if(syscfg.cfg.b.sntp_ena) sntp_inits(UTC_OFFSET);
 			else sntp_close();
 		}
 #endif
@@ -373,6 +373,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 #endif
 		// sys_write_cfg();
 	}
+	else ifcmp("ChartMaxDays") WebChart_MaxMinutes = val * 24*60;
     else ifcmp("wifi_") {
       cstr+=5;
       ifcmp("rdcfg") web_conn->udata_stop = Read_WiFi_config(&wificonfig, val);

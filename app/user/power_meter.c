@@ -65,7 +65,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		pcnt = fram_store.PowerCnt;
 		if(pcnt > 1) {
 			time_t tt = time - fram_store.LastTime;
-			if(tt >= 60 * 2) pcnt /= tt / 60;
+			if(tt >= TIME_STEP_SEC * 2) pcnt /= tt / TIME_STEP_SEC;
 			if(pcnt > 255) pcnt = 255;
 		}
 		fram_store.PowerCnt -= pcnt;
@@ -133,13 +133,13 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	NextPtrCurrent(to_add);
 	if(to_add) *(uint32 *)&CntCurrent = 0; // clear for next
 	fram_store.TotalCnt += pcnt;
-	fram_store.LastTime += 60;  // seconds
+	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	if(i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
 		#if DEBUGSOO > 2
 	   		os_printf("EW f_s\n");
 		#endif
    		fram_store.TotalCnt -= pcnt;
-   		fram_store.LastTime -= 60;  // seconds
+   		fram_store.LastTime -= TIME_STEP_SEC;  // seconds
 xError:
 		CntCurrent = SaveCntCurrent;
 		fram_store.PtrCurrent = SaveCurrentPtr;
@@ -157,8 +157,8 @@ uint8 print_i2c_page = 0;
 void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 {
 	//FRAM_speed_test();
-	time_t time = get_sntp_time();
-	if(time && (time - fram_store.LastTime >= 60)) { // Passed 1 min
+	time_t time = get_sntp_localtime();
+	if(time && (time - fram_store.LastTime >= TIME_STEP_SEC)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
 		user_idle_func_working = 1;
 		ets_intr_unlock();
@@ -265,10 +265,11 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 		}
-		*(uint32 *)&CntCurrent = 0;
 		#if DEBUGSOO > 3
 			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
 		#endif
+		*(uint32 *)&CntCurrent = 0;
+		WebChart_MaxMinutes	= 10 * 24*60; // 10 days
 	}
 	fram_init();
 	// restore workspace from FRAM

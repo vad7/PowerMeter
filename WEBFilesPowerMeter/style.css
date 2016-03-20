@@ -20,9 +20,11 @@ vertical-align:middle;
 }
 h2.error{
 color:red;
+text-align:center;
 }
 h2.ok{
 color:green;
+text-align:center;
 }
 h2.title{
 text-align:center;
@@ -32,7 +34,7 @@ border-top:#fab548 5px solid;
 background:#f1f1ed;
 padding:5px 5px 5px 120px;
 margin:0 0 10px 0;
-min-height:120px;
+min-height:100px;
 border-radius:5px;
 }
 .menu div{

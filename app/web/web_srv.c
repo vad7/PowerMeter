@@ -1965,7 +1965,7 @@ LOCAL err_t ICACHE_FLASH_ATTR webserver_sent_callback(TCP_SERV_CONN *ts_conn)
         }
         if(CheckSCB(SCB_DISCONNECT))  web_int_disconnect(ts_conn);
     #if DEBUGSOO > 1
-        else  os_printf("...\n");
+        else  os_printf("....\n");
     #endif
     }
     else { //  SCB_CLOSED

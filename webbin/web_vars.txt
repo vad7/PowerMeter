@@ -17,6 +17,7 @@ inc:grfx1.inc
 inc:grfx2.inc
 sys_heap
 inc:menu0.inc
+ChartMaxDays
 inc:footer.inc
 inc:time.inc
 inc:menu0.inc

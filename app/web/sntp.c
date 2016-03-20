@@ -273,7 +273,7 @@ struct ssntp {
 	struct udp_pcb* sntp_pcb;
 	os_timer_t ntp_timer;
 	time_t sntp_time;
-	u32_t sntp_time_zone;
+	s32_t sntp_time_zone; // hours from UTC
 #if SNTP_RETRY_TIMEOUT_EXP
 	/** Retry time, initialized with SNTP_RETRY_TIMEOUT and doubled with each retry. */
 	u32_t sntp_retry_timeout;
@@ -335,8 +335,14 @@ static void ICACHE_FLASH_ATTR sntp_process(u32_t *receive_timestamp) {
 #if DEBUGSOO > 1
 	os_printf("SNTP: Set time: %p - ", t);
 	struct tm tm;
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 	_localtime(&t, &tm);
 	os_printf("%04d-%02d-%02d %02d:%02d:%02d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+=======
+	time_t lt = get_sntp_localtime();
+	_localtime(&lt, &tm);
+	os_printf("%04d-%02d-%02d %02d:%02d:%02d +%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, sntp->sntp_time_zone);
+>>>>>>> 241edd3 upd chart, csv
 #endif
 	os_timer_disarm(&sntp->ntp_timer);
 	ets_timer_arm_new(&sntp->ntp_timer, 1000, 1, 1);
@@ -559,6 +565,9 @@ sntp_dns_found(const char* hostname, ip_addr_t *ipaddr, void *arg)
 	} else {
 		/* DNS resolving failed -> try another server */
 		LWIP_DEBUGF(SNTP_DEBUG_WARN_STATE, ("sntp_dns_found: Failed to resolve server address resolved, trying next server\n"));
+		#if DEBUGSOO > 4
+			os_printf("sntp dns failed\n");
+		#endif
 		sntp_try_next_server(NULL);
 	}
 }
@@ -643,7 +652,7 @@ void ICACHE_FLASH_ATTR ntp_time_update(void *ignored)
  * Initialize this module.
  * Send out request instantly or after SNTP_STARTUP_DELAY.
  */
-bool ICACHE_FLASH_ATTR sntp_inits(void)
+bool ICACHE_FLASH_ATTR sntp_inits(int8_t UTC_offset)
 {
 	if (sntp == NULL) {
 		sntp = (struct ssntp *)os_zalloc(sizeof(struct ssntp));
@@ -682,6 +691,7 @@ bool ICACHE_FLASH_ATTR sntp_inits(void)
 			return false;
 		}
 	}
+	sntp->sntp_time_zone = UTC_offset; // hours
 	return true;
 }
 
@@ -709,6 +719,11 @@ void ICACHE_FLASH_ATTR sntp_close(void)
  * 0 - none
  */
 time_t ICACHE_FLASH_ATTR get_sntp_time(void)
+{
+	return sntp == NULL ? 0 : sntp->sntp_time;
+}
+
+time_t ICACHE_FLASH_ATTR get_sntp_localtime(void)
 {
 	if (sntp == NULL || sntp->sntp_time == 0) return 0;
 	return sntp->sntp_time + sntp->sntp_time_zone * 3600;
