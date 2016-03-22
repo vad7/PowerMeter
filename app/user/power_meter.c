@@ -150,7 +150,7 @@ xError:
 	   	return;
 	}
 	FRAM_Status = 0;
-	LastCnt += pcnt;
+	LastCnt = pcnt;
 	iot_cloud_send(1);
 }
 
