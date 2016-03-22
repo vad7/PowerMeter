@@ -280,7 +280,10 @@ void tc_go_next(void)
 		// next
 		while((iot_data_processing = iot_data_processing->next) != NULL) {
 			if(iot_data_processing->last_run + iot_data_processing->min_interval <= system_get_time()) { // если рано - пропускаем
-				if(tc_go() == ERR_OK) break;
+				if(tc_go() == ERR_OK) {
+					iot_data_processing->last_run = system_get_time();
+					break;
+				}
 			}
 		}
 	}
