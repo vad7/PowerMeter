@@ -38,6 +38,7 @@ TotalCnt
 PtrCurrent
 CntCurrent1
 CntCurrent2
+LastCnt
 i2c_errors
 wifi_ap_ssid
 sys_webver
@@ -203,6 +204,7 @@ PulsesPerKWt
 TotalCnt
 PulsesPerKWt
 csv_delim
+iot_ini_file
 Fram_Size
 i2c_freq
 inc:footer.inc

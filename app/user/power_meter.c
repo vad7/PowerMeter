@@ -135,6 +135,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	if(to_add) *(uint32 *)&CntCurrent = 0; // clear for next
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
+	WDT_FEED = WDT_FEED_MAGIC; // WDT
 	if(i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
 		#if DEBUGSOO > 2
 	   		os_printf("EW f_s\n");
@@ -149,6 +150,8 @@ xError:
 	   	return;
 	}
 	FRAM_Status = 0;
+	LastCnt += pcnt;
+	iot_cloud_send(1);
 }
 
 #if DEBUGSOO > 5
@@ -217,6 +220,7 @@ static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
    				} else if(FRAM_Status == 2){
 xRepeat:   			fram_init();
    				}
+   				WDT_FEED = WDT_FEED_MAGIC; // WDT
    				if(i2c_eeprom_write_block(I2C_FRAM_ID, (uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
 					#if DEBUGSOO > 2
   						os_printf("EW PrCnt %d\n", FRAM_Status);
@@ -261,8 +265,9 @@ static void gpio_int_handler(void)
 void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 {
 	if(FRAM_Status == 1) { // First time only
-		if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter)) != sizeof(cfg_meter)) {
+		if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(CFG_METER)) != sizeof(CFG_METER)) {
 			// defaults
+			os_memset(&cfg_meter, 0, sizeof(CFG_METER));
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 			cfg_meter.csv_delimiter = ',';
@@ -273,6 +278,8 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		#endif
 		*(uint32 *)&CntCurrent = 0;
 		WebChart_MaxMinutes	= 10 * 24*60; // 10 days
+		iot_data_first = NULL;
+		LastCnt = 0;
 	}
 	fram_init();
 	// restore workspace from FRAM
@@ -315,6 +322,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		}
 	}
 	FRAM_Status = 0;
+	iot_cloud_init();
 	#if DEBUGSOO > 3
 		struct tm tm;
 		_localtime(&fram_store.LastTime, &tm);
@@ -365,7 +373,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 			if(p3 == 0) {
 				uart_wait_tx_fifo_empty();
 				#define blocklen 256
-				uint8 *buf = os_malloc(blocklen);
+				uint8 *buf = os_zalloc(blocklen);
 				if(buf == NULL) {
 					os_printf("Err malloc!\n");
 				} else {
@@ -376,7 +384,6 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 //					mt = system_get_time() - mt;
 //					os_printf("Clear time: %d us\n", mt);
 					//i2c_init();
-					os_memset(buf, 0, blocklen);
 					WDT_FEED = WDT_FEED_MAGIC; // WDT
 					uint16 i, j;
 					for(i = 0; i < cfg_meter.Fram_Size / blocklen; i++) {
@@ -430,36 +437,25 @@ bool ICACHE_FLASH_ATTR write_power_meter_cfg(void) {
 
 void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 {
-	#define buflen 512
+	#define buflen (2 + StartArrayOfCnts + sizeof(CNT_CURRENT))
 #if DEBUGSOO > 0
 	os_printf("* Clear all FRAM data!\n");
 #endif
-	wifi_set_opmode_current(WIFI_DISABLED);
-	ets_isr_mask(0xFFFFFFFF); // mask all interrupts
-	uint8 *buf = os_malloc(buflen);
+	//wifi_set_opmode_current(WIFI_DISABLED);
+	//ets_isr_mask(0xFFFFFFFF); // mask all interrupts
+	uint8 *buf = os_zalloc(buflen);
 	if(buf != NULL) {
-		os_memset(buf, 255, buflen);
-		uint32 i;
-		for(i = 0; i < cfg_meter.Fram_Size; i += buflen) {
-			if(i2c_eeprom_write_block(I2C_FRAM_ID, i, buf, buflen)) {
-				#if DEBUGSOO > 0
-					os_printf("Error i2c write at: %d\n", i);
-				#endif
-				break;
-			}
+		WDT_FEED = WDT_FEED_MAGIC; // WDT
+		if(i2c_eeprom_write_block(I2C_FRAM_ID, cfg_meter.Fram_Size - 2, buf, buflen)) { // wrap from end to 0
 			#if DEBUGSOO > 0
-				os_printf("WR %d\n", i);
+				os_printf("Error i2c write\n");
 			#endif
-			WDT_FEED = WDT_FEED_MAGIC; // WDT
 		}
-		//os_free(buf);
-		#if DEBUGSOO > 0
-			uart_wait_tx_fifo_empty();
-		#endif
-		while(1) ; // reset by wdt.
+		os_free(buf);
 	}
 }
 
+/*
 void ICACHE_FLASH_ATTR FRAM_speed_test(void)
 {
 	#define eblen 1024
@@ -527,3 +523,4 @@ void ICACHE_FLASH_ATTR FRAM_speed_test(void)
 		while(1) WDT_FEED = WDT_FEED_MAGIC; // WDT
 	}
 }
+*/

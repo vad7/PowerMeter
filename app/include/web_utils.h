@@ -3,6 +3,8 @@
  * Alternate SDK 
  * Author: PV`
  * (c) PV` 2015
+ *
+ * added vad7
 *******************************************************************************/
 
 #ifndef _INCLUDE_WEB_UTILS_H_
@@ -27,5 +29,7 @@ uint32 str_array(uint8 *s, uint32 *buf, uint32 max_buf) ICACHE_FLASH_ATTR;
 uint32 str_array_w(uint8 *s, uint16 *buf, uint32 max_buf) ICACHE_FLASH_ATTR;
 uint32 str_array_b(uint8 *s, uint8 *buf, uint32 max_buf) ICACHE_FLASH_ATTR;
 char* word_to_lower_case(char* text) ICACHE_FLASH_ATTR;
+
+bool str_cmp_wildcards(char* wildstring, char *matchstring) ICACHE_FLASH_ATTR;
 
 #endif /* _INCLUDE_WEB_UTILS_H_ */

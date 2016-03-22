@@ -40,7 +40,7 @@
 #include "power_meter.h"
 
 #ifdef USE_WEB
-extern void web_fini(const uint8 * fname);
+extern uint8 web_fini(const uint8 * fname);
 static const uint8 sysinifname[] ICACHE_RODATA_ATTR = "protect/init.ini";
 #endif
 

@@ -10,21 +10,11 @@
 #include "tcp_srv_conn.h"
 #include "sdk/rom2ram.h"
 #include "sdk/app_main.h"
-
 #include "web_srv_int.h"
 #include "web_utils.h"
 #include "web_iohw.h"
 #include "webfs.h"
-
-#define CRLF "\r\n"
-#define FINI_BUF_SIZE 512
-
-struct buf_fini
-{
-	TCP_SERV_CONN ts_conn;
-	WEB_SRV_CONN web_conn;
-	uint8 buf[FINI_BUF_SIZE+1];
-};
+#include "web_fs_init.h"
 
 /******************************************************************************
 *******************************************************************************/
@@ -35,26 +25,43 @@ LOCAL uint16 ICACHE_FLASH_ATTR find_crlf(uint8 * chrbuf, uint16 len) {
   }
   return len;
 }
-/******************************************************************************
-*******************************************************************************/
-void ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
+
+// Init buffer with TCP_SERV_CONN, WEB_SRV_CONN and buf[FINI_BUF_SIZE]
+struct buf_fini * ICACHE_FLASH_ATTR web_fini_init(uint8 init_msgbuf)
 {
 	struct buf_fini *p = (struct buf_fini *) os_zalloc(sizeof(struct buf_fini));
 	if(p == NULL) {
 #if DEBUGSOO > 1
 		os_printf("Error mem!\n");
 #endif
-		return;
+	} else {
+		TCP_SERV_CONN * ts_conn = &p->ts_conn;
+		WEB_SRV_CONN * web_conn = &p->web_conn;
+		web_conn->bffiles[0] = WEBFS_INVALID_HANDLE;
+		web_conn->bffiles[1] = WEBFS_INVALID_HANDLE;
+		web_conn->bffiles[2] = WEBFS_INVALID_HANDLE;
+		web_conn->bffiles[3] = WEBFS_INVALID_HANDLE;
+		ts_conn->linkd = (uint8 *)web_conn;
+		ts_conn->sizeo = FINI_BUF_SIZE;
+		ts_conn->pbufo = p->buf;
+		if(init_msgbuf) {
+			web_conn->msgbufsize = ts_conn->sizeo;
+			web_conn->msgbuf = ts_conn->pbufo;
+			web_conn->msgbuflen = 0;
+		}
 	}
+	return p;
+}
+
+/******************************************************************************
+*******************************************************************************/
+// return 0 - ok
+uint8 ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
+{
+	struct buf_fini *p = web_fini_init(0);
+	if(p == NULL) return 1;
 	TCP_SERV_CONN * ts_conn = &p->ts_conn;
 	WEB_SRV_CONN * web_conn = &p->web_conn;
-	web_conn->bffiles[0] = WEBFS_INVALID_HANDLE;
-	web_conn->bffiles[1] = WEBFS_INVALID_HANDLE;
-	web_conn->bffiles[2] = WEBFS_INVALID_HANDLE;
-	web_conn->bffiles[3] = WEBFS_INVALID_HANDLE;
-	ts_conn->linkd = (uint8 *)web_conn;
-	ts_conn->sizeo = FINI_BUF_SIZE;
-	ts_conn->pbufo = p->buf;
 	rom_strcpy(ts_conn->pbufo, (void *)fname, MAX_FILE_NAME_SIZE);
 #if DEBUGSOO > 1
 	os_printf("Run ini file: %s\n", ts_conn->pbufo);
@@ -63,14 +70,16 @@ void ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 #if DEBUGSOO > 1
 		os_printf("file not found!\n");
 #endif
-		return;
+		os_free(p);
+		return 2;
 	}
 	if(fatCache.flags & WEBFS_FLAG_ISZIPPED) {
 #if DEBUGSOO > 1
 		os_printf("\nError: file is ZIPped!\n");
 #endif
 		web_inc_fclose(web_conn);
-		return;
+		os_free(p);
+		return 3;
 	}
 #if DEBUGSOO > 1
 	user_uart_wait_tx_fifo_empty(DEBUG_UART,1000);
@@ -102,7 +111,6 @@ void ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 #if DEBUGSOO > 3
 					os_printf("String:%s\n", pstr);
 #endif
-
 					if(!os_memcmp((void*)pstr, "inc:", 4)) { // "inc:file_name"
 						if(!web_inc_fopen(ts_conn, &pstr[4])) {
 #if DEBUGSOO > 1
@@ -123,9 +131,11 @@ void ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 		}
 		else if(web_inc_fclose(web_conn)) {
 			if(web_conn->web_disc_cb != NULL) web_conn->web_disc_cb(web_conn->web_disc_par);
-			return;
+			break;
 		}
 	}
+	os_free(p);
+	return 0;
 }
 
 #endif // USE_WEB

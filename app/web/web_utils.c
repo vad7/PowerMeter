@@ -3,6 +3,8 @@
  *
  *  Created on: 25 дек. 2014 г.
  *      Author: PV`
+ *
+ *      added: vad7
  */
 #include "user_config.h"
 #include "bios.h"
@@ -566,3 +568,39 @@ char* ICACHE_FLASH_ATTR str_to_upper_case(char* text) {
 }
 #endif
 
+// return true if matched
+bool ICACHE_FLASH_ATTR str_cmp_wildcards(char* wildstring, char *matchstring)
+{
+	char stopstring = 0;
+
+	while(*matchstring) {
+		if(*wildstring == '*') {
+			if (!*++wildstring) {
+				return true;
+			} else {
+				stopstring = *wildstring;
+			}
+		}
+
+		if(stopstring) {
+			if(stopstring == *matchstring ) {
+				wildstring++;
+				matchstring++;
+				stopstring = 0;
+			} else {
+				matchstring++;
+			}
+		} else if((*wildstring == *matchstring) || (*wildstring == '?')) {
+			wildstring++;
+			matchstring++;
+		} else {
+			return false;
+		}
+
+		if(!*matchstring && *wildstring && *wildstring != '*') {
+			// matchstring too short
+			return false;
+		}
+	}
+	return true;
+}

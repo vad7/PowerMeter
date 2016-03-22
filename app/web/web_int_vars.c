@@ -338,6 +338,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
+			else ifcmp("iot_ini_file") {
+				os_memcpy(cfg_meter.iot_ini, pvar, os_strlen(pvar) + 1);
+				iot_cloud_init();
+			}
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -376,6 +380,31 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		// sys_write_cfg();
 	}
 	else ifcmp("ChartMaxDays") WebChart_MaxMinutes = val * 24*60;
+	else ifcmp("iot_") { // from iot_cloud.ini
+		cstr+=4;
+		uint16 len = os_strlen(pvar) + 1;
+		ifcmp("server") {
+			if(iot_server_name != NULL) os_free(iot_server_name);
+			if((iot_server_name = os_malloc(len)) != NULL) os_memcpy(iot_server_name, pvar, len);
+		}
+		else ifcmp("add_") {
+			cstr+=4;
+			IOT_DATA *iot = iot_data_first;
+			IOT_DATA *new_iot = os_zalloc(sizeof(IOT_DATA) + len);
+			if(new_iot != NULL) {
+				if(iot == NULL) iot_data_first = new_iot;
+				else {
+					while(iot->next != NULL) iot = iot->next;
+					iot->next = new_iot;
+				}
+				os_memcpy(new_iot->iot_url_params, pvar, len);
+				new_iot->min_interval = ahextoul(cstr);
+				#if DEBUGSOO > 4
+					os_printf("iot_cloud: %s, %u\n", new_iot->iot_url_params, new_iot->min_interval);
+				#endif
+			}
+		}
+	}
     else ifcmp("wifi_") {
       cstr+=5;
       ifcmp("rdcfg") web_conn->udata_stop = Read_WiFi_config(&wificonfig, val);
