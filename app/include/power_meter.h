@@ -13,10 +13,19 @@
 #define DEFAULT_PULSES_PER_0_01_KWT 6 // 600 per kWt
 #define TIME_STEP_SEC			60 // 1 minute
 #define SENSOR_TASK_PRIO			USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used
+#define IOT_INI_MAX_FILE_SIZE	1024
 
 typedef struct __attribute__((packed)) {
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 	uint32 Fram_Size;
 	uint16 PulsesPer0_01KWt; // 6
+=======
+	uint32 	Fram_Size;				// 32768
+	uint16 	PulsesPer0_01KWt; 		// 6
+	char	csv_delimiter; 			// ','
+	uint16  i2c_freq;				// 400 KHz
+	char	iot_ini[16];			// "iot_cloud.ini"
+>>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 //	char sntp_server[20];
 } CFG_METER;
 CFG_METER cfg_meter;
@@ -39,12 +48,27 @@ typedef struct __attribute__((packed)) {
 } CNT_CURRENT;
 CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
+char *iot_server_name; // = NULL; // set from ini: iot_server=
+typedef struct _IOT_DATA {
+	uint32	min_interval; 	// msec
+	uint32	last_run;		// system_get_time()
+	struct _IOT_DATA *next;
+	char	iot_url_params[];		// set from ini: iot_add=
+} IOT_DATA;
+IOT_DATA *iot_data_first; // = NULL;
+IOT_DATA *iot_data_processing; // = NULL;
+
+uint32 LastCnt;				// Last cnt
 uint32 WebChart_MaxMinutes; // ~ChartMaxMin~
+uint32 KWT_Previous;		// *1000
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
 bool write_power_meter_cfg(void) ICACHE_FLASH_ATTR;
 void power_meter_clear_all_data(void) ICACHE_FLASH_ATTR;
+uint8_t iot_cloud_init(void) ICACHE_FLASH_ATTR;
+void iot_data_clear(void) ICACHE_FLASH_ATTR;
+void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 void _localtime(const time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;

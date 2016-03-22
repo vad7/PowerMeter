@@ -38,6 +38,7 @@ TotalCnt
 PtrCurrent
 CntCurrent1
 CntCurrent2
+LastCnt
 i2c_errors
 wifi_ap_ssid
 sys_webver
@@ -203,6 +204,11 @@ inc:menu0.inc
 PulsesPerKWt
 TotalCnt
 PulsesPerKWt
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
+=======
+csv_delim
+iot_ini_file
+>>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 Fram_Size
 inc:footer.inc
 inc:menu.inc

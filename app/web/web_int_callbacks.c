@@ -420,15 +420,24 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 		os_printf("Output History ");
 #endif
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 		hst = os_malloc(sizeof(history_output));
 		web_conn->udata_stop = (uint32)hst;
+=======
+		hst = os_zalloc(sizeof(history_output));
+>>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 		if(hst == NULL) {
 			#if DEBUGSOO > 2
 				os_printf("Error malloc: %u\n", sizeof(history_output));
 			#endif
 			return;
 		}
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 		os_memset(hst, 0, sizeof(history_output));
+=======
+		hst->minutes = web_conn->udata_stop;
+		web_conn->udata_stop = (uint32)hst;
+>>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 		hst->PtrCurrent = fram_store.PtrCurrent;
 		if(CntCurrent.Cnt2) { // packed available
 			hst->PtrCurrent += 2;
@@ -770,6 +779,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 {
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+		web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
 //        uint8 *cstr = &web_conn->msgbuf[web_conn->msgbuflen];
         {
            uint8 *vstr = os_strchr(cstr, '=');
@@ -1394,14 +1404,20 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("test_adc") web_test_adc(ts_conn);
 #endif
 // PowerMeter
-        else ifcmp("TotalCntTime") tcp_puts("%u", fram_store.LastTime);
+        else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
+        else ifcmp("LastCnt") tcp_puts("%u", LastCnt);
         else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
         else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
         else ifcmp("TotalKWT") {
         	uint32 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
+        	cstr += 8;
+        	ifcmp("_New") { // only new value
+        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_RETRYCB; // do not send data to IoT cloud
+        	}
+        	KWT_Previous = KWT;
         }
         else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
@@ -1409,7 +1425,11 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 =======
         else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
         else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 >>>>>>> 241edd3 upd chart, csv
+=======
+        else ifcmp("iot_ini_file") tcp_puts("%s", cfg_meter.iot_ini);
+>>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
 // PowerMeter

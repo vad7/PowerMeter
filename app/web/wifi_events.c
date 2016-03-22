@@ -28,6 +28,8 @@
 #include "modbustcp.h"
 #endif
 
+void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
+
 struct s_probe_requests buf_probe_requests[MAX_COUNT_BUF_PROBEREQS] DATA_IRAM_ATTR;
 uint32 probe_requests_count DATA_IRAM_ATTR;
 
@@ -324,6 +326,9 @@ void ICACHE_FLASH_ATTR wifi_handle_event_cb(System_Event_t *evt)
 			if(wifi_softap_get_station_num() == 0) { // Number count of stations which connected to ESP8266 soft-AP
 				close_all_service();
 			}
+			// iot_cloud
+			iot_cloud_send(0); // end
+			//
 			break;
 		}
 		case EVENT_STAMODE_AUTHMODE_CHANGE:
@@ -345,7 +350,10 @@ void ICACHE_FLASH_ATTR wifi_handle_event_cb(System_Event_t *evt)
 					IP2STR(&evt->event_info.got_ip.mask),
 					IP2STR(&evt->event_info.got_ip.gw));
 #endif
-				open_all_service((wifi_softap_get_station_num() == 0)? 0: 1);
+			open_all_service((wifi_softap_get_station_num() == 0)? 0: 1);
+			// iot_cloud
+			iot_cloud_send(1); // start
+			//
 			break;
 		}
 		case EVENT_SOFTAPMODE_STACONNECTED:
