@@ -10,6 +10,7 @@
 #include "driver/i2c.h"
 #include "hw/gpio_register.h"
 #include "power_meter.h"
+#include "iot_cloud.h"
 
 #define GPIO_Tasks 		1
 #define GPIO_Int_Signal 1

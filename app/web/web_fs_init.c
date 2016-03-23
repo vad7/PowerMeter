@@ -122,12 +122,8 @@ uint8 ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 				};
 				sslen = nslen;
 			};
-			// откат файла
-			WEBFSStubs[web_conn->webfile].addr -= len;
-			WEBFSStubs[web_conn->webfile].bytesRem += len;
-			// передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
-			WEBFSStubs[web_conn->webfile].addr += sslen;
-			WEBFSStubs[web_conn->webfile].bytesRem -= sslen;
+			// откат файла + передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
+			WEBFSSeek(web_conn->webfile, len - sslen, WEBFS_SEEK_REWIND);
 		}
 		else if(web_inc_fclose(web_conn)) {
 			if(web_conn->web_disc_cb != NULL) web_conn->web_disc_cb(web_conn->web_disc_par);

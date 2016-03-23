@@ -102,6 +102,7 @@ uint32 WEBFSGetPosition(WEBFS_HANDLE hWEBFS);
 uint32 WEBFS_max_size(void) ICACHE_FLASH_ATTR;
 uint32 WEBFS_curent_size(void) ICACHE_FLASH_ATTR;
 uint32 WEBFS_base_addr(void) ICACHE_FLASH_ATTR;
+bool WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEEK_MODE tMode) ICACHE_FLASH_ATTR;
 
 #ifdef USE_MAX_IRAM
 extern int isWEBFSLocked; // Lock WEBFS access during the upgrade

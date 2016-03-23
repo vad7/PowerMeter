@@ -1309,7 +1309,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
         	cstr += 8;
         	ifcmp("_New") { // only new value
-        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_RETRYCB; // do not send data to IoT cloud
+        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
         	}
         	KWT_Previous = KWT;
         }
@@ -1317,7 +1317,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
         else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
         else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
-        else ifcmp("iot_ini_file") tcp_puts("%s", cfg_meter.iot_ini);
+//        else ifcmp("iot_ini_file") tcp_puts("%s", cfg_meter.iot_ini);
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
 // PowerMeter

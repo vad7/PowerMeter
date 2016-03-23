@@ -38,6 +38,10 @@
 #include "overlay.h"
 #endif
 
+#if DEBUGSOO > 5
+#include "hw/uart_register.h"
+#endif
+
 #define USE_WEB_NAGLE // https://en.wikipedia.org/wiki/Nagle%27s_algorithm
 #define MIN_REQ_LEN  7  // Minimum length for a valid HTTP/0.9 request: "GET /\r\n" -> 7 bytes
 #define CRLF "\r\n"
@@ -889,7 +893,7 @@ LOCAL void ICACHE_FLASH_ATTR web_send_fnohanle(TCP_SERV_CONN *ts_conn) {
 }
 /******************************************************************************
 *******************************************************************************/
-LOCAL int ICACHE_FLASH_ATTR web_find_cbs(uint8 * chrbuf, uint32 len) {
+int32 ICACHE_FLASH_ATTR web_find_cbs(uint8 * chrbuf, int32 len) {
   int i;
   for(i = 0; i < len; i++)  if(chrbuf[i] == '~')  return i;
   return -1;
@@ -910,18 +914,14 @@ void ICACHE_FLASH_ATTR webserver_parse_buf(TCP_SERV_CONN *ts_conn)
 		else {
 			uint8 *pstr = &web_conn->msgbuf[web_conn->msgbuflen]; // указатель в буфере
 			// запомнить указатель в файле. ftell(fp)
-			uint32 max = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, SCB_SEND_SIZE); // читаем по 128 байт ?
-			uint32 len = WEBFSGetArray(web_conn->webfile, pstr, max);
+			int32 max = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, SCB_SEND_SIZE); // читаем по 128 байт ?
+			int32 len = WEBFSGetArray(web_conn->webfile, pstr, max);
 			// прочитано len байт в буфер по указателю &sendbuf[msgbuflen]
 			if(len) { // есть байты для передачи, ищем string "~calback~"
 				int cmp = web_find_cbs(pstr, len);
 				if(cmp >= 0) { // найден calback
-					// откат файла
-					WEBFSStubs[web_conn->webfile].addr -= len;
-					WEBFSStubs[web_conn->webfile].bytesRem += len;
-					// передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
-					WEBFSStubs[web_conn->webfile].addr += cmp+1;
-					WEBFSStubs[web_conn->webfile].bytesRem -= cmp+1;
+					// откат файла + передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
+					if(!WEBFSSeek(web_conn->webfile, len - (cmp + 1), WEBFS_SEEK_REWIND)) break;
 					// это второй маркер?
 					if(CheckSCB(SCB_FINDCB)) { // в файле найден закрывающий маркер calback
 						ClrSCB(SCB_FINDCB); // прочитали string calback-а
@@ -1830,6 +1830,14 @@ LOCAL err_t ICACHE_FLASH_ATTR webserver_received_data(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 3
 		os_printf("hcn:%p[%d],wcn:%d ", CurHTTP.pcontent, CurHTTP.content_len, web_conn->content_len);
 #endif
+#if DEBUGSOO > 4
+
+		// REMOVE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+		os_printf("\n%s\n",CurHTTP.pcontent);
+
+#endif
+
 	    if(CurHTTP.httpStatus == 200) { // && CheckSCB(SCB_FOPEN)) { // если файл открыт и всё OK
 			if(CurHTTP.cookie_len != 0) web_parse_cookie(&CurHTTP, ts_conn);
 			web_parse_uri_vars(&CurHTTP, ts_conn);

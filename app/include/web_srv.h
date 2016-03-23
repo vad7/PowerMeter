@@ -116,6 +116,7 @@ typedef enum
 #define  SCB_WEBSOC		0x10000 // WebSocket
 #define  SCB_WSDATA		0x20000 // WebSocket data
 #define  SCB_SYSSAVE	0x40000 // по закрытию соединения вызвать sys_write_cfg()
+#define  SCB_USER		0x80000 // для передачи информации из callback, используется для пропуска запроса в iot_cloud (tcp client)
 
 
 #define  SCB_OPEN       0
@@ -180,5 +181,6 @@ err_t webserver_init(uint16 portn) ICACHE_FLASH_ATTR;
 err_t webserver_close(uint16 portn) ICACHE_FLASH_ATTR;
 err_t webserver_reinit(uint16 portn) ICACHE_FLASH_ATTR;
 void webserver_parse_buf(TCP_SERV_CONN *ts_conn) ICACHE_FLASH_ATTR;
+int32 web_find_cbs(uint8 * chrbuf, int32 len) ICACHE_FLASH_ATTR;
 
 #endif /* _INCLUDE_WEB_SRV_H_ */

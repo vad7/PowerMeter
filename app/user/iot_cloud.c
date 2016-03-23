@@ -1,9 +1,22 @@
 /*
  * Send data to IoT cloud, like thingspeak.com
- * Channels max: 2
- * Setup - cfg_meter.IoT_*
  *
- * reworked by vad7
+ * Setup - cfg_meter.iot_ini
+ *
+ * iot_cloud.ini:
+ * iot_server=<имя http сервера>\n
+ * iot_add_n=<параметры для GET запроса №1>\n
+ * iot_add_n=<параметры для GET запроса №2>\n
+ * iot_add_n=<параметры для GET запроса №3>\n
+ * ...
+ *
+ * переменные обрамляются "~",
+ * n - минимальный интервал между запросами в мсек, 0 - без ожидания
+ * если при парсинге установлен SCB_RETRYCB, то пропускаем запрос
+ * Итоговый запрос: http://<имя сервера><параметры>
+ * "\n" = 0x0A
+ *
+ * Written by vad7
  */
 
 #include "user_config.h"
@@ -19,48 +32,24 @@
 #include "wifi_events.h"
 #include "webfs.h"
 #include "web_utils.h"
-#include "power_meter.h"
 #include "web_fs_init.h"
+#include "../web/include/web_srv_int.h"
+#include "power_meter.h"
+#include "iot_cloud.h"
 
-#define DEFAULT_TC_HOST_PORT 80
-#define TCP_REQUEST_TIMEOUT	15 // sec
-
-/* iot_cloud.ini:
-iot_server=<имя http сервера>\n
-iot_add_n=<параметры для GET запроса №1>\n
-iot_add_n=<параметры для GET запроса №2>\n
-iot_add_n=<параметры для GET запроса №3>\n
-...
-
-переменные обрамляются "~",
-n - минимальный интервал между запросами в мсек, 0 - без ожидания
-если при парсинге установлен SCB_RETRYCB, то пропускаем запрос
-Итоговый запрос: http://<имя сервера><параметры>
-"\n" = 0x0A
-*/
-
-
-uint8 get_request_tpl[] = "GET %s HTTP/1.0/\r\nHost: %s\r\n\r\n";
+uint8 iot_cloud_ini[] = "protect/iot_cloud.ini";
+uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0/\r\nHost: %s\r\n\r\n";
 uint8 key_http_ok[] = "HTTP/1.? 200 OK\r\n";
-//uint8 key_chunked[] = "Transfer-Encoding: chunked";
 
-uint8 key_td_info[] = "<td class=\"info\">";
-//uint32 next_start_time;
-
-//uint32 content_chunked DATA_IRAM_ATTR;
 os_timer_t error_timer;
-
 ip_addr_t tc_remote_ip;
 int tc_init_flg; // внутренние флаги инициализации
-#define TC_INITED 		(1<<0)
-#define TC_INIT_WIFI_CB (1<<1)
-#define TC_FLG_RUN_ON 	(1<<2)
-
 uint32 tc_head_size; // используется для разбора HTTP ответа
-
-#define mMIN(a, b)  ((a<b)?a:b)
-
 TCP_SERV_CFG * tc_servcfg;
+
+#define TC_INITED 		(1<<0)
+#define TC_RUNNING		(1<<1)
+#define mMIN(a, b)  ((a<b)?a:b)
 
 void tc_go_next(void);
 
@@ -103,30 +92,51 @@ err_t ICACHE_FLASH_ATTR tc_recv(TCP_SERV_CONN *ts_conn) {
 	tcpsrv_received_data_default(ts_conn);
 #endif
 	tcpsrv_unrecved_win(ts_conn);
-	tc_init_flg &= ~TC_FLG_RUN_ON; // clear run flag
+	tc_init_flg &= ~TC_RUNNING; // clear run flag
     uint8 *pstr = ts_conn->pbufi;
     sint32 len = ts_conn->sizei;
     if(tc_head_size == 0) {
         if(len < sizeof(key_http_ok) +2 -1) {
         	return ERR_OK;
         }
-        if(str_cmp_wildcards(pstr, key_http_ok)) {
-        	tc_head_size = sizeof(key_http_ok)-1;
-        	len -= sizeof(key_http_ok)-1;
-        	pstr += sizeof(key_http_ok)-1;
-        } else {
+        if(!str_cmp_wildcards(pstr, key_http_ok)) { // NOT OK
         	tc_close();
         	return ERR_OK;
         }
-        if(tc_head_size != 0 && len > sizeof(key_td_info) + 1) {
-			#if DEBUGSOO > 5
-				os_printf("content[%d] ", len);
-			#endif
-		   	ts_conn->flag.rx_null = 1; // stop receiving data
-        }
+	   	ts_conn->flag.rx_null = 1; // stop receiving data
     }
 	return ERR_OK;
 }
+
+// replace ~x~ in buf with calculated web_int_callback(x) and put buf to web_conn.msgbuf
+void tc_parse_buf(TCP_SERV_CONN *ts_conn, uint8 *buf, int32_t len)
+{
+	WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+	while(len > 0) {
+		int32_t cmp = web_find_cbs(buf, len);
+		if(cmp >= 0) { // callback (~) has been found
+			int32 cmp2 = web_find_cbs(buf + cmp + 1, len - cmp - 1); // find closing '~'
+			uint8 cbs_not_closed = (cmp2 < 1) * 2;
+			if(web_conn->msgbuflen + cmp + cbs_not_closed > web_conn->msgbufsize) break; // overflow
+			os_memcpy(&web_conn->msgbuf[web_conn->msgbuflen], buf, cmp + cbs_not_closed);
+			web_conn->msgbuflen += cmp + cbs_not_closed;
+			buf += cmp + 1 + cbs_not_closed;
+			len -= cmp + 1 + cbs_not_closed;
+			if(!cbs_not_closed) { // parse
+				buf[cmp2] = '\0';
+				web_int_callback(ts_conn, buf);
+				buf += cmp2 + 1; // skip closing '~'
+				len -= cmp2 + 1;
+			}
+		} else {
+			if(web_conn->msgbuflen + len > web_conn->msgbufsize) break; // overflow
+			os_memcpy(&web_conn->msgbuf[web_conn->msgbuflen], buf, len);
+			web_conn->msgbuflen += len;
+			break;
+		}
+	}
+}
+
 //-------------------------------------------------------------------------------
 // TCP listen, put GET request to the server
 //-------------------------------------------------------------------------------
@@ -137,11 +147,8 @@ err_t ICACHE_FLASH_ATTR tc_listen(TCP_SERV_CONN *ts_conn) {
 	if(iot_data_processing != NULL) {
 		p = web_fini_init(1); // prepare empty buffer, filled with 0
 		if(p == NULL) return 1;
-		uint16 len = os_strlen(iot_data_processing->iot_url_params);
-		os_memcpy(p->buf, iot_data_processing->iot_url_params, len);
-		p->web_conn.msgbuflen = len;
-		webserver_parse_buf(&p->ts_conn);
-		if(p->web_conn.webflag & SCB_RETRYCB) { // cancel send
+		tc_parse_buf(&p->ts_conn, iot_data_processing->iot_request, os_strlen(iot_data_processing->iot_request));
+		if(p->web_conn.webflag & SCB_USER) { // cancel send
 			#if DEBUGSOO > 4
 				os_printf("iot-skip!\n");
 			#endif
@@ -149,17 +156,18 @@ err_t ICACHE_FLASH_ATTR tc_listen(TCP_SERV_CONN *ts_conn) {
 			os_free(p);
 			return 2;
 		}
-		buf = p->buf;
+		buf = p->web_conn.msgbuf;
 		len = p->web_conn.msgbuflen;
 	}
-#if DEBUGSOO > 1
+#if DEBUGSOO > 4
 	tcpsrv_print_remote_info(ts_conn);
-	os_printf("send %d bytes\n", len);
+	os_printf("tc_listen, send(%d): %s\n", len, buf);
 #endif
 	err_t err = tcpsrv_int_sent_data(ts_conn, buf, len);
 	os_free(p);
 	return err;
 }
+
 //-------------------------------------------------------------------------------
 // TCP disconnect
 //-------------------------------------------------------------------------------
@@ -224,7 +232,7 @@ void ICACHE_FLASH_ATTR tc_dns_found_callback(uint8 *name, ip_addr_t *ipaddr, voi
 //-------------------------------------------------------------------------------
 void ICACHE_FLASH_ATTR close_dns_finding(void){
 	ets_timer_disarm(&error_timer);
-	if(tc_init_flg & TC_FLG_RUN_ON) { // ожидание dns_found_callback() ?
+	if(tc_init_flg & TC_RUNNING) { // ожидание dns_found_callback() ?
 		// убить вызов  tc_dns_found_callback()
 		int i;
 		for (i = 0; i < DNS_TABLE_SIZE; ++i) {
@@ -234,7 +242,7 @@ void ICACHE_FLASH_ATTR close_dns_finding(void){
 				dns_table[i].state = DNS_STATE_UNUSED;
 			}
 		}
-		tc_init_flg &= ~TC_FLG_RUN_ON;
+		tc_init_flg &= ~TC_RUNNING;
 	}
 	tc_close();
 }
@@ -244,11 +252,22 @@ void ICACHE_FLASH_ATTR close_dns_finding(void){
 err_t ICACHE_FLASH_ATTR tc_go(void)
 {
 	err_t err = ERR_USE;
-	if((tc_init_flg & TC_FLG_RUN_ON) || iot_data_processing == NULL) return err; // выход, если процесс запущен или нечего запускать
-	run_error_timer(TCP_REQUEST_TIMEOUT); // обработать ошибки и продолжение
+	if((tc_init_flg & TC_RUNNING) || iot_data_processing == NULL) return err; // выход, если процесс запущен или нечего запускать
+	#if DEBUGSOO > 4
+		os_printf("Run: %s\n", iot_data_processing->iot_request);
+	#endif
 	err = tc_init(); // инициализация TCP
 	if(err == ERR_OK) {
-		tc_init_flg |= TC_FLG_RUN_ON; // процесс запущен
+		tc_init_flg |= TC_RUNNING; // процесс запущен
+		run_error_timer(TCP_REQUEST_TIMEOUT); // обработать ошибки и продолжение
+
+#if DEBUGSOO > 4
+		int i;
+		for (i = 0; i < DNS_TABLE_SIZE; ++i) {
+			os_printf("TDNS%d: %d, %s: " IPSTR "\n", i, dns_table[i].state, dns_table[i].name, dns_table[i].ipaddr);
+		}
+#endif
+
 		err = dns_gethostbyname(iot_server_name, &tc_remote_ip, (dns_found_callback)tc_dns_found_callback, NULL);
 #if DEBUGSOO > 4
 		os_printf("dns_gethostbyname(%s)=%d ", iot_server_name, err);
@@ -256,14 +275,11 @@ err_t ICACHE_FLASH_ATTR tc_go(void)
 		if(err == ERR_OK) {	// Адрес разрешен из кэша или локальной таблицы
 			tc_head_size = 0;
 			err = tcpsrv_client_start(tc_servcfg, tc_remote_ip.addr, DEFAULT_TC_HOST_PORT);
-			if(err != ERR_OK) {
-				tc_init_flg &= ~TC_FLG_RUN_ON; // процесс не запущен
-			}
 		} else if(err == ERR_INPROGRESS) { // Запущен процесс разрешения имени с внешнего DNS
 			err = ERR_OK;
 		}
 		if (err != ERR_OK) {
-			tc_init_flg &= ~TC_FLG_RUN_ON; // процесс не запущен
+			tc_init_flg &= ~TC_RUNNING; // процесс не запущен
 //				tc_close();
 		}
 	}
@@ -272,9 +288,9 @@ err_t ICACHE_FLASH_ATTR tc_go(void)
 // next iot_data connection
 void tc_go_next(void)
 {
-	if(tc_init_flg & TC_FLG_RUN_ON) { // Timeout
+	if(tc_init_flg & TC_RUNNING) { // Process timeout
 		close_dns_finding();
-		tc_init_flg &= ~TC_FLG_RUN_ON; // clear
+		tc_init_flg &= ~TC_RUNNING; // clear
 	}
 	if(iot_data_processing != NULL) {
 		// next
@@ -301,8 +317,11 @@ uint8_t ICACHE_FLASH_ATTR iot_cloud_init(void)
 	if(iot_data_first != NULL) { // data exist - clear
 		iot_data_clear();
 	}
-	retval = web_fini(cfg_meter.iot_ini);
+	retval = web_fini(iot_cloud_ini);
 	if(retval == 0) tc_init_flg |= TC_INITED;
+#if DEBUGSOO > 4
+		os_printf("iot_init: %d\n", tc_init_flg);
+#endif
 	return retval;
 }
 
@@ -325,12 +344,14 @@ void ICACHE_FLASH_ATTR iot_data_clear(void)
 void ICACHE_FLASH_ATTR iot_cloud_send(uint8 fwork)
 {
 	if((tc_init_flg & TC_INITED) == 0) return;
+	if((tc_init_flg & TC_RUNNING)) return; // exit if process active
 	if(fwork == 0) { // end
 		close_dns_finding();
 		return;
 	}
 	if(iot_data_first == NULL || !flg_open_all_service || wifi_station_get_connect_status() != STATION_GOT_IP) return; // st connected?
 	if(iot_data_first != NULL) {
+		iot_data_processing = iot_data_first;
 		tc_go_next();
 	}
 }

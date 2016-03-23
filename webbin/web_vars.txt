@@ -33,7 +33,7 @@ gpio_inp
 gpio_out
 gpio_dir
 inc:menu.inc
-TotalKWT
+TotalKWT_New
 TotalCnt
 PtrCurrent
 CntCurrent1
@@ -204,7 +204,7 @@ PulsesPerKWt
 TotalCnt
 PulsesPerKWt
 csv_delim
-iot_ini_file
+inc:protect/iot_cloud.ini
 Fram_Size
 i2c_freq
 inc:footer.inc

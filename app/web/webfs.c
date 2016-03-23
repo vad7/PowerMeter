@@ -11,6 +11,10 @@
 #include "sdk/flash.h"
 #include "webfs.h"
 
+#if DEBUGSOO > 5
+#include "hw/uart_register.h"
+#endif
+
 // Supports long file names to 64 characters
 #define MAX_FILE_NAME_LEN   64 // VarNameSize
 uint32 disk_base_addr DATA_IRAM_ATTR;
@@ -21,7 +25,7 @@ uint32 disk_base_addr DATA_IRAM_ATTR;
  *
  *     [F][W][E][B][uint8 Ver Hi][uint8 Ver Lo] // заголовок диска
  *     [uint16 Number of Files] // кол-во файлов на диске
- *     [Name Hash 0]...[Name Hash N] // uint16 типа хеш на каждое имя файла 
+ *     [Name Hash 0]...[Name Hash N] // uint16 типа хеш на каждое имя файла
  *     [File Record 0]...[File Record N] // uint32 указатели на адреса структур файлов, относительно начала диска
  *
  * File Record Structure:
@@ -246,9 +250,9 @@ bool ICACHE_FLASH_ATTR WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEE
 
 		// Seek backwards offset uint8s
 		case WEBFS_SEEK_REWIND:
-			temp = WEBFSGetStartAddr(hWEBFS);
-			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
-				return false;
+//			temp = WEBFSGetStartAddr(hWEBFS);
+//			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
+//				return false;
 
 			WEBFSStubs[hWEBFS].addr -= dwOffset;
 			WEBFSStubs[hWEBFS].bytesRem += dwOffset;
