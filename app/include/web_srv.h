@@ -180,7 +180,6 @@ uint32 ahextoul(uint8 *s) ICACHE_FLASH_ATTR;
 err_t webserver_init(uint16 portn) ICACHE_FLASH_ATTR;
 err_t webserver_close(uint16 portn) ICACHE_FLASH_ATTR;
 err_t webserver_reinit(uint16 portn) ICACHE_FLASH_ATTR;
-void webserver_parse_buf(TCP_SERV_CONN *ts_conn) ICACHE_FLASH_ATTR;
 int32 web_find_cbs(uint8 * chrbuf, int32 len) ICACHE_FLASH_ATTR;
 
 #endif /* _INCLUDE_WEB_SRV_H_ */
