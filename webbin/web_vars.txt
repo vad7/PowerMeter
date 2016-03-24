@@ -16,10 +16,10 @@ inc:footer.inc
 inc:grfx1.inc
 inc:grfx2.inc
 sys_heap
+bin_history
 inc:menu0.inc
 ChartMaxDays
 inc:footer.inc
-inc:time.inc
 inc:menu0.inc
 TotalKWT
 inc:footer.inc
@@ -33,7 +33,7 @@ gpio_inp
 gpio_out
 gpio_dir
 inc:menu.inc
-TotalKWT
+TotalKWT_New
 TotalCnt
 PtrCurrent
 CntCurrent1
@@ -136,7 +136,6 @@ inc:menu.inc
 hexdmpb
 inc:menu.inc
 hexdmpd
-bin_history
 wifi_prrq_xml
 bin_ram
 inc:menu.inc
@@ -204,12 +203,10 @@ inc:menu0.inc
 PulsesPerKWt
 TotalCnt
 PulsesPerKWt
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
 csv_delim
 iot_ini_file
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 Fram_Size
+i2c_freq
 inc:footer.inc
 inc:menu.inc
 cfg_web_port

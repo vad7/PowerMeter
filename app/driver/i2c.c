@@ -23,7 +23,9 @@
 
 uint32 i2c_delay_time = 357; // 100Khz at FCPU=80Mhz
 #define GET_CCOUNT(x) __asm__ __volatile__("rsr.ccount %0" : "=r"(x))
-void i2c_delay(void)	{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); while(t2-t1 <= i2c_delay_time); }
+void i2c_delay(void)		{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); while(t2-t1 <= i2c_delay_time); }
+void i2c_delay_small(void)	{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); while(t2-t1 <= i2c_delay_time / 2); }
+
 
 // freq = 100..400 in kHzm if = 0 don't change/default
 void ICACHE_FLASH_ATTR i2c_Init(uint32 freq)
@@ -49,7 +51,7 @@ void ICACHE_FLASH_ATTR i2c_Init(uint32 freq)
 #endif
 }
 
-void i2c_Stop(void)
+void ICACHE_FLASH_ATTR i2c_Stop(void)
 {
 	SET_SDA_LOW;
 	SET_SCL_LOW;
@@ -68,7 +70,7 @@ uint8_t i2c_WriteBit(uint8_t bit)
 		SET_SDA_HI;
 	else
 		SET_SDA_LOW;
-	i2c_delay();
+	i2c_delay_small();
 	SET_SCL_HI;
 	i2c_delay();
 	#ifdef IC2_MULTI_MASTER
@@ -81,7 +83,7 @@ uint8_t i2c_WriteBit(uint8_t bit)
 uint8_t i2c_ReadBit(void)
 {
 	SET_SDA_HI;
-	i2c_delay();
+	i2c_delay_small();
 	SET_SCL_HI;
 	i2c_delay();
 	uint8_t bit = (GET_SDA) != 0;
@@ -117,7 +119,7 @@ uint8_t i2c_Read(uint8_t ack)
 }
 
 // Return: 1 - failed, 0 - ok,
-uint8_t i2c_Start(uint8_t addr)
+uint8_t ICACHE_FLASH_ATTR i2c_Start(uint8_t addr)
 {
 #ifdef IC2_MULTI_MASTER
 	uint8_t i;

@@ -11,6 +11,10 @@
 #include "sdk/flash.h"
 #include "webfs.h"
 
+#if DEBUGSOO > 5
+#include "hw/uart_register.h"
+#endif
+
 // Supports long file names to 64 characters
 #define MAX_FILE_NAME_LEN   64 // VarNameSize
 uint32 disk_base_addr DATA_IRAM_ATTR;
@@ -21,7 +25,7 @@ uint32 disk_base_addr DATA_IRAM_ATTR;
  *
  *     [F][W][E][B][uint8 Ver Hi][uint8 Ver Lo] // заголовок диска
  *     [uint16 Number of Files] // кол-во файлов на диске
- *     [Name Hash 0]...[Name Hash N] // uint16 типа хеш на каждое имя файла 
+ *     [Name Hash 0]...[Name Hash N] // uint16 типа хеш на каждое имя файла
  *     [File Record 0]...[File Record N] // uint32 указатели на адреса структур файлов, относительно начала диска
  *
  * File Record Structure:
@@ -243,18 +247,11 @@ bool ICACHE_FLASH_ATTR WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEE
 
 		// Seek backwards offset uint8s
 		case WEBFS_SEEK_REWIND:
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-			temp = WEBFSGetStartAddr(hWEBFS);
-			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
-				return false;
-
-=======
 		/* Disable check for speedup in some cases
 			temp = WEBFSGetStartAddr(hWEBFS);
 			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
 				return false;
 		*/
->>>>>>> 44c67f1 fix WEBFS crash on some functions
 			WEBFSStubs[hWEBFS].addr -= dwOffset;
 			WEBFSStubs[hWEBFS].bytesRem += dwOffset;
 			return true;
@@ -286,13 +283,13 @@ void ICACHE_FLASH_ATTR GetFATRecord(uint32 fatID)
 	WEBFS_FHEADER fhead;
 	if(fatID == fatCacheID || fatID >= numFiles) return;
 	// Read the FAT record to the cache
-	WEBFSStubs[0].bytesRem = sizeof(fhead) + 4;
-	WEBFSStubs[0].addr = 12 + numFiles*2 + fatID *4;
-	WEBFSGetArray(0, (uint8 *)&fatCache.data, 4);
+	WEBFSStubs[0].bytesRem = sizeof(fatCache.data) + sizeof(fhead);
+	WEBFSStubs[0].addr = sizeof(WEBFS_DISK_HEADER) + numFiles*2 + fatID *4; // head size + hash filename table + fat entry
+	WEBFSGetArray(0, (uint8 *)&fatCache.data, sizeof(fatCache.data));
 	WEBFSStubs[0].addr = fatCache.data;
 	WEBFSGetArray(0, (uint8 *)&fhead, sizeof(fhead));
 	fatCache.len = fhead.blksize - fhead.headlen;
-	fatCache.string = fatCache.data + 8;
+	fatCache.string = fatCache.data + sizeof(WEBFS_FHEADER);
 	fatCache.flags = fhead.flags;
 	fatCache.data = fatCache.data + fhead.headlen;
 	fatCacheID = fatID;
@@ -471,8 +468,39 @@ uint32 ICACHE_FLASH_ATTR WEBFS_base_addr(void)
 	return addr;
 }
 
-// Save cData to begin of the file. Max size of cData = flash sector size (4096)
-bool ICACHE_FLASH_ATTR WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint16 wLen)
+// Save cData to begin of the file.
+// wLen must be less or equal the filesize
+// return 0 if success, otherwise an error code: 1 - wLen too big, 2 - not enough memory
+uint32 ICACHE_FLASH_ATTR WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint32 wLen)
 {
-	return false;
+	if(hWEBFS > MAX_WEBFS_OPENFILES || WEBFSStubs[hWEBFS].addr == WEBFS_INVALID) return 7;
+	if(wLen > flashchip_sector_size || wLen > WEBFSGetSize(hWEBFS)) return 1;
+	uint32 addr = WEBFS_HEAD_ADDR + WEBFSGetStartAddr(hWEBFS);
+	if(addr == WEBFS_INVALID) return 3;
+	uint8 *buf = os_malloc(flashchip_sector_size);
+	if(buf == NULL) return 2;
+	while(wLen) {
+		uint32 sect_addr = addr & (flashchip_sector_size - 1);
+		addr &= ~(flashchip_sector_size - 1);
+		if(spi_flash_read(addr, buf, flashchip_sector_size) != SPI_FLASH_RESULT_OK) {
+			os_free(buf);
+			return 4;
+		}
+		if(spi_flash_erase_sector(addr / flashchip_sector_size) != SPI_FLASH_RESULT_OK) {
+			os_free(buf);
+			return 5;
+		}
+		uint32 len = flashchip_sector_size - sect_addr;
+		if(len > wLen) len = wLen;
+		os_memcpy(buf + sect_addr, cData, len);
+		if(spi_flash_write(addr, (uint32 *)buf, flashchip_sector_size) != SPI_FLASH_RESULT_OK) {
+			os_free(buf);
+			return 6;
+		}
+		cData += len;
+		addr += flashchip_sector_size; // next sector
+		wLen -= len;
+	}
+	os_free(buf);
+	return 0;
 }

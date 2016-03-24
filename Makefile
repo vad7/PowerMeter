@@ -208,17 +208,11 @@ else
 	@dd if=../bin/rapid_loader_40m.bin >../bin/$(ADDR_FW1).bin
 endif	
 	@dd if=../bin/0.bin >>../bin/$(ADDR_FW1).bin
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-	@$(PYTHON) ../bin/make_firmware_image.py ../bin/
-	$(OVLTOOL) $< ../ld/labels.ld
-	@make -C ../ovls
-=======
 # disable overlays make
 #	$(OVLTOOL) $< ../ld/labels.ld
 #	@make -C ../ovls
 #
 	@$(PYTHON) ../bin/make_firmware_image.py ../bin/
->>>>>>> 44c67f1 fix WEBFS crash on some functions
 	@echo "Fullflash firmware.bin size  : " $(shell printf '%u\n' $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )
 	@echo "Max firmware.bin size for OTA: " $(shell printf '%u\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) )) )
 	@echo "*Space available to allow OTA: " $(shell printf '%d\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) - $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )) )

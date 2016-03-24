@@ -35,8 +35,8 @@ uint32	I2C_EEPROM_Error;
 #define I2C_ACK				0
 
 void 	i2c_Init(uint32 delay_us) ICACHE_FLASH_ATTR;
-uint8_t i2c_Start(uint8_t addr);
-void 	i2c_Stop(void);
+uint8_t i2c_Start(uint8_t addr) ICACHE_FLASH_ATTR;
+void 	i2c_Stop(void) ICACHE_FLASH_ATTR;
 uint8_t i2c_WriteBit(uint8_t bit);
 uint8_t i2c_ReadBit(void);
 uint8_t i2c_Write(uint8_t data);

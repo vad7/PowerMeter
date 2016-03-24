@@ -38,6 +38,10 @@
 #include "overlay.h"
 #endif
 
+#if DEBUGSOO > 5
+#include "hw/uart_register.h"
+#endif
+
 #define USE_WEB_NAGLE // https://en.wikipedia.org/wiki/Nagle%27s_algorithm
 #define MIN_REQ_LEN  7  // Minimum length for a valid HTTP/0.9 request: "GET /\r\n" -> 7 bytes
 #define CRLF "\r\n"
@@ -889,77 +893,12 @@ LOCAL void ICACHE_FLASH_ATTR web_send_fnohanle(TCP_SERV_CONN *ts_conn) {
 }
 /******************************************************************************
 *******************************************************************************/
-LOCAL int ICACHE_FLASH_ATTR web_find_cbs(uint8 * chrbuf, uint32 len) {
+int32 ICACHE_FLASH_ATTR web_find_cbs(uint8 * chrbuf, int32 len) {
   int i;
   for(i = 0; i < len; i++)  if(chrbuf[i] == '~')  return i;
   return -1;
 }
 
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-// Парсинг msgbuf, замена переменных ~x~, вызов callback
-void ICACHE_FLASH_ATTR webserver_parse_buf(TCP_SERV_CONN *ts_conn)
-{
-	WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
-	do { // начинаем с пустого буфера
-		if(CheckSCB(SCB_RETRYCB)) { // повторный callback? да
-#if DEBUGSOO > 2
-			os_printf("rcb ");
-#endif
-			if(web_conn->func_web_cb != NULL) web_conn->func_web_cb(ts_conn);
-			if(CheckSCB(SCB_RETRYCB)) break; // повторить ещё раз? да.
-		}
-		else {
-			uint8 *pstr = &web_conn->msgbuf[web_conn->msgbuflen]; // указатель в буфере
-			// запомнить указатель в файле. ftell(fp)
-			uint32 max = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, SCB_SEND_SIZE); // читаем по 128 байт ?
-			uint32 len = WEBFSGetArray(web_conn->webfile, pstr, max);
-			// прочитано len байт в буфер по указателю &sendbuf[msgbuflen]
-			if(len) { // есть байты для передачи, ищем string "~calback~"
-				int cmp = web_find_cbs(pstr, len);
-				if(cmp >= 0) { // найден calback
-					// откат файла
-					WEBFSStubs[web_conn->webfile].addr -= len;
-					WEBFSStubs[web_conn->webfile].bytesRem += len;
-					// передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
-					WEBFSStubs[web_conn->webfile].addr += cmp+1;
-					WEBFSStubs[web_conn->webfile].bytesRem -= cmp+1;
-					// это второй маркер?
-					if(CheckSCB(SCB_FINDCB)) { // в файле найден закрывающий маркер calback
-						ClrSCB(SCB_FINDCB); // прочитали string calback-а
-						if(cmp != 0) { // это дубль маркера ? нет.
-							// запустить calback
-							pstr[cmp] = '\0'; // закрыть string calback-а
-							if(!os_memcmp((void*)pstr, "inc:", 4)) { // "inc:file_name"
-								if(!web_inc_fopen(ts_conn, &pstr[4])) {
-									tcp_strcpy_fd("file not found!");
-								};
-							}
-							else web_int_callback(ts_conn, pstr);
-						}
-						else { // Дубль маркера.
-							web_conn->msgbuflen++; // передать только маркер ('~')
-						};
-					}
-					else {
-						SetSCB(SCB_FINDCB); // в файле найден стартовый маркер calback
-						web_conn->msgbuflen += cmp;  // передать до стартового маркера calback
-					};
-				}
-				else {  // просто данные
-					ClrSCB(SCB_FINDCB);
-					if(len < max) {
-						if(web_inc_fclose(web_conn)) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // файл(ы) закончилсь совсем? да.
-					};
-					web_conn->msgbuflen += len; // добавить кол-во считанных байт для передачи.
-				};
-			}
-			else if(web_inc_fclose(web_conn)) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // файл(ы) закончилсь совсем? да.
-		};  // not SCB_RETRYCB
-	} // набираем буфер
-	while((web_conn->msgbufsize - web_conn->msgbuflen >= SCB_SEND_SIZE)&&(!CheckSCB(SCB_FCLOSE | SCB_RETRYCB | SCB_DISCONNECT)));
-}
-=======
->>>>>>> 44c67f1 fix WEBFS crash on some functions
 /******************************************************************************
  * FunctionName : webserver_send_fdata
  * Description  : Sent callback function to call for this espconn when data

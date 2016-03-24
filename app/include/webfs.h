@@ -102,13 +102,10 @@ uint32 WEBFSGetPosition(WEBFS_HANDLE hWEBFS) ICACHE_FLASH_ATTR;
 uint32 WEBFS_max_size(void) ICACHE_FLASH_ATTR;
 uint32 WEBFS_curent_size(void) ICACHE_FLASH_ATTR;
 uint32 WEBFS_base_addr(void) ICACHE_FLASH_ATTR;
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
 bool WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEEK_MODE tMode) ICACHE_FLASH_ATTR;
 void GetFATRecord(uint32 fatID) ICACHE_FLASH_ATTR;
 void WEBFS_Update(void) ICACHE_FLASH_ATTR;
-
->>>>>>> 44c67f1 fix WEBFS crash on some functions
+uint32 WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint32 wLen) ICACHE_FLASH_ATTR;
 
 #ifdef USE_MAX_IRAM
 extern int isWEBFSLocked; // Lock WEBFS access during the upgrade

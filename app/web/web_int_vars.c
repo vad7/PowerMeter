@@ -31,6 +31,7 @@
 #include "web_iohw.h"
 #include "wifi_events.h"
 #include "power_meter.h"
+#include "iot_cloud.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -333,18 +334,15 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		}
 		else ifcmp("meter_") {
 			cstr+=6;
-			ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
-			else ifcmp("TotalCnt") fram_store.TotalCnt = val;
+			ifcmp("TotalCnt") fram_store.TotalCnt = val;
+			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
-			else ifcmp("iot_ini_file") {
-				os_memcpy(cfg_meter.iot_ini, pvar, os_strlen(pvar) + 1);
-				iot_cloud_init();
-			}
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
+//			else ifcmp("iot_ini_file") {
+//				os_memcpy(cfg_meter.iot_ini, pvar, os_strlen(pvar) + 1);
+//				iot_cloud_init();
+//			}
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -392,6 +390,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		}
 		else ifcmp("add_") {
 			cstr+=4;
+			len += os_strlen(iot_get_request_tpl) + os_strlen(iot_server_name);
 			IOT_DATA *iot = iot_data_first;
 			IOT_DATA *new_iot = os_zalloc(sizeof(IOT_DATA) + len);
 			if(new_iot != NULL) {
@@ -400,10 +399,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 					while(iot->next != NULL) iot = iot->next;
 					iot->next = new_iot;
 				}
-				os_memcpy(new_iot->iot_url_params, pvar, len);
+				ets_sprintf(new_iot->iot_request, iot_get_request_tpl, pvar, iot_server_name);
 				new_iot->min_interval = ahextoul(cstr);
 				#if DEBUGSOO > 4
-					os_printf("iot_cloud: %s, %u\n", new_iot->iot_url_params, new_iot->min_interval);
+					os_printf("iot_cloud: %s, %u\n", new_iot->iot_request, new_iot->min_interval);
 				#endif
 			}
 		}

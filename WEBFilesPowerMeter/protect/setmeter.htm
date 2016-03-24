@@ -9,10 +9,12 @@
 ~inc:menu0.inc~
 	<div class="content">
 		<h2 class="title">Power Meter Setup</h2>
-		<form method="post" action="">
+		<form method="post" action="" onsubmit="SubmitFunction()">
 			<table class="form">
 				<tr>
-					<td class="label">Total counter (kWt * ~PulsesPerKWt~):</td>
+					<td class="label">Total cnt, kWt * ~PulsesPerKWt~:
+					<input title='change?' type='checkbox' name='change_totalcnt' value='0'>
+					</td>
 					<td><input title='0..4294967295' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'></td>
 				</tr>
 				<tr>
@@ -20,23 +22,25 @@
 					<td><input title='100,200,300,..10000' name='cfg_meter_PulsesPerKWt' maxlength='5' value='~PulsesPerKWt~'></td>
 				</tr>
 				<tr>
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
 					<td class="label">Delimiter in .csv:</td>
 					<td><input title='char' name='cfg_meter_csv_delim' maxlength='1' value='~csv_delim~'></td>
 				</tr>
 				<tr>
-					<td class="label">IoT cloud ini file name:</td>
-					<td><input title='iot_cloud.ini' name='cfg_meter_iot_ini_file' maxlength='15' value='~iot_ini_file~'></td>
+					<td class="label">IoT cloud setup:
+					<input title='change?' type='checkbox' name='change_iot_ini' value='0'></td>
+					<td><textarea title='protect/iot_cloud.ini' name='cfg_meter_iot_ini' rows=4 cols=50 wrap="off" maxlength=1023>~iot_ini_file~</textarea></td>
 				</tr>
 				<tr>
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 					<td class="label">FRAM size (bytes):</td>
 					<td><input title='1024..' name='cfg_meter_Fram_Size' maxlength='10' value='~Fram_Size~'></td>
 				</tr>
 				<tr>
+					<td class="label">Frequence of i2c bus:</td>
+					<td><input title='100..400' name='cfg_meter_i2c_freq' maxlength='4' value='~i2c_freq~'></td>
+				</tr>
+				<tr>
 					<td class="label">Reset all data:</td>
-					<td><input title='Enter password' name='cfg_meter_reset_data' maxlength='10' value=''></td>
+					<td><input title='Enter magic word' name='cfg_meter_reset_data' maxlength='10' value=''></td>
 				</tr>
  			</table>
 		<p class="center">
@@ -46,5 +50,14 @@
  		</form>
 	</div>
 ~inc:footer.inc~
+<script type="text/javascript">
+function SubmitFunction() {
+	if(!document.getElementsByName('change_totalcnt')[0].checked) {
+		document.getElementsByName('cfg_meter_TotalCnt')[0].removeAttribute('name');
+	}
+	if(!document.getElementsByName('change_iot_ini')[0].checked) {
+		document.getElementsByName('cfg_meter_iot_ini')[0].removeAttribute('name');
+	}
+}
 </script>
 </body></html>

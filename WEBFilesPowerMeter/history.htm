@@ -3,10 +3,29 @@
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
 	<title>History</title>
 	<link rel="stylesheet" href="/style.css">
-</head><body>
+</head>
+<style>
+svg {
+	font: 8px sans-serif;
+}
+.area {
+	fill: steelblue;
+	clip-path: url(#clip);
+}
+.axis path,
+.axis line {
+	fill: none;
+	stroke: #000;
+	shape-rendering: crispEdges;
+}
+.brush .extent {
+	stroke: #fff;
+	fill-opacity: .125;
+	shape-rendering: crispEdges;
+}
+</style>
+<body>
 ~inc:menu0.inc~
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 var margin = {top: 10, right: 10, bottom: 80, left: 40},
@@ -119,14 +138,7 @@ function type(d) {
 	return d;
 }
 </script>
->>>>>>> 241edd3 upd chart, csv
 <br><br><br>
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-
-<a href='/protect/fram_all.bin'>Download all FRAM memory</a><br><br>
-<br><br>
-Time: <span id='sntptime'>SNTP disable</span><br>
-=======
 <form method="post" action="history.htm">
 Max days: <input title='0 - all' name='ChartMaxDays' maxlength='10' value='~ChartMaxDays~'>
 <input type='submit' value='Refresh' class="button">
@@ -135,8 +147,6 @@ Max days: <input title='0 - all' name='ChartMaxDays' maxlength='10' value='~Char
 <br>
 <a href='history.csv'>Download history.csv</a><br>
 <a href='/protect/fram_all.bin'>Download all FRAM memory</a><br>
->>>>>>> 241edd3 upd chart, csv
 </p></div>
 ~inc:footer.inc~
-~inc:time.inc~
 </body></html>

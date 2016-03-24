@@ -952,6 +952,7 @@ dns_gethostbyname(const char *hostname, ip_addr_t *addr, dns_found_callback foun
     return ERR_OK;
   }
 
+
   /* queue query with specified callback */
   return dns_enqueue(hostname, found, callback_arg);
 }

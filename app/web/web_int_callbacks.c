@@ -30,6 +30,7 @@
 #include "power_meter.h"
 #include "driver/i2c.h"
 #include "time.h"
+#include "iot_cloud.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -132,6 +133,47 @@ void ICACHE_FLASH_ATTR web_test_adc(TCP_SERV_CONN *ts_conn)
     SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // connection close
 }
 #endif // TEST_SEND_WAVE
+
+void ICACHE_FLASH_ATTR web_callback_file(TCP_SERV_CONN *ts_conn)
+{
+	WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *) ts_conn->linkd;
+	WEBFS_HANDLE fp = web_conn->udata_stop; // file handle
+	if(fp != WEBFS_INVALID_HANDLE) {
+/*	    if(CheckSCB(SCB_RETRYCB)==0) {
+	    	if(web_conn->udata_start == web_conn->udata_stop) return;
+				#if DEBUGSOO > 2
+					os_printf("i2c from:%u ", web_conn->udata_start);
+				#endif
+	    }
+	    // Get/put as many bytes as possible
+	    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, FRAM_MAX_BLOCK_AT_ONCE);
+	#if DEBUGSOO > 2
+		os_printf("%u+%u ",web_conn->udata_start, len);
+	#endif
+		if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
+			os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
+			//FRAM_Status = 2;
+		} else {
+			web_conn->udata_start += len;
+			web_conn->msgbuflen += len;
+			if(web_conn->udata_start < web_conn->udata_stop) {
+				SetSCB(SCB_RETRYCB);
+	    		SetNextFunSCB(web_get_i2c_eeprom);
+	    		return;
+	    	}
+	    }
+	    ClrSCB(SCB_RETRYCB);
+	//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
+	    return;
+	}
+*/
+
+		WEBFSClose(fp);
+	}
+
+
+}
+
 //===============================================================================
 // WiFi Saved Aps XML
 //-------------------------------------------------------------------------------
@@ -346,10 +388,6 @@ void ICACHE_FLASH_ATTR web_hexdump(TCP_SERV_CONN *ts_conn)
     return;
 }
 
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-// Output history by 1 min from last record to previous
-// dd.mm.yyyy;hh:mm;nnn
-=======
 //---------------------------- output history.csv ---------------------------
 typedef struct {
 	uint32 	PtrCurrent;
@@ -392,23 +430,8 @@ bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, ti
 // Output history by 1 min from last record to previous,
 // web_conn->udata_stop - how many minutes out, if minutes = 0 - all records
 // yyyy-mm-dd hh:mm:00,n
->>>>>>> 241edd3 upd chart, csv
 void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 {
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-	typedef struct {
-		uint32 PtrCurrent;
-		time_t LastTime;
-		bool FlagContinue;
-		int32 len;
-		int32 i;
-		bool packed_flag;
-		uint8 n;
-		uint8 buf[32];
-		char str[50];
-	} history_output;
-=======
->>>>>>> 241edd3 upd chart, csv
 	history_output * hst;
 	int32 len, i;
 	uint8 n;
@@ -420,43 +443,25 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 		os_printf("Output History ");
 #endif
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-		hst = os_malloc(sizeof(history_output));
-		web_conn->udata_stop = (uint32)hst;
-=======
 		hst = os_zalloc(sizeof(history_output));
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 		if(hst == NULL) {
 			#if DEBUGSOO > 2
 				os_printf("Error malloc: %u\n", sizeof(history_output));
 			#endif
 			return;
 		}
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-		os_memset(hst, 0, sizeof(history_output));
-=======
 		hst->minutes = web_conn->udata_stop;
 		web_conn->udata_stop = (uint32)hst;
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
 		hst->PtrCurrent = fram_store.PtrCurrent;
 		if(CntCurrent.Cnt2) { // packed available
-			hst->PtrCurrent += 2;
+			hst->PtrCurrent += CntCurrent.Cnt2 == 1 ? 1 : 2; // 0,1 in CurrentCnt is 0 last minute
 			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-    } else hst = (history_output *)web_conn->udata_stop;
-=======
 		hst->previous_n = -1;
 		tcp_puts("date,power\r\n"); // csv header
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
->>>>>>> 241edd3 upd chart, csv
     // Get/put as many bytes as possible
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-	SetNextFunSCB(web_get_history);
-    ClrSCB(SCB_RETRYCB);
-=======
->>>>>>> 241edd3 upd chart, csv
 	if(hst->FlagContinue) {
 		len = hst->len;
 		i = hst->i;
@@ -470,77 +475,22 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		#if DEBUGSOO > 4
 			os_printf(" st %u -> len: %u, ", hst->PtrCurrent, len);
 		#endif
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-		SetNextFunSCB(NULL);
-		//FRAM_Status = 2;
-	} else {
-		if(len == 1) {
-			hst->PtrCurrent = cfg_meter.Fram_Size - StartArrayOfCnts - 1;
-			if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
-
-		}
-
-		for(i = len - 1; i > 0; i--) { // first byte may be not proceeded
-			n = hst->buf[i];
-=======
 		if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 xErrorI2C:
->>>>>>> 241edd3 upd chart, csv
 			#if DEBUGSOO > 2
 				os_printf("i2c R error\n");
 			#endif
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-			packed_flag = hst->buf[i-1] == 0; // packed
-			if(packed_flag) {
-				if(n == 0) {
-					os_free(hst);
-					SetNextFunSCB(NULL);
-					break; // end
-				}
-				if(n != 1) i--; // special case "0,1" - first min = 0, second min = 1
-=======
 			break;
 		} else {
 			if(len == 1) { // may be packed - load previous byte from end
 				hst->buf[1] = hst->buf[0];
 				if(i2c_eeprom_read_block(I2C_FRAM_ID, cfg_meter.Fram_Size - 1, hst->buf, 1)) goto xErrorI2C;
 				len = 2;
->>>>>>> 241edd3 upd chart, csv
 			}
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-			do {
-				struct tm tm;
-xContinue:
-				_localtime(&hst->LastTime, &tm);
-				uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00;%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, packed_flag ? 0 : n);
-				if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
-					hst->len = len;
-					hst->i = i;
-					hst->n = n;
-					hst->packed_flag = packed_flag;
-					hst->FlagContinue = 1;
-					#if DEBUGSOO > 2
-						os_printf("Buf full: %d, %d, %d\n", len, i, n);
-					#endif
-					return;
-				}
-				os_memcpy(&web_conn->msgbuf[web_conn->msgbuflen], hst->str, L);
-				web_conn->msgbuflen += L;
-//				if(n) {
-//					uint32 KWT = n * 10 / cfg_meter.PulsesPer0_01KWt;
-//					tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
-//				} else {
-//					tcp_puts("0.000\n");
-//				}
-				hst->LastTime -= 60; // -60 sec
-				#if DEBUGSOO > 2
-					os_printf("pos %d=>%d,%d, %02d.%02d.%04d %02d:%02d:%02d\n", i, packed_flag, n, tm.tm_mday, tm.tm_mon, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec);
-=======
 			for(i = len - 1; i > 0; i--) { // first byte may be not proceeded
 				n = hst->buf[i];
 				#if DEBUGSOO > 4
 					os_printf(" %d=%d ", i, n);
->>>>>>> 241edd3 upd chart, csv
 				#endif
 				packed_flag = hst->buf[i-1] == 0; // packed
 				if(packed_flag) {
@@ -589,16 +539,6 @@ xBufferFull:
 				#endif
 			}
 		}
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-		if(i <= 0) { // buffer was proceeded
-			hst->PtrCurrent -= len - 1 - i;
-			hst->FlagContinue = 0;
-			#if DEBUGSOO > 2
-				os_printf("H ptr_curr: %u, t%u\n", hst->PtrCurrent, hst->LastTime);
-			#endif
-		}
-	}
-=======
 	} while(1);
 xEnd:
 	#if DEBUGSOO > 4
@@ -608,7 +548,6 @@ xEnd:
 	web_conn->udata_stop = 0;
 	ClrSCB(SCB_RETRYCB);
 	//FRAM_Status = 2;
->>>>>>> 241edd3 upd chart, csv
 }
 
 // Output i2c from eeprom web_conn->udata_start, end: web_conn->udata_stop
@@ -1220,10 +1159,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 #endif
         	// history.bin
         	else ifcmp("history") {
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
         		web_conn->udata_stop = WebChart_MaxMinutes; // how many minutes, 0 = all
->>>>>>> 241edd3 upd chart, csv
     			web_get_history(ts_conn);
         	}
         	// fram_all.bin
@@ -1415,23 +1351,21 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
         	cstr += 8;
         	ifcmp("_New") { // only new value
-        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_RETRYCB; // do not send data to IoT cloud
+        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
         	}
         	KWT_Previous = KWT;
         }
         else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-=======
         else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
         else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
->>>>>>> 241edd3 upd chart, csv
-=======
-        else ifcmp("iot_ini_file") tcp_puts("%s", cfg_meter.iot_ini);
->>>>>>> 14408d6 tcp client (IoT cloud), buffer parsing with web_int_callback
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
+        else ifcmp("iot_ini_file") {
+    		web_conn->udata_start = WEBFSOpen(iot_cloud_ini); // file handle
+    		web_conn->udata_stop = 0; // pos in the file
+        	web_callback_file(ts_conn);
+        }
 // PowerMeter
 		else tcp_put('?');
 }
