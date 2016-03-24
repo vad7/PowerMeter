@@ -30,6 +30,7 @@
 #include "power_meter.h"
 #include "driver/i2c.h"
 #include "time.h"
+#include "iot_cloud.h"
 
 #ifdef USE_NETBIOS
 #include "netbios.h"
@@ -132,6 +133,47 @@ void ICACHE_FLASH_ATTR web_test_adc(TCP_SERV_CONN *ts_conn)
     SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // connection close
 }
 #endif // TEST_SEND_WAVE
+
+void ICACHE_FLASH_ATTR web_callback_file(TCP_SERV_CONN *ts_conn)
+{
+	WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *) ts_conn->linkd;
+	WEBFS_HANDLE fp = web_conn->udata_stop; // file handle
+	if(fp != WEBFS_INVALID_HANDLE) {
+/*	    if(CheckSCB(SCB_RETRYCB)==0) {
+	    	if(web_conn->udata_start == web_conn->udata_stop) return;
+				#if DEBUGSOO > 2
+					os_printf("i2c from:%u ", web_conn->udata_start);
+				#endif
+	    }
+	    // Get/put as many bytes as possible
+	    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, FRAM_MAX_BLOCK_AT_ONCE);
+	#if DEBUGSOO > 2
+		os_printf("%u+%u ",web_conn->udata_start, len);
+	#endif
+		if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
+			os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
+			//FRAM_Status = 2;
+		} else {
+			web_conn->udata_start += len;
+			web_conn->msgbuflen += len;
+			if(web_conn->udata_start < web_conn->udata_stop) {
+				SetSCB(SCB_RETRYCB);
+	    		SetNextFunSCB(web_get_i2c_eeprom);
+	    		return;
+	    	}
+	    }
+	    ClrSCB(SCB_RETRYCB);
+	//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
+	    return;
+	}
+*/
+
+		WEBFSClose(fp);
+	}
+
+
+}
+
 //===============================================================================
 // WiFi Saved Aps XML
 //-------------------------------------------------------------------------------
@@ -1317,9 +1359,13 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
         else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
         else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
-//        else ifcmp("iot_ini_file") tcp_puts("%s", cfg_meter.iot_ini);
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
+        else ifcmp("iot_ini_file") {
+    		web_conn->udata_start = WEBFSOpen(iot_cloud_ini); // file handle
+    		web_conn->udata_stop = 0; // pos in the file
+        	web_callback_file(ts_conn);
+        }
 // PowerMeter
 		else tcp_put('?');
 }

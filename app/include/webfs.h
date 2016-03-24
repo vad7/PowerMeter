@@ -105,7 +105,7 @@ uint32 WEBFS_base_addr(void) ICACHE_FLASH_ATTR;
 bool WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEEK_MODE tMode) ICACHE_FLASH_ATTR;
 void GetFATRecord(uint32 fatID) ICACHE_FLASH_ATTR;
 void WEBFS_Update(void) ICACHE_FLASH_ATTR;
-
+uint32 WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint32 wLen) ICACHE_FLASH_ATTR;
 
 #ifdef USE_MAX_IRAM
 extern int isWEBFSLocked; // Lock WEBFS access during the upgrade

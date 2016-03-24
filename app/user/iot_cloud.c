@@ -38,14 +38,14 @@
 #include "iot_cloud.h"
 
 uint8 iot_cloud_ini[] = "protect/iot_cloud.ini";
-uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0/\r\nHost: %s\r\n\r\n";
+uint8 iot_get_request_tpl[] = "GET %s HTTP/1.1\r\nHost: %s\r\nAccept: text/*\r\n\r\n";
 uint8 key_http_ok[] = "HTTP/1.? 200 OK\r\n";
 
 os_timer_t error_timer;
 ip_addr_t tc_remote_ip;
-int tc_init_flg; // внутренние флаги инициализации
-uint32 tc_head_size; // используется для разбора HTTP ответа
 TCP_SERV_CFG * tc_servcfg;
+
+int tc_init_flg; // внутренние флаги инициализации
 
 #define TC_INITED 		(1<<0)
 #define TC_RUNNING		(1<<1)
@@ -95,16 +95,18 @@ err_t ICACHE_FLASH_ATTR tc_recv(TCP_SERV_CONN *ts_conn) {
 	tc_init_flg &= ~TC_RUNNING; // clear run flag
     uint8 *pstr = ts_conn->pbufi;
     sint32 len = ts_conn->sizei;
-    if(tc_head_size == 0) {
-        if(len < sizeof(key_http_ok) +2 -1) {
-        	return ERR_OK;
-        }
-        if(!str_cmp_wildcards(pstr, key_http_ok)) { // NOT OK
-        	tc_close();
-        	return ERR_OK;
-        }
-	   	ts_conn->flag.rx_null = 1; // stop receiving data
-    }
+#if DEBUGSOO > 4
+    os_printf("IOT_Rec(%u): %s\n", len, pstr);
+#endif
+	if(len >= sizeof(key_http_ok)) {
+		if(!str_cmp_wildcards(pstr, key_http_ok)) { // NOT OK
+			#if DEBUGSOO > 4
+				os_printf("Ok!!!\n");
+			#endif
+		}
+	}
+	//ts_conn->flag.rx_null = 1; // stop receiving data
+   	tc_close();
 	return ERR_OK;
 }
 
@@ -123,8 +125,10 @@ void tc_parse_buf(TCP_SERV_CONN *ts_conn, uint8 *buf, int32_t len)
 			buf += cmp + 1 + cbs_not_closed;
 			len -= cmp + 1 + cbs_not_closed;
 			if(!cbs_not_closed) { // parse
+				uint8 c = buf[cmp2];
 				buf[cmp2] = '\0';
 				web_int_callback(ts_conn, buf);
+				buf[cmp2] = c;
 				buf += cmp2 + 1; // skip closing '~'
 				len -= cmp2 + 1;
 			}
@@ -216,7 +220,6 @@ void ICACHE_FLASH_ATTR tc_dns_found_callback(uint8 *name, ip_addr_t *ipaddr, voi
 	if(tc_servcfg != NULL) {
 		if(ipaddr != NULL && ipaddr->addr != 0) {
 			tc_remote_ip = *ipaddr;
-			tc_head_size = 0;
 			err_t err = tcpsrv_client_start(tc_servcfg, tc_remote_ip.addr, DEFAULT_TC_HOST_PORT);
 			if (err != ERR_OK) {
 #if DEBUGSOO > 4
@@ -240,6 +243,10 @@ void ICACHE_FLASH_ATTR close_dns_finding(void){
 				/* flush this entry */
 				dns_table[i].found = NULL;
 				dns_table[i].state = DNS_STATE_UNUSED;
+#if DEBUGSOO > 4
+	os_printf("DNS unused: %s\n", dns_table[i].name);
+#endif
+
 			}
 		}
 		tc_init_flg &= ~TC_RUNNING;
@@ -264,7 +271,7 @@ err_t ICACHE_FLASH_ATTR tc_go(void)
 #if DEBUGSOO > 4
 		int i;
 		for (i = 0; i < DNS_TABLE_SIZE; ++i) {
-			os_printf("TDNS%d: %d, %s: " IPSTR "\n", i, dns_table[i].state, dns_table[i].name, dns_table[i].ipaddr);
+			os_printf("TDNS%d: %d, %s: %x\n", i, dns_table[i].state, dns_table[i].name, dns_table[i].ipaddr);
 		}
 #endif
 
@@ -273,7 +280,6 @@ err_t ICACHE_FLASH_ATTR tc_go(void)
 		os_printf("dns_gethostbyname(%s)=%d ", iot_server_name, err);
 #endif
 		if(err == ERR_OK) {	// Адрес разрешен из кэша или локальной таблицы
-			tc_head_size = 0;
 			err = tcpsrv_client_start(tc_servcfg, tc_remote_ip.addr, DEFAULT_TC_HOST_PORT);
 		} else if(err == ERR_INPROGRESS) { // Запущен процесс разрешения имени с внешнего DNS
 			err = ERR_OK;
@@ -292,16 +298,15 @@ void tc_go_next(void)
 		close_dns_finding();
 		tc_init_flg &= ~TC_RUNNING; // clear
 	}
-	if(iot_data_processing != NULL) {
-		// next
-		while((iot_data_processing = iot_data_processing->next) != NULL) {
-			if(iot_data_processing->last_run + iot_data_processing->min_interval <= system_get_time()) { // если рано - пропускаем
-				if(tc_go() == ERR_OK) {
-					iot_data_processing->last_run = system_get_time();
-					break;
-				}
+	// next
+	while(iot_data_processing != NULL) {
+		if(iot_data_processing->last_run + iot_data_processing->min_interval <= system_get_time()) { // если рано - пропускаем
+			if(tc_go() == ERR_OK) {
+				iot_data_processing->last_run = system_get_time();
+				break;
 			}
 		}
+		iot_data_processing = iot_data_processing->next;
 	}
 	if(iot_data_processing == NULL) ets_timer_disarm(&error_timer); // stop timer
 }
@@ -344,14 +349,14 @@ void ICACHE_FLASH_ATTR iot_data_clear(void)
 void ICACHE_FLASH_ATTR iot_cloud_send(uint8 fwork)
 {
 	if((tc_init_flg & TC_INITED) == 0) return;
-	if((tc_init_flg & TC_RUNNING)) return; // exit if process active
 	if(fwork == 0) { // end
 		close_dns_finding();
 		return;
 	}
+	if((tc_init_flg & TC_RUNNING)) return; // exit if process active
 	if(iot_data_first == NULL || !flg_open_all_service || wifi_station_get_connect_status() != STATION_GOT_IP) return; // st connected?
 	if(iot_data_first != NULL) {
-		iot_data_processing = iot_data_first;
+		if(iot_data_processing == NULL) iot_data_processing = iot_data_first;
 		tc_go_next();
 	}
 }

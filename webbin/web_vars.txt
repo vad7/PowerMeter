@@ -204,7 +204,7 @@ PulsesPerKWt
 TotalCnt
 PulsesPerKWt
 csv_delim
-inc:protect/iot_cloud.ini
+iot_ini_file
 Fram_Size
 i2c_freq
 inc:footer.inc

@@ -290,8 +290,10 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		#endif
 		return;
 	}
-	if(fram_store.LastTime == 0xFFFFFFFF) { // new memory
+	if(fram_store.LastTime == 0xFFFFFFFF) { // new memory or error
 		os_memset(&fram_store, 0, sizeof(fram_store));
+		return;
+/* skip clear
 		if(i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
@@ -305,7 +307,8 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			#endif
 			return;
 		}
-	} else if(fram_store.LastTime) { // LastTime must be filled
+*/
+	} else if(fram_store.LastTime) { // LastTime must be filled to read CntCurrent
 		uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > 2) cnt = 2;
 		if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
