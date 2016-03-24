@@ -72,9 +72,6 @@ static uint16 fatCacheID;
 uint16 numFiles;
 #endif
 
-LOCAL void GetFATRecord(uint16 fatID);
-LOCAL void WEBFS_Update(void);
-
 /*****************************************************************************
   Function: 	void WEBFSInit(void)
   ***************************************************************************/
@@ -246,10 +243,18 @@ bool ICACHE_FLASH_ATTR WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEE
 
 		// Seek backwards offset uint8s
 		case WEBFS_SEEK_REWIND:
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 			temp = WEBFSGetStartAddr(hWEBFS);
 			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
 				return false;
 
+=======
+		/* Disable check for speedup in some cases
+			temp = WEBFSGetStartAddr(hWEBFS);
+			if(WEBFSStubs[hWEBFS].addr < temp + dwOffset)
+				return false;
+		*/
+>>>>>>> 44c67f1 fix WEBFS crash on some functions
 			WEBFSStubs[hWEBFS].addr -= dwOffset;
 			WEBFSStubs[hWEBFS].bytesRem += dwOffset;
 			return true;
@@ -276,7 +281,7 @@ bool ICACHE_FLASH_ATTR WEBFSSeek(WEBFS_HANDLE hWEBFS, uint32 dwOffset, WEBFS_SEE
   Returns:	None
   Remarks:	The FAT record will be stored in fatCache.
   ***************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR GetFATRecord(uint16 fatID)
+void ICACHE_FLASH_ATTR GetFATRecord(uint32 fatID)
 {
 	WEBFS_FHEADER fhead;
 	if(fatID == fatCacheID || fatID >= numFiles) return;
@@ -422,7 +427,7 @@ uint32  ICACHE_FLASH_ATTR WEBFSGetPosition(WEBFS_HANDLE hWEBFS)
   Parameters: None
   Returns: None
   ***************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR WEBFS_Update(void)
+void ICACHE_FLASH_ATTR WEBFS_Update(void)
 {
 	// Update numFiles
 	WEBFS_DISK_HEADER dhead;
@@ -464,4 +469,10 @@ uint32 ICACHE_FLASH_ATTR WEBFS_base_addr(void)
 	uint32 addr = WEBFS_DISK_ADDR_MINFLASH_START;
 	if(spi_flash_real_size() > FLASH_MIN_SIZE)	addr = WEBFS_DISK_ADDR_BIGFLASH;
 	return addr;
+}
+
+// Save cData to begin of the file. Max size of cData = flash sector size (4096)
+bool ICACHE_FLASH_ATTR WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint16 wLen)
+{
+	return false;
 }

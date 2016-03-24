@@ -895,6 +895,7 @@ LOCAL int ICACHE_FLASH_ATTR web_find_cbs(uint8 * chrbuf, uint32 len) {
   return -1;
 }
 
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 // Парсинг msgbuf, замена переменных ~x~, вызов callback
 void ICACHE_FLASH_ATTR webserver_parse_buf(TCP_SERV_CONN *ts_conn)
 {
@@ -957,6 +958,8 @@ void ICACHE_FLASH_ATTR webserver_parse_buf(TCP_SERV_CONN *ts_conn)
 	} // набираем буфер
 	while((web_conn->msgbufsize - web_conn->msgbuflen >= SCB_SEND_SIZE)&&(!CheckSCB(SCB_FCLOSE | SCB_RETRYCB | SCB_DISCONNECT)));
 }
+=======
+>>>>>>> 44c67f1 fix WEBFS crash on some functions
 /******************************************************************************
  * FunctionName : webserver_send_fdata
  * Description  : Sent callback function to call for this espconn when data
@@ -1014,8 +1017,60 @@ LOCAL void ICACHE_FLASH_ATTR webserver_send_fdata(TCP_SERV_CONN *ts_conn) {
 		web_conn->msgbuflen = WEBFSGetArray(web_conn->webfile, web_conn->msgbuf, web_conn->msgbufsize);
 		if(web_conn->msgbuflen < web_conn->msgbufsize ) SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
 	}
-	else { // парсинг потока передачи
-		webserver_parse_buf(ts_conn);
+	else { // парсинг потока передачи, Парсинг msgbuf, замена переменных ~x~, вызов callback
+		do { // начинаем с пустого буфера
+			if(CheckSCB(SCB_RETRYCB)) { // повторный callback? да
+				#if DEBUGSOO > 2
+					os_printf("rcb ");
+				#endif
+				if(web_conn->func_web_cb != NULL) web_conn->func_web_cb(ts_conn);
+				if(CheckSCB(SCB_RETRYCB)) break; // повторить ещё раз? да.
+			}
+			else {
+				uint8 *pstr = &web_conn->msgbuf[web_conn->msgbuflen]; // указатель в буфере
+				// запомнить указатель в файле. ftell(fp)
+				int32 max = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, SCB_SEND_SIZE); // читаем по 128 байт ?
+				int32 len = WEBFSGetArray(web_conn->webfile, pstr, max);
+				// прочитано len байт в буфер по указателю &sendbuf[msgbuflen]
+				if(len) { // есть байты для передачи, ищем string "~calback~"
+					int cmp = web_find_cbs(pstr, len);
+					if(cmp >= 0) { // найден calback
+						// откат файла + передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
+						if(!WEBFSSeek(web_conn->webfile, len - (cmp + 1), WEBFS_SEEK_REWIND)) break;
+						// это второй маркер?
+						if(CheckSCB(SCB_FINDCB)) { // в файле найден закрывающий маркер calback
+							ClrSCB(SCB_FINDCB); // прочитали string calback-а
+							if(cmp != 0) { // это дубль маркера ? нет.
+								// запустить calback
+								pstr[cmp] = '\0'; // закрыть string calback-а
+								if(!os_memcmp((void*)pstr, "inc:", 4)) { // "inc:file_name"
+									if(!web_inc_fopen(ts_conn, &pstr[4])) {
+										tcp_strcpy_fd("file not found!");
+									};
+								}
+								else web_int_callback(ts_conn, pstr);
+							}
+							else { // Дубль маркера.
+								web_conn->msgbuflen++; // передать только маркер ('~')
+							};
+						}
+						else {
+							SetSCB(SCB_FINDCB); // в файле найден стартовый маркер calback
+							web_conn->msgbuflen += cmp;  // передать до стартового маркера calback
+						};
+					}
+					else {  // просто данные
+						ClrSCB(SCB_FINDCB);
+						if(len < max) {
+							if(web_inc_fclose(web_conn)) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // файл(ы) закончилсь совсем? да.
+						};
+						web_conn->msgbuflen += len; // добавить кол-во считанных байт для передачи.
+					};
+				}
+				else if(web_inc_fclose(web_conn)) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // файл(ы) закончилсь совсем? да.
+			};  // not SCB_RETRYCB
+		} // набираем буфер
+		while((web_conn->msgbufsize - web_conn->msgbuflen >= SCB_SEND_SIZE)&&(!CheckSCB(SCB_FCLOSE | SCB_RETRYCB | SCB_DISCONNECT)));
 	};
 #if DEBUGSOO > 3
 	os_printf("#%04x %d ", web_conn->webflag, web_conn->msgbuflen);
