@@ -349,7 +349,7 @@ web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
 	if((CurHTTP->pcookie == NULL)||(CurHTTP->cookie_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*3];
+	uint8 pvar[VarNameSize*4];
 	uint8 *pcmp = CurHTTP->pcookie - 1;
 	do {
 		pcmp = cmpcpystr(pvar, ++pcmp, '\0', '=', sizeof(pvar)-1);
@@ -357,7 +357,7 @@ web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
 		pcmp = cmpcpystr(pvar, pcmp, '=', ';', sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	} while(pcmp != NULL);
@@ -368,7 +368,7 @@ web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
 	if((CurHTTP->puri == NULL)||(CurHTTP->uri_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*3];
+	uint8 pvar[VarNameSize*4];
 	uint8 *pcmp = CurHTTP->puri;
 	uint8 c = '?';
 	pcmp = cmpcpystr(NULL, pcmp, '\0', c, CurHTTP->uri_len);
@@ -379,7 +379,7 @@ web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 		c = '&';
 		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	};
@@ -390,7 +390,7 @@ web_parse_content(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
 	if((CurHTTP->pcontent == NULL)||(CurHTTP->content_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*3];
+	uint8 pvar[VarNameSize*4];
 	uint8 *pcmp = CurHTTP->pcontent;
 	uint8 c = '\0';
 	do {
@@ -400,7 +400,7 @@ web_parse_content(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 		c = '&';
 		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	} while(pcmp != NULL);
@@ -1008,7 +1008,7 @@ LOCAL void ICACHE_FLASH_ATTR webserver_send_fdata(TCP_SERV_CONN *ts_conn) {
 				}
 				else if(web_inc_fclose(web_conn)) SetSCB(SCB_FCLOSE | SCB_DISCONNECT); // файл(ы) закончилсь совсем? да.
 			};  // not SCB_RETRYCB
-		} // набираем буфер
+		} // набираем буфер до (web_conn->msgbufsize - SCB_SEND_SIZE)
 		while((web_conn->msgbufsize - web_conn->msgbuflen >= SCB_SEND_SIZE)&&(!CheckSCB(SCB_FCLOSE | SCB_RETRYCB | SCB_DISCONNECT)));
 	};
 #if DEBUGSOO > 3

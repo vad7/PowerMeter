@@ -952,6 +952,14 @@ dns_gethostbyname(const char *hostname, ip_addr_t *addr, dns_found_callback foun
     return ERR_OK;
   }
 
+  // find entry in the local names table that already DONE
+  u8_t i;
+  for (i = 0; i < DNS_TABLE_SIZE; i++) {
+    if(dns_table[i].state == DNS_STATE_DONE && os_strcmp(dns_table[i].name, hostname) == 0) {
+    	addr = &dns_table[i].ipaddr;
+    	return ERR_OK;
+    }
+  }
 
   /* queue query with specified callback */
   return dns_enqueue(hostname, found, callback_arg);

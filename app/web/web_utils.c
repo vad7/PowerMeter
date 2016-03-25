@@ -567,40 +567,65 @@ char* ICACHE_FLASH_ATTR str_to_upper_case(char* text) {
 	return text;
 }
 #endif
-
-// return true if matched
+#if 0
+// return true if matched ("*?", str)
 bool ICACHE_FLASH_ATTR str_cmp_wildcards(char* wildstring, char *matchstring)
 {
-	char stopstring = 0;
+   char stopstring = 0;
 
-	while(*matchstring) {
-		if(*wildstring == '*') {
-			if (!*++wildstring) {
-				return true;
-			} else {
-				stopstring = *wildstring;
-			}
-		}
+   char *wildstringNew = wildstring;
 
-		if(stopstring) {
-			if(stopstring == *matchstring ) {
-				wildstring++;
-				matchstring++;
-				stopstring = 0;
-			} else {
-				matchstring++;
-			}
-		} else if((*wildstring == *matchstring) || (*wildstring == '?')) {
+   while(*matchstring != '\0')
+   {
+	  if (*wildstring == '*')
+	  {
+		 do
+		 {
+			wildstring++;
+		 } while (*wildstring == '*');  // if a dork entered two or more * in a row
+										// ignore them and go ahead
+
+		 if (*wildstring == '\0')   // if * was the last char, the strings are equal
+		 {
+			return TRUE;
+		 } else
+		 {
+			stopstring = *wildstring; // the next char to check after the *
+		 }
+	  }
+
+	  if(stopstring != '\0')
+	  {
+		 if((stopstring == *matchstring) || (stopstring == '?') )
+		 {
+			wildstring++;
+			stopstring = '\0';
+		 }
+		 matchstring++;
+	  }
+	  else if((*wildstring == *matchstring) || (*wildstring == '?'))
+		 {
 			wildstring++;
 			matchstring++;
-		} else {
-			return false;
-		}
+		 } else {
+			 if(*wildstring != '\0')
+				 wildstring = wildstringNew;
+			 else
+				 return FALSE;
+		 }
 
-		if(!*matchstring && *wildstring && *wildstring != '*') {
-			// matchstring too short
-			return false;
-		}
-	}
-	return true;
+	  if( (*matchstring == '\0') && (*wildstring != '\0') )
+	  {
+		 // matchstring seems to be too short. Check if wildstring has any more chars except '*'
+		 while (*wildstring == '*') // ignore following '*'
+			wildstring++;
+
+		 if (*wildstring == '\0') // if wildstring endet after '*', strings are equal
+			return TRUE;
+		 else
+			return FALSE;
+	  }
+   }
+   return TRUE;
 }
+#endif

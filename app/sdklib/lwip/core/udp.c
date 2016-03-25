@@ -154,12 +154,20 @@ udp_input(struct pbuf *p, struct netif *inp)
       }
     }
   } else if (dest == DHCP_SERVER_PORT) {
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
       if (src == DHCP_CLIENT_PORT) {
         if ( inp->dhcps_pcb != NULL ) {
           if ((ip_addr_isany(&inp->dhcps_pcb->local_ip) ||
               ip_addr_cmp(&(inp->dhcps_pcb->local_ip), &current_iphdr_dest))) {
             pcb = inp->dhcps_pcb;
           }
+=======
+    if (src == DHCP_CLIENT_PORT) {
+      if ( inp->dhcps_pcb != NULL ) {
+        if ((ip_addr_isany(&inp->dhcps_pcb->local_ip) ||
+            ip_addr_cmp(&(inp->dhcps_pcb->local_ip), &current_iphdr_dest))) {
+          pcb = inp->dhcps_pcb;
+>>>>>>> 92bf5db Update dns, IoT, etc
         }
       }
   } else

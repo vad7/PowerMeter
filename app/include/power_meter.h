@@ -20,7 +20,7 @@ typedef struct __attribute__((packed)) {
 	uint16 	PulsesPer0_01KWt; 		// 6
 	char	csv_delimiter; 			// ','
 	uint16  i2c_freq;				// 400 KHz
-//	char	iot_ini[24];			// "protect/iot_cloud.ini"
+	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
 //	char sntp_server[20];
 } CFG_METER;
 CFG_METER cfg_meter;
@@ -44,6 +44,7 @@ typedef struct __attribute__((packed)) {
 CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
 uint32 LastCnt;				// Last cnt
+uint32 LastCnt_Previous;
 uint32 WebChart_MaxMinutes; // ~ChartMaxMin~
 uint32 KWT_Previous;		// *1000
 

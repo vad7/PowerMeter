@@ -134,44 +134,37 @@ void ICACHE_FLASH_ATTR web_test_adc(TCP_SERV_CONN *ts_conn)
 }
 #endif // TEST_SEND_WAVE
 
-void ICACHE_FLASH_ATTR web_callback_file(TCP_SERV_CONN *ts_conn)
+// Send text file until zero byte found.
+// web_conn->udata_stop - WEBFS handle
+// web_conn->udata_start - start / current pos
+void ICACHE_FLASH_ATTR web_callback_textfile(TCP_SERV_CONN *ts_conn)
 {
 	WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *) ts_conn->linkd;
-	WEBFS_HANDLE fp = web_conn->udata_stop; // file handle
-	if(fp != WEBFS_INVALID_HANDLE) {
-/*	    if(CheckSCB(SCB_RETRYCB)==0) {
-	    	if(web_conn->udata_start == web_conn->udata_stop) return;
-				#if DEBUGSOO > 2
-					os_printf("i2c from:%u ", web_conn->udata_start);
-				#endif
-	    }
-	    // Get/put as many bytes as possible
-	    unsigned int len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, FRAM_MAX_BLOCK_AT_ONCE);
-	#if DEBUGSOO > 2
-		os_printf("%u+%u ",web_conn->udata_start, len);
-	#endif
-		if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
-			os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
-			//FRAM_Status = 2;
-		} else {
-			web_conn->udata_start += len;
-			web_conn->msgbuflen += len;
-			if(web_conn->udata_start < web_conn->udata_stop) {
+	WEBFS_HANDLE fh = web_conn->udata_stop; // file handle
+	if(fh != WEBFS_INVALID_HANDLE) {
+//	    if(CheckSCB(SCB_RETRYCB)==0) { // first run
+//	    }
+		if(WEBFSSeek(fh, web_conn->udata_start, WEBFS_SEEK_START)) {
+		    uint32 len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen - 1, WEBFSGetBytesRem(fh)); // +space for '\0'
+		    uint8 *cbufpos = web_conn->msgbuf + web_conn->msgbuflen;
+			len = WEBFSGetArray(fh, cbufpos, len);
+			cbufpos[len] = '\0';
+			uint32 zlen = os_strlen(cbufpos);
+			#if DEBUGSOO > 2
+				os_printf("Send %u+%u ", web_conn->udata_start, zlen);
+			#endif
+			web_conn->msgbuflen += zlen;
+			if(zlen == len && WEBFSGetBytesRem(fh)) { // continue (\0 not found and not file end)
+				web_conn->udata_start += len;
 				SetSCB(SCB_RETRYCB);
-	    		SetNextFunSCB(web_get_i2c_eeprom);
+	    		SetNextFunSCB(web_callback_textfile);
 	    		return;
-	    	}
-	    }
-	    ClrSCB(SCB_RETRYCB);
-	//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
-	    return;
+			}
+		}
+		WEBFSClose(fh);
 	}
-*/
-
-		WEBFSClose(fp);
-	}
-
-
+	ClrSCB(SCB_RETRYCB);
+//    SetSCB(SCB_FCLOSE | SCB_DISCONNECT);
 }
 
 //===============================================================================
@@ -566,7 +559,7 @@ void ICACHE_FLASH_ATTR web_get_i2c_eeprom(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 	os_printf("%u+%u ",web_conn->udata_start, len);
 #endif
-	if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf, len)) {
+	if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf + web_conn->msgbuflen, len)) {
 		os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
 		//FRAM_Status = 2;
 	} else {
@@ -605,7 +598,7 @@ void ICACHE_FLASH_ATTR web_get_flash(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 	os_printf("%08x..%08x ",web_conn->udata_start, web_conn->udata_start + len );
 #endif
-    if(spi_flash_read(web_conn->udata_start, web_conn->msgbuf, len) == SPI_FLASH_RESULT_OK) {
+    if(spi_flash_read(web_conn->udata_start, web_conn->msgbuf + web_conn->msgbuflen, len) == SPI_FLASH_RESULT_OK) {
       web_conn->udata_start += len;
       web_conn->msgbuflen += len;
       if(web_conn->udata_start < web_conn->udata_stop) {
@@ -639,7 +632,7 @@ void ICACHE_FLASH_ATTR web_get_ram(TCP_SERV_CONN *ts_conn)
 	}
     // Get/put as many bytes as possible
     uint32 len = mMIN(web_conn->msgbufsize - web_conn->msgbuflen, web_conn->udata_stop - web_conn->udata_start);
-	copy_align4(web_conn->msgbuf, (void *)(web_conn->udata_start), len);
+	copy_align4(web_conn->msgbuf + web_conn->msgbuflen, (void *)(web_conn->udata_start), len);
 	web_conn->msgbuflen += len;
 	web_conn->udata_start += len;
 #if DEBUGSOO > 2
@@ -711,7 +704,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 }
 /******************************************************************************
  * FunctionName : web_callback
- * Description  : callback
+ * Description  : callback, DO NOT send thru tcp_puts more than SCB_SEND_SIZE (128 bytes)!
  * Parameters   : struct TCP_SERV_CONN
  * Returns      : none
  ******************************************************************************/
@@ -925,6 +918,22 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 #endif
 		    	else tcp_put('?');
 		    }
+		    else ifcmp("meter_") {
+	        	cstr += 6;
+		        ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
+		        else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
+		        else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
+		        else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
+		    }
+	        else ifcmp("iot_") {
+	        	cstr += 4;
+	        	ifcmp("cloud_enable") tcp_puts("%d", cfg_meter.iot_cloud_enable);
+	            else ifcmp("ini") {
+	        		web_conn->udata_start = 0; // pos in the file
+	        		web_conn->udata_stop = WEBFSOpen(iot_cloud_ini); // file handle
+	            	web_callback_textfile(ts_conn);
+	            }
+	        }
 #ifdef USE_MODBUS
 		    else ifcmp("mdb_") {
 		    	cstr+=4;
@@ -1176,7 +1185,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	else ts_conn->flag.user_option1 = 0;
         	web_hexdump(ts_conn);
         }
-        else ifcmp("hellomsg") tcp_puts_fd("Web on ESP8266!");
+        else ifcmp("hellomsg") tcp_puts_fd("Power Meter");
 #ifdef USE_TCP2UART
         else ifcmp("tcp_") {
         	cstr+=4;
@@ -1342,7 +1351,10 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 // PowerMeter
         else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
-        else ifcmp("LastCnt") tcp_puts("%u", LastCnt);
+        else ifcmp("LastCnt") {
+        	tcp_puts("%u", LastCnt);
+        	if(LastCnt_Previous == 0 && LastCnt == 0) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
+        }
         else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
         else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
@@ -1355,17 +1367,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	}
         	KWT_Previous = KWT;
         }
-        else ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
-        else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
-        else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
-        else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
-        else ifcmp("iot_ini_file") {
-    		web_conn->udata_start = WEBFSOpen(iot_cloud_ini); // file handle
-    		web_conn->udata_stop = 0; // pos in the file
-        	web_callback_file(ts_conn);
-        }
 // PowerMeter
 		else tcp_put('?');
 }
