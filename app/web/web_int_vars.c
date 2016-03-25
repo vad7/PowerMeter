@@ -353,7 +353,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("ini") { // save iot cloud setting
 				WEBFS_HANDLE fh = WEBFSOpen(iot_cloud_ini); // file handle
 				if(fh != WEBFS_INVALID_HANDLE) {
-					uint32 err = WEBFSUpdateFile(fh, pvar, os_strlen(pvar) + 1); // +'\0'
+					#if DEBUGSOO > 4
+					uint32 err =
+					#endif
+					  WEBFSUpdateFile(fh, pvar, os_strlen(pvar) + 1); // +'\0'
 					#if DEBUGSOO > 4
 						os_printf("Update ini(%d): %u b\n", err, os_strlen(pvar) + 1);
 					#endif
@@ -412,7 +415,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 					iot->next = new_iot;
 				}
 				ets_sprintf(new_iot->iot_request, iot_get_request_tpl, pvar, iot_server_name);
-				new_iot->min_interval = ahextoul(cstr);
+				new_iot->min_interval = ahextoul(cstr) * 1000; // ms -> us
 				#if DEBUGSOO > 4
 					os_printf("iot_cloud: %s, %u\n", new_iot->iot_request, new_iot->min_interval);
 				#endif
