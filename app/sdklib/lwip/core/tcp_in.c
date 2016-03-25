@@ -511,10 +511,9 @@ tcp_listen_input(struct tcp_pcb_listen *pcb)
       return ERR_ABRT;
     }
 #endif /* TCP_LISTEN_BACKLOG */
-    for(pactive_pcb = tcp_active_pcbs; pactive_pcb != NULL; pactive_pcb = pactive_pcb->next)
-    	if (pactive_pcb->state == ESTABLISHED){
-    		active_pcb_num ++;
-    	}
+    for(pactive_pcb = tcp_active_pcbs; pactive_pcb != NULL; pactive_pcb = pactive_pcb->next) {
+    	if (pactive_pcb->state == ESTABLISHED) active_pcb_num ++;
+    }
     if (active_pcb_num == MEMP_NUM_TCP_PCB){
     	LWIP_DEBUGF(TCP_DEBUG, ("tcp_listen_input: exceed the number of active TCP connections\n"));
     	TCP_STATS_INC(tcp.memerr);
