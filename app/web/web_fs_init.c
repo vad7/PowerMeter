@@ -17,6 +17,7 @@
 #include "web_fs_init.h"
 
 /******************************************************************************
+ * find pos \n or \r or \0 if not found return len
 *******************************************************************************/
 LOCAL uint16 ICACHE_FLASH_ATTR find_crlf(uint8 * chrbuf, uint16 len) {
   int i;
@@ -97,7 +98,7 @@ uint8 ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 		}
 		uint16 len = WEBFSGetArray(web_conn->webfile, pstr, FINI_BUF_SIZE);
 #if DEBUGSOO > 3
-		os_printf("ReadF[%u]=%u\n", web_conn->webfile, len);
+		os_printf("ReadF[%u]= %u, %u\n", web_conn->webfile, len, WEBFSGetBytesRem(web_conn->webfile));
 #endif
 		if(len) { // есть байты в файле
 			pstr[len] = '\0';
@@ -106,7 +107,7 @@ uint8 ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 			if(sslen == 0) {
 				int nslen = find_crlf(pstr, len);
 				if(nslen != 0) {
-					pstr[nslen] = '\0'; // закрыть string calback-а
+					pstr[nslen++] = '\0'; // закрыть string calback-а
 					while((nslen < len) && (pstr[nslen] == '\n' || pstr[nslen] == '\r')) nslen++;
 #if DEBUGSOO > 3
 					os_printf("String:%s\n", pstr);
@@ -119,9 +120,12 @@ uint8 ICACHE_FLASH_ATTR web_fini(const uint8 * fname)
 						};
 					}
 					else web_int_callback(ts_conn, pstr);
-				};
+				} else break; // \0 found
 				sslen = nslen;
 			};
+			#if DEBUGSOO > 4
+				os_printf("len: %u, %u\n", len, sslen);
+			#endif
 			// откат файла + передвинуть указатель в файле на считанные байты с учетом маркера, без добавки длины для передачи
 			WEBFSSeek(web_conn->webfile, len - sslen, WEBFS_SEEK_REWIND);
 		}

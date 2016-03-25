@@ -30,6 +30,7 @@
 #include "tcp2uart.h"
 #include "web_iohw.h"
 #include "wifi_events.h"
+#include "webfs.h"
 #include "power_meter.h"
 #include "iot_cloud.h"
 
@@ -339,10 +340,6 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
-//			else ifcmp("iot_ini_file") {
-//				os_memcpy(cfg_meter.iot_ini, pvar, os_strlen(pvar) + 1);
-//				iot_cloud_init();
-//			}
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -350,6 +347,21 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 				if(val == 1) write_power_meter_cfg();
 			}
 		}
+        else ifcmp("iot_") {
+        	cstr += 4;
+			ifcmp("cloud_enable") cfg_meter.iot_cloud_enable = val;
+			else ifcmp("ini") { // save iot cloud setting
+				WEBFS_HANDLE fh = WEBFSOpen(iot_cloud_ini); // file handle
+				if(fh != WEBFS_INVALID_HANDLE) {
+					uint32 err = WEBFSUpdateFile(fh, pvar, os_strlen(pvar) + 1); // +'\0'
+					#if DEBUGSOO > 4
+						os_printf("Update ini(%d): %u b\n", err, os_strlen(pvar) + 1);
+					#endif
+					WEBFSClose(fh);
+					iot_cloud_init();
+				}
+			}
+        }
 		else ifcmp("save") {
 			if(val == 2) SetSCB(SCB_SYSSAVE); // по закрытию соединения вызвать sys_write_cfg()
 			else if(val == 1) sys_write_cfg();

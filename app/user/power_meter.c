@@ -281,6 +281,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		WebChart_MaxMinutes	= 10 * 24*60; // 10 days
 		iot_data_first = NULL;
 		LastCnt = 0;
+		LastCnt_Previous = -1;
 	}
 	fram_init();
 	// restore workspace from FRAM
@@ -327,7 +328,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 	}
 	FRAM_Status = 0;
 	iot_cloud_init();
-	#if DEBUGSOO > 3
+	#if DEBUGSOO > 4
 		struct tm tm;
 		_localtime(&fram_store.LastTime, &tm);
 		os_printf("PCnt= %u, TCnt= %u, Ptr= %u, LTime= %u (", fram_store.PowerCnt, fram_store.TotalCnt, fram_store.PtrCurrent, fram_store.LastTime);
