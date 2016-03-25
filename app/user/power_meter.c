@@ -457,6 +457,8 @@ void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 			#endif
 		}
 		os_free(buf);
+		os_memset(&fram_store, 0, sizeof(fram_store));
+		*(uint32 *)&CntCurrent = 0;
 	}
 }
 
