@@ -32,12 +32,16 @@ gpio1_fun
 gpio_inp
 gpio_out
 gpio_dir
+inc:grfx1.inc
+inc:grfx2.inc
+PowerCnt
 inc:menu.inc
 TotalKWT
 TotalCnt
 PtrCurrent
 CntCurrent1
 CntCurrent2
+PowerCnt
 LastCnt
 i2c_errors
 wifi_ap_ssid
