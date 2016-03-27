@@ -726,7 +726,7 @@ time_t ICACHE_FLASH_ATTR get_sntp_localtime(void)
 // comvert local time to UTC time
 time_t ICACHE_FLASH_ATTR sntp_local_to_UTC_time(time_t local)
 {
-	return local - sntp->sntp_time_zone * 3600;
+	return local == 0 ? 0 : local - sntp->sntp_time_zone * 3600;
 }
 
 #endif /* LWIP_UDP */

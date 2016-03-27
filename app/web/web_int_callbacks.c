@@ -1349,6 +1349,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("test_adc") web_test_adc(ts_conn);
 #endif
 // PowerMeter
+        else ifcmp("PowerCnt") tcp_puts("%u", fram_store.PowerCnt);
         else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("LastCnt") {
