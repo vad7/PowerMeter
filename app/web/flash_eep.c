@@ -354,6 +354,9 @@ bool ICACHE_FLASH_ATTR sys_read_cfg(void) {
 		syscfg.mdb_port = DEFAULT_MDB_PORT;	// (=0 - отключен)
 		syscfg.mdb_id = DEFAULT_MDB_ID;
 #endif
+#if DEBUGSOO > 4
+		os_printf("CfgFlg: %X\n", syscfg.cfg.w);
+#endif
 		return false;
 	};
 //	if(syscfg.web_port == 0) syscfg.cfg.b.pin_clear_cfg_enable = 1;

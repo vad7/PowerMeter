@@ -347,9 +347,10 @@ LOCAL bool ICACHE_FLASH_ATTR CheckAuthorization(uint8* base64str)
 LOCAL void ICACHE_FLASH_ATTR
 web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
+	//Cookie: set_ramaddr=0x3FFF0000; set_ramdata=0x12345678; start=0x40000000; stop=0x40000100
 	if((CurHTTP->pcookie == NULL)||(CurHTTP->cookie_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*4];
+	uint8 pvar[VarNameSize*3];
 	uint8 *pcmp = CurHTTP->pcookie - 1;
 	do {
 		pcmp = cmpcpystr(pvar, ++pcmp, '\0', '=', sizeof(pvar)-1);
@@ -357,7 +358,7 @@ web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
 		pcmp = cmpcpystr(pvar, pcmp, '=', ';', sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize*3 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	} while(pcmp != NULL);
@@ -366,9 +367,10 @@ web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 LOCAL void ICACHE_FLASH_ATTR
 web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
+	// URI: /protect/hexdmpb.txt?setvar=1 HTTP/1.1
 	if((CurHTTP->puri == NULL)||(CurHTTP->uri_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*4];
+	uint8 pvar[VarNameSize*3];
 	uint8 *pcmp = CurHTTP->puri;
 	uint8 c = '?';
 	pcmp = cmpcpystr(NULL, pcmp, '\0', c, CurHTTP->uri_len);
@@ -379,31 +381,36 @@ web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 		c = '&';
 		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize*3 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	};
 }
 //=============================================================================
+// modified to extend var data limit. Overwrite incomming data
 LOCAL void ICACHE_FLASH_ATTR
 web_parse_content(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
 	if((CurHTTP->pcontent == NULL)||(CurHTTP->content_len == 0)) return;
-	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*4];
 	uint8 *pcmp = CurHTTP->pcontent;
-	uint8 c = '\0';
 	do {
-		pcmp = cmpcpystr(pvar, pcmp, c, '=', sizeof(pvar)-1);
-		if(pcmp == NULL) return;
-		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
-		c = '&';
-		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
-		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize*4 - 1, sizeof(pvar));
-			web_int_vars(ts_conn, pcmd, pvar);
-	    }
-	} while(pcmp != NULL);
+		uint8 *pvar = os_strchr(pcmp, '=');
+		if(pvar == NULL) break;
+		*pvar = '\0'; // close cmd
+		urldecode(pcmp, pcmp, pvar - pcmp, pvar - pcmp);
+		if(*(++pvar) == '\0') break; // empty & end of string
+		uint8 *pcmd = pcmp;
+		pcmp = os_strchr(pvar, '&'); // find end of value
+		uint16 len;
+		if(pcmp != NULL) {
+			len = pcmp - pvar;
+			*pcmp = '\0';
+		} else len = os_strlen(pvar);
+		urldecode(pvar, pvar, len, len);
+		web_int_vars(ts_conn, pcmd, pvar);
+		if(pcmp == NULL) break;
+		pcmp++;
+	} while(1);
 }
 //=============================================================================
 // Разбор имени файла и перевод в вид относительного URI.

@@ -281,6 +281,7 @@ void ICACHE_FLASH_ATTR strtomac(uint8 *s, uint8 *macaddr)
 }
 /******************************************************************************
  * FunctionName : urldecode
+ * decode s[] to d[]
 *******************************************************************************/
 int ICACHE_FLASH_ATTR urldecode(uint8 *d, uint8 *s, uint16 lend, uint16 lens)
 {
