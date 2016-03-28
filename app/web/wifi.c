@@ -66,6 +66,9 @@ void ICACHE_FLASH_ATTR read_macaddr_from_otp(uint8 *mac)
  ******************************************************************************/
 void ICACHE_FLASH_ATTR WiFi_go_to_sleep(enum sleep_type mode, uint32 time_us)
 {
+#if DEBUGSOO > 4
+	os_printf("WiFi goto sleep %d, %u us\n", mode, time_us);
+#endif
 	wifi_set_opmode_current(WIFI_DISABLED);
 	wifi_fpm_set_sleep_type(mode); //	wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
 	wifi_fpm_open();
