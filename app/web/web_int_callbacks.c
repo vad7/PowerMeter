@@ -393,7 +393,7 @@ typedef struct {
 	bool 	packed_flag;
 	uint8_t	n;
 	int16_t	previous_n;
-	uint8_t	buf[32];
+	uint8_t	buf[48];
 	char 	str[32];
 } history_output;
 
@@ -1353,23 +1353,28 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("LastCnt") {
+        	cstr += 7;
         	tcp_puts("%u", LastCnt);
-        	if(LastCnt_Previous == 0 && LastCnt == 0) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
+        	ifcmp("_Fill") { // only non zero value
+        		if(LastCnt_Previous == 0 && LastCnt == 0) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
+        		LastCnt_Previous = LastCnt;
+        	}
         }
         else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
         else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
         else ifcmp("TotalKWT") {
+        	cstr += 8;
         	uint32 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
         	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
-        	cstr += 8;
         	ifcmp("_New") { // only new value
         		if(KWT_Previous == KWT) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
+            	KWT_Previous = KWT;
         	}
-        	KWT_Previous = KWT;
         }
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
+        else ifcmp("iot_last_status") tcp_puts("%s", iot_last_status);
 // PowerMeter
 		else tcp_put('?');
 }

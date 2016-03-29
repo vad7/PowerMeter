@@ -478,7 +478,7 @@ typedef enum {
 #define GPIO_PIN_WAKEUP_ENABLE_S               10
 #define GPIO_PIN_INT_TYPE                      0x00000007
 #define GPIO_PIN_INT_TYPE_S                    7
-#define GPIO_PIN_DRIVER                        BIT2  // 1 = Open-drain, 0 = normal
+#define GPIO_PIN_DRIVER                        BIT2  // Open-drain, 0 = normal
 #define GPIO_PIN_DRIVER_S                      2
 #define GPIO_PIN_SOURCE                        1
 #define GPIO_PIN_SOURCE_S                      0

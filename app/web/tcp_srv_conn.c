@@ -150,6 +150,9 @@ void ICACHE_FLASH_ATTR tcpsrv_disconnect(TCP_SERV_CONN * ts_conn) {
  ******************************************************************************/
 err_t ICACHE_FLASH_ATTR tcpsrv_int_sent_data(TCP_SERV_CONN * ts_conn, uint8 *psent, uint16 length) {
 	err_t err = ERR_ARG;
+#if DEBUGSOO > 6
+	os_printf("\nSD(%d): %s\n", length, psent);
+#endif
 	if(ts_conn == NULL) return err;
 	if(ts_conn->pcb == NULL || ts_conn->state == SRVCONN_CLOSEWAIT) return ERR_CONN;
 	ts_conn->flag.busy_bufo = 1; // буфер bufo занят

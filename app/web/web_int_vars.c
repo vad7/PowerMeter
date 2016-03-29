@@ -349,7 +349,11 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		}
         else ifcmp("iot_") {
         	cstr += 4;
-			ifcmp("cloud_enable") cfg_meter.iot_cloud_enable = val;
+			ifcmp("cloud_enable") {
+				uint8 oldflag = cfg_meter.iot_cloud_enable;
+				cfg_meter.iot_cloud_enable = val;
+				if(oldflag == 0 && val) iot_cloud_init();
+			}
 			else ifcmp("ini") { // save iot cloud setting
 				WEBFS_HANDLE fh = WEBFSOpen(iot_cloud_ini); // file handle
 				if(fh != WEBFS_INVALID_HANDLE) {

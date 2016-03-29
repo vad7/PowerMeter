@@ -119,7 +119,7 @@ static const char *httpContentTypes[] = {
     "audio/x-wave",             // HTTP_WAV       "wav",
     "application/pdf",          // HTTP_PDF       "pdf",
     "application/zip",          // HTTP_ZIP       "zip",
-    "application/octet-stream", // HTTP_BIN       "bin",
+    "application/octet-stream", // HTTP_BIN       "bin", //"application/force-download"
 	"text/csv",               	// HTTP_CSV       "csv",
     ""  // HTTP_UNKNOWN
 };
@@ -350,41 +350,45 @@ web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 	//Cookie: set_ramaddr=0x3FFF0000; set_ramdata=0x12345678; start=0x40000000; stop=0x40000100
 	if((CurHTTP->pcookie == NULL)||(CurHTTP->cookie_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*3];
+	uint8 *pvar = os_malloc(VarNameSize * 4);
+	if(pvar == NULL) return;
 	uint8 *pcmp = CurHTTP->pcookie - 1;
 	do {
 		pcmp = cmpcpystr(pvar, ++pcmp, '\0', '=', sizeof(pvar)-1);
-		if(pcmp == NULL) return;
+		if(pcmp == NULL) break;
 		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
 		pcmp = cmpcpystr(pvar, pcmp, '=', ';', sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize*3 - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize * 4 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	} while(pcmp != NULL);
+	os_free(pvar);
 }
 //=============================================================================
 LOCAL void ICACHE_FLASH_ATTR
 web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
 {
-	// URI: /protect/hexdmpb.txt?setvar=1 HTTP/1.1
+	// URI: /protect/hexdmpb.txt?setvar=1&settype=2 HTTP/1.1
 	if((CurHTTP->puri == NULL)||(CurHTTP->uri_len == 0)) return;
 	uint8 pcmd[CmdNameSize];
-	uint8 pvar[VarNameSize*3];
+	uint8 *pvar = os_malloc(VarNameSize * 4);
+	if(pvar == NULL) return;
 	uint8 *pcmp = CurHTTP->puri;
 	uint8 c = '?';
 	pcmp = cmpcpystr(NULL, pcmp, '\0', c, CurHTTP->uri_len);
 	while(pcmp != NULL) {
 		pcmp = cmpcpystr(pvar, pcmp, c, '=', sizeof(pvar)-1);
-		if(pcmp == NULL) return;
+		if(pcmp == NULL) break;
 		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
 		c = '&';
 		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
 		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize*3 - 1, sizeof(pvar));
+			urldecode(pvar, pvar, VarNameSize * 4 - 1, sizeof(pvar));
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
 	};
+	os_free(pvar);
 }
 //=============================================================================
 // modified to extend var data limit. Overwrite incomming data
@@ -1117,6 +1121,10 @@ web_print_headers(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
                     if(CurHTTP->fileType != HTTP_UNKNOWN) {
                     	if(web_conn->bffiles[0] == WEBFS_WEBCGI_HANDLE && CheckSCB(SCB_FCALBACK)) CurHTTP->fileType = HTTP_TXT;
                     	tcp_puts_fd("Content-Type: %s\r\n", httpContentTypes[CurHTTP->fileType]);
+                    	// добавить инфо для типа "application/*" для некоторых платформ (Android)
+                    	if(os_memcmp("app", httpContentTypes[CurHTTP->fileType], 3) == 0) {
+                        	tcp_puts_fd("Content-Disposition: attachment\r\n");
+                    	}
                     };
                     // Output the cache-control + ContentLength
                     if(CheckSCB(SCB_FCALBACK)) { // длина неизветсна

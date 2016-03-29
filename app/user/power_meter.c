@@ -360,8 +360,9 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		// setup interrupt and os_task
 		uint32 pins_mask = (1<<SENSOR_PIN);
 		gpio_output_set(0,0,0, pins_mask); // настроить GPIOx на ввод
+		//GPIO_ENABLE_W1TC = pins_mask; // GPIO OUTPUT DISABLE отключить вывод в портах
 		set_gpiox_mux_func_ioport(SENSOR_PIN); // установить функцию GPIOx в режим порта i/o
-	//	GPIO_ENABLE_W1TC = pins_mask; // GPIO OUTPUT DISABLE отключить вывод в портах
+		SET_PIN_PULLUP_DIS(SENSOR_PIN);
 		ets_isr_attach(ETS_GPIO_INUM, gpio_int_handler, NULL);
 		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
 		Sensor_Edge = 0; // Front

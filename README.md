@@ -1,9 +1,4 @@
-<<<<<<< Upstream, based on a248537691895e9b22da17286582bbcd543afad8
-# esp8266web
-Small web server on ESP8266
-=======
 # PowerMeter
->>>>>>> e01e98a rebase
 ---
 
 Have the webserver, Over-The-Air firmware updating.
@@ -11,10 +6,6 @@ Have the webserver, Over-The-Air firmware updating.
 Schematic: 
 ![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter.jpg)
 
-<<<<<<< Upstream, based on a248537691895e9b22da17286582bbcd543afad8
-UDK
-http://esp8266.ru/forum/forums/devkit/
-=======
 VCC - 3.3V<br> 
 Q1 - Photo transistor<br> 
 FM24* - I2C FRAM memory<br> 
@@ -25,4 +16,15 @@ ESP-01 module:
 
 
 Based on [esp8266web](https://github.com/pvvx/esp8266web.git)
->>>>>>> e01e98a rebase
+
+Доработки и изменения esp8266web:
+
+1. Обновление прошивки по WiFi (firmware.bin). Загружается на место Web диска, затем при загрузке (Rapid_Loader_OTA) копируется на основное место. 
+2. Уменьшен до 1 сектора (4096 байт) блок сохранения конфигурации в 0x7B000 (flash_epp), добавлена функция current_cfg_length().  
+3. Кол-во непрерывных повторов попытки соединения ST модуля к внешней AP уменьшено до 1 (wifi_events.c). Иначе к некоторым роутерам теряется подключение через некоторое время.
+4. Увеличен лимит для размера переменных при сохранении настроек в web_int_vars по submit form (функции web_parse_*).
+5. Добавлена функция записи в Web диск - WEBFSUpdateFile. Исправлены ошибки в библиотеке WEBFS (web/webfs.c).   
+6. DNS ищет сначала в локальном кэше преждем чем лезть на сервер (sdklib/lwip/core/dns.c), минимальный TTL = 3600 сек.  
+7. i2c драйвер с установкой скорости. Работа с FRAM памятью.  	
+8. Рисование графиков с зумом с помощью java библиотеки d3.js. 
+9. Выкладывание данных в IoT cloud - thingspeak.com через GET запрос (iot_cloud.с).

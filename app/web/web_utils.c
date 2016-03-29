@@ -427,6 +427,8 @@ int ICACHE_FLASH_ATTR htmlcode(uint8 *d, uint8 *s, uint16 lend, uint16 lens)
 	return ret;
 }
 //=============================================================================
+// find token in the buffer(len)
+// if found return token position, otherwise - NULL
 uint8* ICACHE_FLASH_ATTR
 web_strnstr(const uint8* buffer, const uint8* token, int len)
 {

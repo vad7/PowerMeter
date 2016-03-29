@@ -128,7 +128,7 @@ struct SystemCfg { // структура сохранения системных
 #define flash_read(a, d, s) (spi_flash_read(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
 #endif
 #define flash_write(a, d, s) (spi_flash_write(a, (uint32 *)(d), s) != SPI_FLASH_RESULT_OK)
-#define flash_erase_sector(a) (spi_flash_erase_sector(a>>12) != SPI_FLASH_RESULT_OK)
+#define flash_erase_sector(a) (spi_flash_erase_sector(a / flashchip_sector_size) != SPI_FLASH_RESULT_OK)
 
 #define align(a) ((a + 3) & 0xFFFFFFFC)
 
