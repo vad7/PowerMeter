@@ -44,6 +44,7 @@ CntCurrent2
 PowerCnt
 LastCnt
 i2c_errors
+iot_last_status
 wifi_ap_ssid
 sys_webver
 sys_sdkver

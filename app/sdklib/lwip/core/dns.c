@@ -106,6 +106,7 @@ static const char mem_debug_file[] ICACHE_RODATA_ATTR = __FILE__;
 #ifndef DNS_MAX_TTL
 #define DNS_MAX_TTL               604800
 #endif
+#define DNS_MIN_TTL				  3600 // 1 hour
 
 /* DNS protocol flags */
 #define DNS_FLAG1_RESPONSE        0x80
@@ -792,7 +793,9 @@ dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t 
              (ans.len == PP_HTONS(sizeof(ip_addr_t))) ) {
             /* read the answer resource record's TTL, and maximize it if needed */
             pEntry->ttl = ntohl(ans.ttl);
-            if (pEntry->ttl > DNS_MAX_TTL) {
+            if (pEntry->ttl < DNS_MIN_TTL) {
+            	pEntry->ttl = DNS_MIN_TTL;  // set minimum TTL
+            } else if(pEntry->ttl > DNS_MAX_TTL) {
               pEntry->ttl = DNS_MAX_TTL;
             }
             /* read the IP address after answer resource record's header */

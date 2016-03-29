@@ -470,7 +470,7 @@ uint32 ICACHE_FLASH_ATTR WEBFS_base_addr(void)
 
 // Save cData to begin of the file.
 // wLen must be less or equal the filesize
-// return 0 if success, otherwise an error code: 1 - wLen too big, 2 - not enough memory
+// return 0 if success, otherwise an error code: 1 - wLen too big, 2 - not enough memory, 3< other error
 uint32 ICACHE_FLASH_ATTR WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint32 wLen)
 {
 	if(hWEBFS > MAX_WEBFS_OPENFILES || WEBFSStubs[hWEBFS].addr == WEBFS_INVALID) return 7;
@@ -488,14 +488,14 @@ uint32 ICACHE_FLASH_ATTR WEBFSUpdateFile(WEBFS_HANDLE hWEBFS, uint8* cData, uint
 		}
 		if(spi_flash_erase_sector(addr / flashchip_sector_size) != SPI_FLASH_RESULT_OK) {
 			os_free(buf);
-			return 5;
+			return 4;
 		}
 		uint32 len = flashchip_sector_size - sect_addr;
 		if(len > wLen) len = wLen;
 		os_memcpy(buf + sect_addr, cData, len);
 		if(spi_flash_write(addr, (uint32 *)buf, flashchip_sector_size) != SPI_FLASH_RESULT_OK) {
 			os_free(buf);
-			return 6;
+			return 4;
 		}
 		cData += len;
 		addr += flashchip_sector_size; // next sector

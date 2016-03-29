@@ -5,7 +5,7 @@
  *      Author: PV`
  *
  * Добавлено vad7
- * Режим 1 сектора (4096) - пишеться в один сектор по кругу, когда закончилось место - упаковка в памяти
+ * Режим 1 сектора (4096) - пишется в один сектор по кругу, когда закончилось место - упаковка в памяти
  * Описание :
  * В начале сегмента код (uint32) - чем меньше, тем свежее сегмент
  * Код сегмента уменьшается на 1 во время записи данных нового сегмента
@@ -89,7 +89,7 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 // FunctionName : get_addr_fobj
 // Опции:
 //  false - Поиск последней записи объекта по id и size
-//  true - Поиск присуствия записи объекта по id и size
+//  true - Поиск присутствия записи объекта по id и size
 // Returns : адрес записи данных объекта
 // 0 - не найден
 //-----------------------------------------------------------------------------
@@ -142,8 +142,8 @@ LOCAL ICACHE_FLASH_ATTR uint32 get_addr_fobj_save(uint32 base, fobj_head obj)
 }
 //=============================================================================
 // FunctionName : pack_cfg_fmem
-// Перенос данных, кроме нового объекта в новый сегмент, уменьшение кода нового сегмента
-// Returns      : адрес для записи объекта
+// Перенос данных в новый сегмент, уменьшение кода нового сегмента, объект добавляется в конец
+// Returns      : адрес заголовка объекта или 0 - если ошибка или нет места
 //-----------------------------------------------------------------------------
 LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 {
@@ -156,9 +156,8 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 	uint32 faddr = baseseg;
 	uint16 len = 0;
 	do {
-		if(flash_read(faddr, &fobj, fobj_head_size)) return 1; // последовательное чтение id из старого сегмента
-		if(fobj.x == fobj_x_free) break; // конец
-		if(fobj.n.size > MAX_FOBJ_SIZE) break; // мусор в cfg
+		if(flash_read(faddr, &fobj, fobj_head_size)) goto xError; // последовательное чтение id из старого сегмента
+		if(fobj.x == fobj_x_free || fobj.n.size > MAX_FOBJ_SIZE) break; // конец или мусор в cfg
 		faddr += align(fobj.n.size + fobj_head_size);
 		if(fobj.n.id != obj.n.id) { // кроме нового
 			// найдем, сохранили ли мы его уже?
@@ -170,18 +169,24 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 				}
 				chkaddr += align(((fobj_head *)chkaddr)->n.size + fobj_head_size);
 			}
-			if(chkaddr != NULL && chkaddr < buffer + FMEMORY_SCFG_BANK_SIZE ) { // не сохранили
+			if(chkaddr != NULL && chkaddr < buffer + FMEMORY_SCFG_BANK_SIZE) { // не сохранили
 				uint32 xaddr = get_addr_fobj(baseseg, &fobj, false); // найдем последнее сохранение объекта в старом сегменте
-				if(xaddr < 4) return xaddr; // ???
-				if(flash_read(xaddr, chkaddr, align(fobj.n.size + fobj_head_size))) return 1; // прочитаем заголовок с телом объекта в конец буфера
+				if(xaddr < 4) goto xError; // ???
+				if(flash_read(xaddr, chkaddr, align(fobj.n.size + fobj_head_size))) goto xError; // прочитаем заголовок с телом объекта в конец буфера
 				len += align(fobj.n.size + fobj_head_size);
 			}
 		}
-	} while(faddr < (baseseg + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size+1)));
-	if(flash_erase_sector(baseseg)) return 1;
-	if(flash_write(baseseg, buffer, len)) return 1;
+	} while(faddr < (baseseg + FMEMORY_SCFG_BANK_SIZE - align(fobj_head_size)));
+	faddr = baseseg + len;
+	if(faddr > baseseg + FMEMORY_SCFG_BANK_SIZE) goto xError;
+	if(flash_erase_sector(baseseg)) goto xError;
+	if(flash_write(baseseg, buffer, len)) {
+xError:
+		os_free(buffer);
+		return 0;
+	}
 	os_free(buffer);
-	return baseseg + len; // адрес для записи объекта;
+	return faddr;
 #else
 	uint8 buf[align(MAX_FOBJ_SIZE + fobj_head_size)];
 	uint32 fnewseg = get_addr_bscfg(true); // поиск нового сегмента для записи (pack)
@@ -227,6 +232,43 @@ LOCAL ICACHE_FLASH_ATTR uint32 pack_cfg_fmem(fobj_head obj)
 //-----------------------------------------------------------------------------
 bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
 {
+#if FMEMORY_SCFG_BANKS == 1 // only 1 sector
+	if(size == 0 || size > MAX_FOBJ_SIZE) return false;
+	uint8 *buf = os_malloc(align(size + fobj_head_size));
+	if(buf == NULL) return false;
+	bool retval = true;
+	fobj_head fobj;
+	fobj.n.id = id;
+	fobj.n.size = size;
+
+	uint32 faddr = get_addr_bscfg(false);
+	uint32 xfaddr = get_addr_fobj(faddr, &fobj, false);
+	if(xfaddr > 4 && size == fobj.n.size) {
+		if(flash_read(xfaddr, buf, align(size) + fobj_head_size) != SPI_FLASH_RESULT_OK) retval = false;
+		else if(os_memcmp(ptr, buf + fobj_head_size, size) == 0) goto xEnd;	// уже записано то-же самое
+	}
+	if(retval) {
+		fobj.n.id = id;
+		fobj.n.size = size;
+		#if DEBUGSOO > 2
+			os_printf("save-id:%02x[%u] ", id, size);
+		#endif
+		faddr = get_addr_fobj_save(faddr, fobj);
+		if(faddr == 0) {
+			faddr = pack_cfg_fmem(fobj);
+		}
+		if(faddr) {
+			if(flash_write(faddr, (uint32 *)&fobj, fobj_head_size) != SPI_FLASH_RESULT_OK) retval = false;
+			else if(flash_write(faddr + fobj_head_size, (uint32 *)ptr, align(size)) != SPI_FLASH_RESULT_OK) retval = false;
+		} else retval = false;
+	}
+xEnd:
+	os_free(buf);
+#if DEBUGSOO > 4
+	os_printf(" - Ret %d\n", retval);
+#endif
+	return retval;
+#else
 	if(size > MAX_FOBJ_SIZE) return false;
 	uint8 buf[align(MAX_FOBJ_SIZE + fobj_head_size)];
 	fobj_head fobj;
@@ -238,7 +280,7 @@ bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
 	{
 		uint32 xfaddr = get_addr_fobj(faddr, &fobj, false);
 		if(xfaddr > 3 && size == fobj.n.size) {
-			if((size)&&(flash_read(xfaddr, buf, size + fobj_head_size))) return false; // error
+			if((size)&&(flash_read(xfaddr, buf, align(size + fobj_head_size)))) return false; // error
 			if(!os_memcmp(ptr, &buf[fobj_head_size], size)) return true; // уже записано то-же самое
 		}
 	}
@@ -255,10 +297,8 @@ bool ICACHE_FLASH_ATTR flash_save_cfg(void *ptr, uint16 id, uint16 size)
 	os_memcpy(buf, &fobj, fobj_head_size);
 	os_memcpy(&buf[fobj_head_size], ptr, size);
 	if(flash_write(faddr, (uint32 *)buf, len)) return false; // error
-#if DEBUGSOO > 2
-	os_printf("ok ");
-#endif
 	return true;
+#endif
 }
 //=============================================================================
 //- Прочитать объект из flash -------------------------------------------------
