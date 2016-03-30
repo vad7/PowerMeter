@@ -213,7 +213,7 @@ bool wifi_station_set_config(struct station_config *config);
 bool wifi_station_set_config_current(struct station_config *config);
 
 bool wifi_station_connect(void);
-bool wifi_station_disconnect(void);
+bool wifi_station_disconnect(void); // ESP8266 station disconnects to the router, or ESP8266 station stops trying to connect to the target router.
 
 sint8 wifi_station_get_rssi(void);
 
@@ -227,9 +227,9 @@ struct scan_config {
 bool wifi_station_scan(struct scan_config *config, scan_done_cb_t cb);
 
 uint8 wifi_station_get_auto_connect(void);
-bool wifi_station_set_auto_connect(uint8 set);
+bool wifi_station_set_auto_connect(uint8 set); // false = the ESP8266 station will not try to connect to the router automatically when power on until wifi_station_connect is called.
 
-bool wifi_station_set_reconnect_policy(bool set);
+bool wifi_station_set_reconnect_policy(bool set); // false = if the ESP8266 station connected to the router, and then the connection broke, ESP8266 will not try to reconnect to the router.
 
 enum {
     STATION_IDLE = 0,
