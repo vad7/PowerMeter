@@ -496,7 +496,6 @@ var smoothie = new SmoothieChart({
 		millisPerLine : millisPerLine,
 		verticalSections : verticalSections
 	},
-	timestampFormatter:SmoothieChart.timeFormatter,
 	labels : {
 		precision : 0
 	}

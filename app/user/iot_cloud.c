@@ -39,7 +39,7 @@ uint8 iot_cloud_ini[] = "protect/iot_cloud.ini";
 uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0\r\nHost: %s\r\nAccept: text/html\r\n\r\n";
 uint8 key_http_ok1[] = "HTTP/"; // "1.1"
 uint8 key_http_ok2[] = " 200 OK\r\n";
-char  iot_last_status[16] = "not runned yet";
+char  iot_last_status[16] = "not runned";
 
 os_timer_t error_timer;
 ip_addr_t tc_remote_ip;
@@ -100,7 +100,8 @@ err_t ICACHE_FLASH_ATTR tc_recv(TCP_SERV_CONN *ts_conn) {
     os_memset(iot_last_status, 0, sizeof(iot_last_status));
     os_strncpy(iot_last_status, (char *)pstr, mMIN(sizeof(iot_last_status)-1, len)); // status/error
 	if(len >= sizeof(key_http_ok1) + 3 + sizeof(key_http_ok2)) {
-		if(web_strnstr(pstr, key_http_ok1, len) && web_strnstr(pstr+sizeof(key_http_ok1)-1+3, key_http_ok2, len - sizeof(key_http_ok1)-1+3)) { // Check - 200 OK?
+		if(os_memcmp(pstr, key_http_ok1, sizeof(key_http_ok1)-1) == 0
+				&& os_memcmp(pstr + sizeof(key_http_ok1)-1 + 3, key_http_ok2, sizeof(key_http_ok2)-1) == 0) { // Check - 200 OK?
 			#if DEBUGSOO > 4
 				os_printf(" - 200\n");
 			#endif
