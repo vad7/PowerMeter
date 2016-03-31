@@ -352,7 +352,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			ifcmp("cloud_enable") {
 				uint8 oldflag = cfg_meter.iot_cloud_enable;
 				cfg_meter.iot_cloud_enable = val;
-				if(oldflag == 0 && val) iot_cloud_init();
+				if(oldflag != val) iot_cloud_init();
 			}
 			else ifcmp("ini") { // save iot cloud setting
 				WEBFS_HANDLE fh = WEBFSOpen(iot_cloud_ini); // file handle
@@ -399,7 +399,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 #endif
 		// sys_write_cfg();
 	}
-	else ifcmp("ChartMaxDays") WebChart_MaxMinutes = val * 24*60;
+	else ifcmp("ChartMaxDays") WebChart_Max = val;
 	else ifcmp("iot_") { // from iot_cloud.ini
 		cstr+=4;
 		uint16 len = os_strlen(pvar) + 1;
