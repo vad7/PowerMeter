@@ -342,80 +342,37 @@ LOCAL bool ICACHE_FLASH_ATTR CheckAuthorization(uint8* base64str)
 	return false;
 }
 //=============================================================================
-
-//=============================================================================
-LOCAL void ICACHE_FLASH_ATTR
-web_parse_cookie(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
+// Parse and decode variables with specified delimiter and call web_int_vars()
+// Cookie: set_ramaddr=0x3FFF0000; set_ramdata=0x12345678; start=0x40000000; stop=0x40000100
+// URI: /protect/hexdmpb.txt?setvar=1&settype=2
+// Content:	setvar=1&settype=2
+LOCAL void ICACHE_FLASH_ATTR web_parse_vars(TCP_SERV_CONN *ts_conn, uint8 *vars, uint32 vars_len, uint8 start_char, uint8 end_char)
 {
-	//Cookie: set_ramaddr=0x3FFF0000; set_ramdata=0x12345678; start=0x40000000; stop=0x40000100
-	if((CurHTTP->pcookie == NULL)||(CurHTTP->cookie_len == 0)) return;
-	uint8 pcmd[CmdNameSize];
-	uint8 *pvar = os_malloc(VarNameSize * 4);
-	if(pvar == NULL) return;
-	uint8 *pcmp = CurHTTP->pcookie - 1;
-	do {
-		pcmp = cmpcpystr(pvar, ++pcmp, '\0', '=', sizeof(pvar)-1);
-		if(pcmp == NULL) break;
-		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
-		pcmp = cmpcpystr(pvar, pcmp, '=', ';', sizeof(pvar)-1);
-		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize * 4 - 1, sizeof(pvar));
-			web_int_vars(ts_conn, pcmd, pvar);
-	    }
-	} while(pcmp != NULL);
-	os_free(pvar);
-}
-//=============================================================================
-LOCAL void ICACHE_FLASH_ATTR
-web_parse_uri_vars(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
-{
-	// URI: /protect/hexdmpb.txt?setvar=1&settype=2 HTTP/1.1
-	if((CurHTTP->puri == NULL)||(CurHTTP->uri_len == 0)) return;
-	uint8 pcmd[CmdNameSize];
-	uint8 *pvar = os_malloc(VarNameSize * 4);
-	if(pvar == NULL) return;
-	uint8 *pcmp = CurHTTP->puri;
-	uint8 c = '?';
-	pcmp = cmpcpystr(NULL, pcmp, '\0', c, CurHTTP->uri_len);
+	if(vars == NULL || vars_len == 0) return;
+	uint8 *pcmp;
+	if(start_char) {
+		pcmp = cmpcpystr(NULL, vars, '\0', start_char, vars_len); // find start_char if available
+		start_char = '\0';
+	} else pcmp = vars - 1;
 	while(pcmp != NULL) {
-		pcmp = cmpcpystr(pvar, pcmp, c, '=', sizeof(pvar)-1);
+		uint16 len = vars_len - (pcmp - vars);
+		uint8 *pcmd = pcmp;
+		pcmp = cmpcpystr(pcmp, pcmp + 1, start_char, '=', len); // skip spaces before variable name
 		if(pcmp == NULL) break;
-		urldecode(pcmd, pvar, CmdNameSize - 1, sizeof(pvar));
-		c = '&';
-		pcmp = cmpcpystr(pvar, pcmp, '=', c, sizeof(pvar)-1);
-		if(pcmd[0]!='\0') {
-			urldecode(pvar, pvar, VarNameSize * 4 - 1, sizeof(pvar));
+		urldecode(pcmd, pcmd, len, len);
+		len = vars_len - (pcmp - vars);
+		uint8 *pvar = pcmp;
+		pcmp = cmpcpystr(pcmp, pcmp + 1, '\0', end_char, len);
+		if(pcmd[0] != '\0') {
+			urldecode(pvar, pvar, len, len);
 			web_int_vars(ts_conn, pcmd, pvar);
 	    }
-	};
-	os_free(pvar);
+	}
 }
 //=============================================================================
-// modified to extend var data limit. Overwrite incomming data
-LOCAL void ICACHE_FLASH_ATTR
-web_parse_content(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
-{
-	if((CurHTTP->pcontent == NULL)||(CurHTTP->content_len == 0)) return;
-	uint8 *pcmp = CurHTTP->pcontent;
-	do {
-		uint8 *pvar = os_strchr(pcmp, '=');
-		if(pvar == NULL) break;
-		*pvar = '\0'; // close cmd
-		urldecode(pcmp, pcmp, pvar - pcmp, pvar - pcmp);
-		if(*(++pvar) == '\0') break; // empty & end of string
-		uint8 *pcmd = pcmp;
-		pcmp = os_strchr(pvar, '&'); // find end of value
-		uint16 len;
-		if(pcmp != NULL) {
-			len = pcmp - pvar;
-			*pcmp = '\0';
-		} else len = os_strlen(pvar);
-		urldecode(pvar, pvar, len, len);
-		web_int_vars(ts_conn, pcmd, pvar);
-		if(pcmp == NULL) break;
-		pcmp++;
-	} while(1);
-}
+#define web_parse_cookie(CurHTTP, ts_conn) web_parse_vars(ts_conn, (CurHTTP)->pcookie, (CurHTTP)->cookie_len, '\0', ';')
+#define web_parse_uri_vars(CurHTTP, ts_conn) web_parse_vars(ts_conn, (CurHTTP)->puri, (CurHTTP)->uri_len, '?', '&')
+#define web_parse_content(CurHTTP, ts_conn) web_parse_vars(ts_conn, (CurHTTP)->pcontent, (CurHTTP)->content_len, '\0', '&')
 //=============================================================================
 // Разбор имени файла и перевод в вид относительного URI.
 // (выкидывание HTTP://Host)

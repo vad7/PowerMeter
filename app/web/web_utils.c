@@ -137,8 +137,8 @@ uint32 ICACHE_FLASH_ATTR ahextoul(uint8 *s)
 *******************************************************************************/
 uint8 * ICACHE_FLASH_ATTR cmpcpystr(uint8 *pbuf, uint8 *pstr, uint8 a, uint8 b, uint16 len)
 {
-            if(len == 0) pbuf = NULL;
-            if(pstr == NULL) {
+			if(len == 0) pbuf = NULL;
+    		if(pstr == NULL) {
               if(pbuf != NULL) *pbuf='\0';
               return NULL;
             };
@@ -286,35 +286,36 @@ void ICACHE_FLASH_ATTR strtomac(uint8 *s, uint8 *macaddr)
 int ICACHE_FLASH_ATTR urldecode(uint8 *d, uint8 *s, uint16 lend, uint16 lens)
 {
 	uint16 ret = 0;
-	if(s != NULL) while ((lens--) && (lend--) && (*s > ' ')) {
-		if ((*s == '%')&&(lens > 1)) {
-			s++;
-			int i = 2;
-			uint8 val = 0;
-			while(i--) {
-				if (*s >= '0' && *s <= '9') {
-					val <<= 4;
-					val |= *s - '0';
-				} else if (*s >= 'A' && *s <= 'F') {
-					val <<= 4;
-					val |= *s - 'A' + 10;
-				} else if (*s >= 'a' && *s <= 'f') {
-					val <<= 4;
-					val |= *s - 'a' + 10;
-				} else
-					break;
+	if(s != NULL)
+		while ((lens--) && (lend--) && (*s > ' ')) {
+			if ((*s == '%')&&(lens > 1)) {
 				s++;
-				lens--;
-			};
-			s--;
-			*d++ = val;
-		} else if (*s == '+')
-			*d++ = ' ';
-		else
-			*d++ = *s;
-		ret++;
-		s++;
-	}
+				int i = 2;
+				uint8 val = 0;
+				while(i--) {
+					if (*s >= '0' && *s <= '9') {
+						val <<= 4;
+						val |= *s - '0';
+					} else if (*s >= 'A' && *s <= 'F') {
+						val <<= 4;
+						val |= *s - 'A' + 10;
+					} else if (*s >= 'a' && *s <= 'f') {
+						val <<= 4;
+						val |= *s - 'a' + 10;
+					} else
+						break;
+					s++;
+					lens--;
+				};
+				s--;
+				*d++ = val;
+			} else if (*s == '+')
+				*d++ = ' ';
+			else
+				*d++ = *s;
+			ret++;
+			s++;
+		}
 	*d = '\0';
 	return ret;
 }
