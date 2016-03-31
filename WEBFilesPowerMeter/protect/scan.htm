@@ -75,7 +75,7 @@ function updateScan(xmlData) {
 		var ssid=getXMLValue(ap, 'ss');
 		var rs=getXMLValue(ap, 'rs');
 		var hd=getXMLValue(ap, 'hd');
-		r=document.all.aps.insertRow();
+		r=document.all.aps.insertRow(-1);
 		c=r.insertCell(0);c.innerHTML="<a href=# >"+ssid+"</a>";c.ssid=ssid;c.bsid=bsid;c.onclick=onApClick;
 		c=r.insertCell(1);c.innerHTML="<a href=# >"+bsid+"</a>";c.ssid=ssid;c.bsid=bsid;c.onclick=onApClick;c.ondblclick=onInfo;c.title='DoubleClick = MF info';
 		(r.insertCell(2)).innerHTML=AUTH[au];

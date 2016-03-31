@@ -12,8 +12,6 @@
 <tr><th>Pin</th><th>Inp</ht><th>Out</th><th>Dir</th><th>Func</th><th>PU</th><th>PD</th><th>OD</th></tr>
 </table>
 GPIO13(CTS0), GPIO15(RTS0) - Flow enable: Off,<br>
-GPIO1(TX0), GPIO3(RX0) - Close TCP-UART: 'TCP port' = 0,  <br>
-GPIO2(TX1) - Disable: 'GPIO2 debug UART TX Enable'.
 </div>
 ~inc:footer.inc~
 </body>
@@ -22,7 +20,7 @@ GPIO2(TX1) - Disable: 'GPIO2 debug UART TX Enable'.
 //var onoff = {0: "off", 1: "on"};
 function CreateTableGpio() {
 	for(i = 0; i < 16; i++){
-		r=document.all.gpios.insertRow();
+		r=document.all.gpios.insertRow(-1);
 		(r.insertCell(0)).innerText="GPIO"+i;
 		(r.insertCell(1)).innerHTML="&bull;";
 		c=r.insertCell(2);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_out=3")};c.className='s';
