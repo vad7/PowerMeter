@@ -383,11 +383,12 @@ void ICACHE_FLASH_ATTR web_hexdump(TCP_SERV_CONN *ts_conn)
 
 //---------------------------- output history.csv ---------------------------
 typedef struct {
-	uint32 	PtrCurrent;
-	time_t 	LastTime;
-	time_t	PreviousTime;
-	int32_t	minutes;
-	bool 	FlagContinue;
+	uint32 	PtrCurrent; 	// ptr in the FRAM array
+	time_t 	LastTime;		// Last printed time
+	time_t	PreviousTime; 	// Previous printed time
+	int32_t	minutes;		// How many minutes printed
+	bool 	FlagContinue;	// Need continue print packed
+	uint8_t OutType;		// 0 -
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
@@ -445,6 +446,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		hst->minutes = web_conn->udata_stop;
 		web_conn->udata_stop = (uint32)hst;
+		hst->OutType = web_conn->udata_start;
 		hst->PtrCurrent = fram_store.PtrCurrent;
 		if(CntCurrent.Cnt2) { // packed available
 			hst->PtrCurrent += CntCurrent.Cnt2 == 1 ? 1 : 2; // 0,1 in CurrentCnt is 0 last minute
@@ -1166,10 +1168,18 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         		web_get_ram(ts_conn);
         	}
 #endif
-        	// history.bin
-        	else ifcmp("history") {
-        		web_conn->udata_stop = WebChart_MaxMinutes; // how many minutes, 0 = all
-    			web_get_history(ts_conn);
+        	// history.csv
+        	else ifcmp("history_") {
+        		cstr += 8;
+        		ifcmp("day") {
+					web_conn->udata_start = 1;					// OutType: kWt per date
+					web_conn->udata_stop = WebChart_Max; 		// how many days, 0 = all
+					web_get_history(ts_conn);
+        		} else {
+					web_conn->udata_start = 0;					 // OutType: out non zero cnts in min
+					web_conn->udata_stop = WebChart_Max * 24*60; // how many minutes, 0 = all
+					web_get_history(ts_conn);
+        		}
         	}
         	// fram_all.bin
         	else ifcmp("fram_all") {
@@ -1373,7 +1383,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	}
         }
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
-        else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_MaxMinutes / (24*60));
+        else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_Max);
         else ifcmp("iot_last_status") tcp_puts("%s", iot_last_status);
 // PowerMeter
 		else tcp_put('?');

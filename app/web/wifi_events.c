@@ -121,7 +121,7 @@ void ICACHE_FLASH_ATTR print_event_reason(int reason)
 
 #endif // PRINT_EVENT_REASON_ENABLE
 
-#define COUNT_RESCONN_ST 1 //3 // кол-во непрерывных повторов попытки соединения ST модуля к внешней AP
+#define COUNT_RESCONN_ST 3 // кол-во непрерывных повторов попытки соединения ST модуля к внешней AP
 
 int flg_open_all_service DATA_IRAM_ATTR; // default = false
 int st_reconn_count DATA_IRAM_ATTR;
@@ -290,7 +290,7 @@ void ICACHE_FLASH_ATTR wifi_handle_event_cb(System_Event_t *evt)
 #ifdef PRINT_EVENT_REASON_ENABLE
 			os_printf("Disconnect from ssid %s, reason(%d): ", evt->event_info.disconnected.ssid, evt->event_info.disconnected.reason);
 			print_event_reason(evt->event_info.disconnected.reason);
-			os_printf(", count %d\n", st_reconn_count);
+			os_printf(", count %d (rt=%d)\n", st_reconn_count, wificonfig.st.reconn_timeout);
 #else
 #if DEBUGSOO > 1
 			os_printf("Disconnect from ssid %s, reason %d, count %d\n",
@@ -299,9 +299,9 @@ void ICACHE_FLASH_ATTR wifi_handle_event_cb(System_Event_t *evt)
 #endif
 #endif // PRINT_EVENT_REASON_ENABLE
 			int opmode = wifi_get_opmode();
-			if(wificonfig.st.reconn_timeout != 1
-			 && st_reconn_count >= COUNT_RESCONN_ST
-			 && (opmode & STATION_MODE) ) {
+			if((opmode & STATION_MODE)
+			  && wificonfig.st.reconn_timeout != 1
+			  && (st_reconn_count >= COUNT_RESCONN_ST || evt->event_info.disconnected.reason == 4)) { // Assoc_expire
 				if(wifi_station_get_auto_connect() != 0)	{
 					wifi_station_disconnect();
 					if(wificonfig.st.reconn_timeout > 1) {

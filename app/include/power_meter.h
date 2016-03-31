@@ -45,7 +45,7 @@ CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
 uint32 LastCnt;				// Last cnt
 uint32 LastCnt_Previous;
-uint32 WebChart_MaxMinutes; // ~ChartMaxMin~
+uint32 WebChart_Max; // ~ChartMaxDays~
 uint32 KWT_Previous;		// *1000
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;

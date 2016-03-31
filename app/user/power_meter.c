@@ -165,6 +165,11 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 	time_t time = get_sntp_localtime();
 	if(time && (time - fram_store.LastTime >= TIME_STEP_SEC)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
+		if(Sensor_Edge && PowerCntTime + 2000000 < system_get_time()) {
+			// some problem here, after 2 sec - normal state of edge = 0
+			gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
+			Sensor_Edge = 0;
+		}
 		user_idle_func_working = 1;
 		ets_intr_unlock();
 		update_cnts(time);
@@ -251,6 +256,7 @@ static void gpio_int_handler(void)
 	GPIO_STATUS_W1TC = gpio_status;
 	if(gpio_status & (1<<SENSOR_PIN)) {
 		uint32 tm = system_get_time();
+//		os_printf("*%d*\n", Sensor_Edge);
 		if(tm - PowerCntTime > 20000) { // skip if interval less than 20ms
 			PowerCntTime = tm;
 			if(!Sensor_Edge) { // Front edge
@@ -278,7 +284,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
 		#endif
 		*(uint32 *)&CntCurrent = 0;
-		WebChart_MaxMinutes	= 10 * 24*60; // 10 days
+		WebChart_Max = 10; // 10 days
 		iot_data_first = NULL;
 		LastCnt = 0;
 		LastCnt_Previous = -1;
