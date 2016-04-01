@@ -140,13 +140,18 @@ function type(d) {
 </script>
 <br><br><br>
 <form method="post" action="history.htm">
-Max days: <input title='0 - all' name='ChartMaxDays' maxlength='10' value='~ChartMaxDays~'>
-<input type='submit' value='Refresh' class="button">
+Max days: <input type="text" id="ChartMaxDays" maxlength="10" title="0 - all">
+ by day: <input type="checkbox" id="ShowByDay">
+<input type="submit" value="Refresh" onClick="updCookie('ChartMaxDays');updCookie('ShowByDay')" class="button">
 </form>
-
 <br>
-<a href='history.csv'>Download history.csv</a><br>
-<a href='/protect/fram_all.bin'>Download all FRAM memory</a><br>
+<a href="history.csv">Download history.csv</a><br>
+<a href="/protect/fram_all.bin">Download all FRAM memory</a><br>
 </p></div>
 ~inc:footer.inc~
+<script src="cookies.js"></script>
+<script>
+setCookieElem("ShowByDay", 0);
+setCookieElem("ChartMaxDays", 10);
+</script>
 </body></html>

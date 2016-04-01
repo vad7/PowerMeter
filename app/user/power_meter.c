@@ -284,7 +284,6 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
 		#endif
 		*(uint32 *)&CntCurrent = 0;
-		WebChart_Max = 10; // 10 days
 		iot_data_first = NULL;
 		LastCnt = 0;
 		LastCnt_Previous = -1;

@@ -399,7 +399,8 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 #endif
 		// sys_write_cfg();
 	}
-	else ifcmp("ChartMaxDays") WebChart_Max = val;
+	else ifcmp("ChartMaxDays") Web_ChartMaxDays = val;
+	else ifcmp("ShowByDay") Web_ShowByDay = val;
 	else ifcmp("iot_") { // from iot_cloud.ini
 		cstr+=4;
 		uint16 len = os_strlen(pvar) + 1;
