@@ -110,18 +110,20 @@ uint32 ICACHE_FLASH_ATTR hextoul(uint8 *s)
           };
           return val;
 }
-/******************************************************************************
- * FunctionName : ahextoul
-*******************************************************************************/
 // bool convert_para_str(uint32 * dest, uint8 *s);
-uint32 ICACHE_FLASH_ATTR ahextoul(uint8 *s)
-{
 /*
 	uint32 ret;
 	if(!convert_para_str(&ret, s)) return 0;
 	return ret;
 */
+/******************************************************************************
+ * FunctionName : ahextoul
+ * Convert str in decimal/hex/bool format to uint32
+ ******************************************************************************/
+uint32 ICACHE_FLASH_ATTR ahextoul(uint8 *s)
+{
 	if((s[0]=='0') && ((s[1] | 0x20) =='x')) return hextoul(s+2);
+	if(os_strncmp(s, "true", 4) == 0) return 1;
 	return rom_atoi(s);
 }
 /******************************************************************************

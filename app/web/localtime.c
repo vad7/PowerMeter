@@ -31,7 +31,7 @@ static const int year_lengths[2] = {
   366
 } ;
 
-void ICACHE_FLASH_ATTR _localtime(const time_t * tim_p, struct tm * res)
+void ICACHE_FLASH_ATTR _localtime(time_t * tim_p, struct tm * res)
 {
   long days, rem;
   time_t lcltime;

@@ -45,8 +45,11 @@ CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
 
 uint32 LastCnt;				// Last cnt
 uint32 LastCnt_Previous;
-uint32 WebChart_Max; // ~ChartMaxDays~
 uint32 KWT_Previous;		// *1000
+// Cookies:
+uint32 Web_ChartMaxDays; 	// ~ChartMaxDays~
+uint32 Web_ShowByDay; 		// ~ShowByDay~
+//
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
@@ -57,7 +60,7 @@ void iot_data_clear(void) ICACHE_FLASH_ATTR;
 void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
-void _localtime(const time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
+void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
 
 // GPIO_PIN_INTR_NEGEDGE - down
 // GPIO_PIN_INTR_POSEDGE - up

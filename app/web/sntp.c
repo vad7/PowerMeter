@@ -65,7 +65,7 @@
 #include <string.h>
 #include <time.h>
 //#include "localtime.h"
-void _localtime(const time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
+void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
 
 #if LWIP_UDP
 

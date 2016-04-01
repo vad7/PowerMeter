@@ -388,28 +388,29 @@ typedef struct {
 	time_t	PreviousTime; 	// Previous printed time
 	int32_t	minutes;		// How many minutes printed
 	bool 	FlagContinue;	// Need continue print packed
-	uint8_t OutType;		// 0 -
+	uint8_t OutType;		// 0 - out non zero cnts in min, 1 - kWt per day
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
 	uint8_t	n;
 	int16_t	previous_n;
+	int32_t Sum;			// for OutType=1
 	uint8_t	buf[48];
 	char 	str[32];
 } history_output;
 
 // return True if overflow
-bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t *Time, int16_t num)
+bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t *Time, int32_t num)
 {
 	struct tm tm;
 	_localtime(Time, &tm);
-	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c%d\r\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter, num);
-//	if(n) {
-//		uint32 KWT = n * 10 / cfg_meter.PulsesPer0_01KWt;
-//		tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
-//	} else {
-//		tcp_puts("0.000\n");
-//	}
+	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
+	if(hst->OutType) { // kWt per day
+		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
+		L += ets_sprintf(hst->str + L, "%d.%03d\r\n", num / 1000, num % 1000);
+	} else {
+		L += ets_sprintf(hst->str + L, "%d\r\n", num);
+	}
 	if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
 		return true;
 	}
@@ -435,7 +436,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
     // Check if this is a first round call
     if(CheckSCB(SCB_RETRYCB)==0) {
 #if DEBUGSOO > 2
-		os_printf("Output History ");
+		os_printf("Output History %u, %u: ", web_conn->udata_start, web_conn->udata_stop);
 #endif
 		hst = os_zalloc(sizeof(history_output));
 		if(hst == NULL) {
@@ -497,25 +498,34 @@ xErrorI2C:
 					int16_t num;
 xContinue:
 					num = packed_flag ? 0 : n;
-					if(hst->previous_n == 0 && num) { // out 0 if num after multi zero
-						if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
-					}
-					if(hst->previous_n || num) { // multi-zeros will be skipped
-						if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, num)) {
-xBufferFull:
-							hst->len = len;
-							hst->i = i;
-							hst->n = n;
-							hst->packed_flag = packed_flag;
-							hst->FlagContinue = 1;
-							#if DEBUGSOO > 4
-								os_printf("Buf full: %d, %d, %d\n", len, i, n);
-							#endif
-							SetNextFunSCB(web_get_history);
-							SetSCB(SCB_RETRYCB);
-							return;
+					if(hst->OutType) { // by day
+						hst->Sum += num;
+						if(hst->LastTime / 60 % 1440) { // time is not 00:00 - skip
+							goto xSkip;
 						}
+					} else {
+						if(hst->previous_n == 0 && num) { // out 0 if num after multi zero
+							if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
+						}
+						if(!(hst->previous_n || num)) goto xSkip; // multi-zeros will be skipped
 					}
+					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType ? hst->Sum : num)) {
+xBufferFull:
+						hst->Sum -= num;
+						hst->len = len;
+						hst->i = i;
+						hst->n = n;
+						hst->packed_flag = packed_flag;
+						hst->FlagContinue = 1;
+						#if DEBUGSOO > 4
+							os_printf("Buf full: %d, %d, %d\n", len, i, n);
+						#endif
+						SetNextFunSCB(web_get_history);
+						SetSCB(SCB_RETRYCB);
+						return;
+					}
+					hst->Sum = 0;
+xSkip:
 					hst->previous_n = num;
 					hst->PreviousTime = hst->LastTime;
 					hst->LastTime -= TIME_STEP_SEC;
@@ -1169,17 +1179,10 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	}
 #endif
         	// history.csv
-        	else ifcmp("history_") {
-        		cstr += 8;
-        		ifcmp("day") {
-					web_conn->udata_start = 1;					// OutType: kWt per date
-					web_conn->udata_stop = WebChart_Max; 		// how many days, 0 = all
-					web_get_history(ts_conn);
-        		} else {
-					web_conn->udata_start = 0;					 // OutType: out non zero cnts in min
-					web_conn->udata_stop = WebChart_Max * 24*60; // how many minutes, 0 = all
-					web_get_history(ts_conn);
-        		}
+        	else ifcmp("history") {
+				web_conn->udata_start = Web_ShowByDay;				// OutType: 0 - out non zero cnts in min, 1 - kWt per date
+				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
+				web_get_history(ts_conn);
         	}
         	// fram_all.bin
         	else ifcmp("fram_all") {
@@ -1383,7 +1386,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	}
         }
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
-        else ifcmp("ChartMaxDays") tcp_puts("%u", WebChart_Max);
+        else ifcmp("ChartMaxDays") tcp_puts("%u", Web_ChartMaxDays);
+        else ifcmp("ShowByDay") tcp_puts("%d", Web_ShowByDay);
         else ifcmp("iot_last_status") tcp_puts("%s", iot_last_status);
 // PowerMeter
 		else tcp_put('?');
