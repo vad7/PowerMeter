@@ -1388,7 +1388,11 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", Web_ChartMaxDays);
         else ifcmp("ShowByDay") tcp_puts("%d", Web_ShowByDay);
-        else ifcmp("iot_last_status") tcp_puts("%s", iot_last_status);
+        else ifcmp("iot_") {
+        	cstr += 4;
+            ifcmp("LastSt_time") tcp_puts("%u", iot_last_status_time);
+            else ifcmp("LastSt") tcp_puts("%s", iot_last_status);
+        }
 // PowerMeter
 		else tcp_put('?');
 }

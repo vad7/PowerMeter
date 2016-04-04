@@ -40,6 +40,7 @@ uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0\r\nHost: %s\r\nAccept: text/html\
 uint8 key_http_ok1[] = "HTTP/"; // "1.1"
 uint8 key_http_ok2[] = " 200 OK\r\n";
 char  iot_last_status[16] = "not runned";
+time_t iot_last_status_time = 0;
 
 os_timer_t error_timer;
 ip_addr_t tc_remote_ip;
@@ -99,6 +100,7 @@ err_t ICACHE_FLASH_ATTR tc_recv(TCP_SERV_CONN *ts_conn) {
 #endif
     os_memset(iot_last_status, 0, sizeof(iot_last_status));
     os_strncpy(iot_last_status, (char *)pstr, mMIN(sizeof(iot_last_status)-1, len)); // status/error
+    iot_last_status_time = get_sntp_time();
 	if(len >= sizeof(key_http_ok1) + 3 + sizeof(key_http_ok2)) {
 		if(os_memcmp(pstr, key_http_ok1, sizeof(key_http_ok1)-1) == 0
 				&& os_memcmp(pstr + sizeof(key_http_ok1)-1 + 3, key_http_ok2, sizeof(key_http_ok2)-1) == 0) { // Check - 200 OK?
@@ -319,7 +321,7 @@ void tc_go_next(void)
 	}
 	// next
 	while(iot_data_processing != NULL) {
-		if(iot_data_processing->last_run + iot_data_processing->min_interval <= system_get_time()) { // если рано - пропускаем
+		if(abs_64((sint64)system_get_time() - iot_data_processing->last_run) > iot_data_processing->min_interval) { // если рано - пропускаем
 			if(tc_go() == ERR_OK) break;
 		}
 		iot_data_processing = iot_data_processing->next;
@@ -366,7 +368,7 @@ void ICACHE_FLASH_ATTR iot_data_clear(void)
 void ICACHE_FLASH_ATTR iot_cloud_send(uint8 fwork)
 {
 	#if DEBUGSOO > 4
-		os_printf("iot_send: %d, %d: %x %x\n", tc_init_flg, fwork, iot_data_first, iot_data_processing);
+		os_printf("iot_send: %d, %d: %x %x, IP%d(%d)\n", tc_init_flg, fwork, iot_data_first, iot_data_processing, wifi_station_get_connect_status(), flg_open_all_service);
 	#endif
 	if((tc_init_flg & TC_INITED) == 0) return;
 	if(fwork == 0) { // end
@@ -374,7 +376,10 @@ void ICACHE_FLASH_ATTR iot_cloud_send(uint8 fwork)
 		return;
 	}
 	if((tc_init_flg & TC_RUNNING)) return; // exit if process active
-	if(iot_data_first == NULL || !flg_open_all_service || wifi_station_get_connect_status() != STATION_GOT_IP) return; // st connected?
+	if(wifi_station_get_connect_status() != STATION_GOT_IP) return; // st connected?
+	if(!flg_open_all_service) {// some problem with WiFi here
+		wifi_station_connect();
+	}
 	if(iot_data_first != NULL) {
 		if(iot_data_processing == NULL) iot_data_processing = iot_data_first;
 		tc_go_next();
