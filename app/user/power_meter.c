@@ -23,6 +23,12 @@ uint8  Sensor_Edge; 		// 0 - Front pulse edge, 1 - Back
 uint8  FRAM_STORE_Readed	= 0;
 uint8  user_idle_func_working = 0;
 
+// abs() 64 bit -> uinsigned 32 bit
+uint32 abs_64(sint64 n)
+{
+	return n < 0 ? -n : n;
+}
+
 void ICACHE_FLASH_ATTR fram_init(void) {
 	i2c_Init(cfg_meter.i2c_freq);
 }
@@ -165,7 +171,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 	time_t time = get_sntp_localtime();
 	if(time && (time - fram_store.LastTime >= TIME_STEP_SEC)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
-		if(Sensor_Edge && PowerCntTime + 2000000 < system_get_time()) {
+		if(Sensor_Edge && abs_64((sint64)system_get_time() - PowerCntTime) > 2000000) {
 			// some problem here, after 2 sec - normal state of edge = 0
 			gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
 			Sensor_Edge = 0;
@@ -257,7 +263,7 @@ static void gpio_int_handler(void)
 	if(gpio_status & (1<<SENSOR_PIN)) {
 		uint32 tm = system_get_time();
 //		os_printf("*%d*\n", Sensor_Edge);
-		if(tm - PowerCntTime > 20000) { // skip if interval less than 20ms
+		if(abs_64((sint64)tm - PowerCntTime) > 20000) { // skip if interval less than 20ms
 			PowerCntTime = tm;
 			if(!Sensor_Edge) { // Front edge
 				PowerCnt++;

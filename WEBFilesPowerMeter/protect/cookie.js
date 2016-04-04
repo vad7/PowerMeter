@@ -11,7 +11,7 @@ function getCookie(name) {
 			cookieEndIndex));
 }
 function setCookie(name, value) {
-	document.cookie = name + "=" + escape(value) + "; path=/";
+	document.cookie = name + "=" + escape(value) + "; path=/protect";
 }
 function setCookieElem(name, defv) {
 	var val = getCookie(name);
