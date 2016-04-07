@@ -25,7 +25,7 @@ inc:menu0.inc
 TotalKWT
 TotalCntTime
 sntp_time
-starttime
+sys_mactime
 inc:footer.inc
 inc:vdd.inc
 inc:time.inc
