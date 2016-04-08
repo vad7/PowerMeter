@@ -18,12 +18,12 @@
 typedef struct __attribute__((packed)) {
 	uint32 	Fram_Size;				// 32768
 	uint16 	PulsesPer0_01KWt; 		// 6
-	char	csv_delimiter; 			// ','
 	uint16  i2c_freq;				// 400 KHz
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
+	char	csv_delimiter; 			// ','
 //	char sntp_server[20];
 } CFG_METER;
-CFG_METER cfg_meter;
+CFG_METER __attribute__((aligned(4))) cfg_meter;
 
 typedef struct __attribute__((packed)) {
 	uint32 PowerCnt;
@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) {
 	time_t LastTime;
 	//uint8 Reserved[];
 } FRAM_STORE;
-FRAM_STORE fram_store;
+FRAM_STORE __attribute__((aligned(4))) fram_store;
 #define StartArrayOfCnts	32 // Start pos, packed: if [cell] = 0 and [cell+1] > 1, then [cell+1] = How many minutes was 0.
 
 typedef struct __attribute__((packed)) {
@@ -41,7 +41,7 @@ typedef struct __attribute__((packed)) {
 	uint8 Cnt3; // always = 0
 	uint8 Cnt4; // always = 0
 } CNT_CURRENT;
-CNT_CURRENT CntCurrent; // = {0, 0, 0, 0};
+CNT_CURRENT __attribute__((aligned(4))) CntCurrent; // = {0, 0, 0, 0};
 
 uint32 LastCnt;				// Last cnt
 uint32 LastCnt_Previous;
