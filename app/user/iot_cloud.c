@@ -321,7 +321,7 @@ void tc_go_next(void)
 	}
 	// next
 	while(iot_data_processing != NULL) {
-		if(abs_64((sint64)system_get_time() - iot_data_processing->last_run) > iot_data_processing->min_interval) { // если рано - пропускаем
+		if(system_get_time() - iot_data_processing->last_run > iot_data_processing->min_interval) { // если рано - пропускаем
 			if(tc_go() == ERR_OK) break;
 		}
 		iot_data_processing = iot_data_processing->next;

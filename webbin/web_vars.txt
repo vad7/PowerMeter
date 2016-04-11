@@ -57,7 +57,7 @@ sys_sdkver
 wifi_ap_ip
 wifi_st_ip
 sntp_time
-starttime
+sys_mactime
 inc:footer.inc
 inc:time.inc
 sys_url
@@ -74,6 +74,7 @@ wifi_aps_xml
 start
 xml_ram
 inc:menu.inc
+inc:slider.inc
 sys_rdec0x4027F008
 sys_const_107
 sys_ucnst_0
@@ -93,6 +94,7 @@ bin_flash_const
 bin_fram_all
 bin_flash_all
 inc:menu.inc
+inc:slider.inc
 inc:footer.inc
 gpio_inp
 gpio_out

@@ -1429,6 +1429,8 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 			{
 #if DEBUGSOO > 4
 				os_printf("fdata ");
+				print_hex_dump(pstr, web_conn->content_len, ' ');
+				os_printf("\n");
 #endif
 				uint32 block_size = mMIN(max_len_buf_write_flash + 8 + pupload->sizeboundary, web_conn->content_len);
 				if(ts_conn->sizei < block_size) return 0; // докачивать
