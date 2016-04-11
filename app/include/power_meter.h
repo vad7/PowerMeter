@@ -51,7 +51,6 @@ uint32 Web_ChartMaxDays; 	// ~ChartMaxDays~
 uint32 Web_ShowByDay; 		// ~ShowByDay~
 //
 
-uint32 abs_64(sint64 n);
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
 void user_idle(void) ICACHE_FLASH_ATTR;
 bool write_power_meter_cfg(void) ICACHE_FLASH_ATTR;

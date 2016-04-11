@@ -6,15 +6,19 @@
 	<script src="/site.js"></script>
 </head><body onload="CreateTableGpio()">
 ~inc:menu.inc~
+~inc:slider.inc~
 <div class="content">
 <h2 class="title">GPIO</h2>
 <table id="gpios" class="scan">
 <tr><th>Pin</th><th>Inp</ht><th>Out</th><th>Dir</th><th>Func</th><th>PU</th><th>PD</th><th>OD</th></tr>
 </table>
-GPIO13(CTS0), GPIO15(RTS0) - Flow enable: Off,<br>
+<table cellspacing="2" cellpadding="0" border="0" style="font-size:10pt">
+<tr><td><div id="sl"></div>GET TimeOuts <span id="toutid" style="font-weight:bold">?</span> ms'</td></tr>
+</table>
 </div>
 ~inc:footer.inc~
 </body>
+<script src="slider.js" type="text/javascript"></script>
 <script type="text/javascript">
 //var pullx = {0: "none", 1: "down", 2: "up", 3: "#"};
 //var onoff = {0: "off", 1: "on"};
