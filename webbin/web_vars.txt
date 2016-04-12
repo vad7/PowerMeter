@@ -74,7 +74,6 @@ wifi_aps_xml
 start
 xml_ram
 inc:menu.inc
-inc:slider.inc
 sys_rdec0x4027F008
 sys_const_107
 sys_ucnst_0

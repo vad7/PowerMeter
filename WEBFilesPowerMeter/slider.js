@@ -45,8 +45,7 @@ function slider(elemId, sliderWidth, range1, range2, step) {
 			if (step == 0)
 				knob.style.left = x + 'px';
 			else
-				knob.style.left = Math.round(x / (step * point)) * step * point
-						+ 'px'
+				knob.style.left = Math.round(x / (step * point)) * step * point	+ 'px'
 		}
 		nextimeout = getValue();
 		d.getElementById('toutid').value = nextimeout;
@@ -99,6 +98,6 @@ function slider(elemId, sliderWidth, range1, range2, step) {
 	this.setValue = setValue2;
 	this.getValue = getValue
 }
-var mysl1 = new slider('sl', 333, 20, 10020, 0);
-mysl1.setValue(500);
+var mysl1 = new slider('sl', 320, 20, 10020, 0);
+mysl1.setValue(520);
 document.getElementById('toutid').innerHTML = mysl1.getValue();
