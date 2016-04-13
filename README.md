@@ -28,3 +28,4 @@ Based on [esp8266web](https://github.com/pvvx/esp8266web.git)
 7. i2c драйвер с установкой скорости. Работа с FRAM памятью.  	
 8. Рисование графиков с зумом с помощью java библиотеки d3.js. 
 9. Выкладывание данных в IoT cloud - thingspeak.com через GET запрос (iot_cloud.с).
+10. Другие мелкие доработки.
