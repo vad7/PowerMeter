@@ -79,9 +79,9 @@ function updateScan(xmlData) {
 		c=r.insertCell(0);c.innerHTML="<a href=# >"+ssid+"</a>";c.ssid=ssid;c.bsid=bsid;c.onclick=onApClick;
 		c=r.insertCell(1);c.innerHTML="<a href=# >"+bsid+"</a>";c.ssid=ssid;c.bsid=bsid;c.onclick=onApClick;c.ondblclick=onInfo;c.title='DoubleClick = MF info';
 		(r.insertCell(2)).innerHTML=AUTH[au];
-		(r.insertCell(3)).innerText=ch;
-		(r.insertCell(4)).innerText=rs;
-		(r.insertCell(5)).innerText=hd;
+		(r.insertCell(3)).innerHTML=ch;
+		(r.insertCell(4)).innerHTML=rs;
+		(r.insertCell(5)).innerHTML=hd;
 	}
 	$('stform').style.display='';
 }
