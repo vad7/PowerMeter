@@ -25,11 +25,11 @@
 function CreateTableGpio() {
 	for(i = 0; i < 16; i++){
 		r=document.all.gpios.insertRow(-1);
-		(r.insertCell(0)).innerText="GPIO"+i;
+		(r.insertCell(0)).innerHTML="GPIO"+i;
 		(r.insertCell(1)).innerHTML="&bull;";
 		c=r.insertCell(2);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_out=3")};c.className='s';
 		c=r.insertCell(3);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_dir=3")};c.className='s';
-		(r.insertCell(4)).innerText="?";
+		(r.insertCell(4)).innerHTML="?";
 		c=r.insertCell(5);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_pu=3")};c.className='s';
 		c=r.insertCell(6);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_pd=3")};c.className='s';
 		c=r.insertCell(7);c.innerHTML="&bull;";c.idx=i;c.onclick=function(){newAJAXCommand("gpio.xml?gpio"+this.idx+"_od=3")};c.className='s';
