@@ -216,6 +216,7 @@ wifi_scan
 inc:menu0.inc
 cfg_meter_PulsesPerKWt
 TotalCnt
+TotalKWT
 cfg_meter_PulsesPerKWt
 cfg_meter_csv_delim
 cfg_iot_ini
