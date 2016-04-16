@@ -13,13 +13,13 @@
 			<table class="form">
 				<tr>
 					<td class="label">Total cnt, kWt * ~cfg_meter_PulsesPerKWt~:
-					<input title='change?' type='checkbox' name='change_totalcnt' value='0'>
+					<input title='change?' type='checkbox' name='change_totalcnt' value='0'> 
 					</td>
-					<td><input title='0..4294967295' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'></td>
+					<td><input title='0..4294967295' id='TCnt' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'>&ensp;&larr;&ensp;<input title='0.00..999999.99' id='kWt' size='8' value='~TotalKWT~' onchange='CalcTotalCnt()'>&nbsp;kWt</td>
 				</tr>
 				<tr>
 					<td class="label">Pulses per kWt:</td>
-					<td><input title='100,200,300,..10000' name='cfg_meter_PulsesPerKWt' maxlength='5' value='~cfg_meter_PulsesPerKWt~'></td>
+					<td><input title='100,200,300,..10000' id='PkWt' name='cfg_meter_PulsesPerKWt' maxlength='5' value='~cfg_meter_PulsesPerKWt~'></td>
 				</tr>
 				<tr>
 					<td class="label">Delimiter in .csv:</td>
@@ -59,7 +59,6 @@ var cfg = {
 	cfg_iot_cloud_enable:"~cfg_iot_cloud_enable~"
 }
 setFormValues(document.forms[0], cfg);
-
 function SubmitFunction() {
 	if(!document.getElementsByName('change_totalcnt')[0].checked) {
 		document.getElementsByName('cfg_meter_TotalCnt')[0].removeAttribute('name');
@@ -67,6 +66,9 @@ function SubmitFunction() {
 	if(!document.getElementsByName('change_iot_ini')[0].checked) {
 		document.getElementsByName('cfg_iot_ini')[0].removeAttribute('name');
 	}
+}
+function CalcTotalCnt() {
+	document.getElementById('TCnt').value = Math.round(document.getElementById('kWt').value * document.getElementById('PkWt').value);
 }
 </script>
 </body></html>
