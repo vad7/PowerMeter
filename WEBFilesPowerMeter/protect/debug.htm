@@ -15,6 +15,23 @@ Get <a href="/protect/system.xml">system.xml</a>, <a href="/protect/aps.xml">aps
 <a title='Not work for any mode...' href='/timeout.htm?sys_reset=12345'>SoftWare Reset</a>, <a title='Not work for any mode...' href='/timeout.htm?sys_restart=12345'>System Restart</a><br><br>
 Counter erase the last flash sector in the Chinese SDK, to save 28 bytes: ~sys_rdec0x4027F008~!<br><br>
 </p>
+
+<form method="post" action="debug.htm">
+Debug to RAM ~dbg_addr~ (~dbg_len~): 
+	<input type="radio" name="dbg_ram" value="0"> none 
+	<input type="radio" name="dbg_ram" value="1"> start 
+	<input type="radio" name="dbg_ram" value="2"> stop 
+	&ensp;
+	<input type="submit" value="Set" class="button">
+<br>Debounce, us: <input name='cfg_meter_Debouncing' size='6' value='~cfg_meter_Debouncing~'>&ensp;
+<script type="text/javascript">
+	var f = document.getElementsByName('dbg_ram');
+	for(var i=0; i<f.length; i++){
+		if(f[i].value == "~dbg_ram~") f[i].checked = true;
+	}
+</script>
+</form>
+
 </div>
 <div class="content">
 <h2 class="title">System constants</h2>
