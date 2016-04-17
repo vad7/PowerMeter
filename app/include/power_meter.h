@@ -17,6 +17,7 @@
 
 typedef struct __attribute__((packed)) {
 	uint32 	Fram_Size;				// 32768
+	uint32  Debouncing_Timeout;		// us
 	uint16 	PulsesPer0_01KWt; 		// 6
 	uint16  i2c_freq;				// 400 KHz
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
@@ -61,6 +62,14 @@ void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
+
+// debugging to RAM
+#define DEBUG_RAM_BUF_SIZE	4096
+uint8 *Debug_RAM_addr;
+uint32 Debug_RAM_len;
+void dbg_printf(uint8 newstr, const char *format, ...) ICACHE_FLASH_ATTR;
+void dbg_start(void) ICACHE_FLASH_ATTR;
+void dbg_stop(void) ICACHE_FLASH_ATTR;
 
 // GPIO_PIN_INTR_NEGEDGE - down
 // GPIO_PIN_INTR_POSEDGE - up

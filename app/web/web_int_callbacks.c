@@ -930,14 +930,15 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 #endif
 		    	else tcp_put('?');
 		    }
-		    else ifcmp("meter_") {
+		    else ifcmp("meter_") { // cfg_
 	        	cstr += 6;
 		        ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
 		        else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
 		        else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
 		        else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
+		        else ifcmp("Debouncing") tcp_puts("%u", cfg_meter.Debouncing_Timeout);
 		    }
-	        else ifcmp("iot_") {
+	        else ifcmp("iot_") {	// cfg_
 	        	cstr += 4;
 	        	ifcmp("cloud_enable") tcp_puts("%d", cfg_meter.iot_cloud_enable);
 	            else ifcmp("ini") {
@@ -1392,6 +1393,12 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	cstr += 4;
             ifcmp("LastSt_time") tcp_puts("%u", iot_last_status_time);
             else ifcmp("LastSt") tcp_puts("%s", iot_last_status);
+        }
+        else ifcmp("dbg_") { // debug to RAM
+        	cstr += 4;
+        	ifcmp("ram") tcp_puts("%d", Debug_RAM_addr != NULL);
+        	else ifcmp("addr") tcp_puts("0x%x", ((uint32)Debug_RAM_addr + 0xF) & ~(0xF));
+        	else ifcmp("len") tcp_puts("%u", Debug_RAM_len);
         }
 // PowerMeter
 		else tcp_put('?');

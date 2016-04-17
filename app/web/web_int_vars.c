@@ -333,13 +333,14 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			system_set_os_print(val);
 			update_mux_txd1();
 		}
-		else ifcmp("meter_") {
+		else ifcmp("meter_") {	// cfg_
 			cstr+=6;
 			ifcmp("TotalCnt") fram_store.TotalCnt = val;
 			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
+			else ifcmp("Debouncing") cfg_meter.Debouncing_Timeout = val;
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -347,7 +348,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 				if(val == 1) write_power_meter_cfg();
 			}
 		}
-        else ifcmp("iot_") {
+        else ifcmp("iot_") {	// cfg_
         	cstr += 4;
 			ifcmp("cloud_enable") {
 				uint8 oldflag = cfg_meter.iot_cloud_enable;
@@ -369,7 +370,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 				}
 			}
         }
-		else ifcmp("save") {
+		else ifcmp("save") {	//cfg_
 			if(val == 2) SetSCB(SCB_SYSSAVE); // по закрытию соединения вызвать sys_write_cfg()
 			else if(val == 1) sys_write_cfg();
 		}
@@ -671,6 +672,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
     			SetNextFunSCB(web_hexdump);
     		};
     	}
+    }
+    else ifcmp("dbg_ram") { // debug to RAM
+    	if(val == 1) dbg_start();
+    	else if(val == 2) dbg_stop();
     }
 #ifdef USE_RS485DRV
 	else ifcmp("rs485_") {
