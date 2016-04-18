@@ -642,7 +642,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 	            else ifcmp("def") 	{ set_gpiox_mux_func_default(n); }
 	            else ifcmp("sgs") 	{ sigma_delta_setup(n); set_sigma_duty_312KHz(val); }
 	            else ifcmp("sgc") 	sigma_delta_close(n);
-	            else ifcmp("od") 	reg_sct_bits(&GPIOx_PIN(n), 1<<GPIO_PIN_DRIVER, val);
+	            else ifcmp("od") 	reg_sct_bits(&GPIOx_PIN(n), GPIO_PIN_DRIVER, val);
 	            else ifcmp("pu") 	reg_sct_bits(get_addr_gpiox_mux(n), 1<<GPIO_MUX_PULLUP_BIT, val);
 	            else ifcmp("pd") 	reg_sct_bits(get_addr_gpiox_mux(n), 1<<GPIO_MUX_PULLDOWN_BIT, val);
     		}
@@ -673,9 +673,10 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
     		};
     	}
     }
-    else ifcmp("dbg_ram") { // debug to RAM
-    	if(val == 1) dbg_start();
-    	else if(val == 2) dbg_stop();
+    else ifcmp("dbg_") {  // debug to RAM
+    	cstr += 4;
+    	ifcmp("enable") dbg_set(val, 0);
+    	else ifcmp("size") if(val != Debug_RAM_size) dbg_set(0, val);
     }
 #ifdef USE_RS485DRV
 	else ifcmp("rs485_") {

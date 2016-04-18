@@ -11,6 +11,7 @@ function getCookie(name) {
 			cookieEndIndex));
 }
 function setCookie(name, value) {
+	document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC";
 	document.cookie = name + "=" + escape(value) + "; path=/protect";
 }
 function setCookieElem(name, defv) {

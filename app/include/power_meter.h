@@ -2,6 +2,7 @@
 #define _power_meter_
 
 #include "sntp.h"
+#include "debug_ram.h"
 
 #define I2C_SDA_PIN 			2
 #define I2C_SCL_PIN 			0
@@ -62,14 +63,6 @@ void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
-
-// debugging to RAM
-#define DEBUG_RAM_BUF_SIZE	4096
-uint8 *Debug_RAM_addr;
-uint32 Debug_RAM_len;
-void dbg_printf(uint8 newstr, const char *format, ...) ICACHE_FLASH_ATTR;
-void dbg_start(void) ICACHE_FLASH_ATTR;
-void dbg_stop(void) ICACHE_FLASH_ATTR;
 
 // GPIO_PIN_INTR_NEGEDGE - down
 // GPIO_PIN_INTR_POSEDGE - up
