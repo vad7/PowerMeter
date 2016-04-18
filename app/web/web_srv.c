@@ -440,7 +440,6 @@ parse_header(HTTP_CONN *CurHTTP, TCP_SERV_CONN *ts_conn)
     uint8 *pstr = ts_conn->pbufi;
     uint8 *pend = &ts_conn->pbufi[ts_conn->sizei];
     CurHTTP->pcontent = pend;
-
     if(pstr == NULL) {
       CurHTTP->httpStatus =  500; // 500 Internal Server Error
       return false;
@@ -1803,7 +1802,7 @@ LOCAL err_t ICACHE_FLASH_ATTR webserver_received_data(TCP_SERV_CONN *ts_conn)
 #endif
 #endif
 #if DEBUGSOO > 3
-		os_printf("hcn:%p[%d],wcn:%d ", CurHTTP.pcontent, CurHTTP.content_len, web_conn->content_len);
+		os_printf("hcn:%p[%d],wcn:%d\n", CurHTTP.pcontent, CurHTTP.content_len, web_conn->content_len);
 #endif
 	    if(CurHTTP.httpStatus == 200) { // && CheckSCB(SCB_FOPEN)) { // если файл открыт и всё OK
 			if(CurHTTP.cookie_len != 0) web_parse_cookie(&CurHTTP, ts_conn);

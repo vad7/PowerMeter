@@ -44,7 +44,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 			FRAM_Store_Init();
 			if(FRAM_Status) return;
 		} else {
-			#if DEBUGSOO > 2
+			#if DEBUGSOO > 5
 				os_printf("FRAM Reinit\n");
 			#endif
 			fram_init();
@@ -119,14 +119,14 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		uint32 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > to_save) cnt = to_save;
 		if(i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
-			#if DEBUGSOO > 2
+			#if DEBUGSOO > 5
 		   		os_printf("EW curr\n");
 			#endif
 		   	goto xError;
 		}
 		if(cnt < to_save) { // overflow
 			if(i2c_eeprom_write_block(I2C_FRAM_ID, StartArrayOfCnts, ((uint8 *)&CntCurrent) + cnt, to_save - cnt)) {
-				#if DEBUGSOO > 2
+				#if DEBUGSOO > 5
 			   		os_printf("EW curr2\n");
 				#endif
 			   	goto xError;
@@ -139,7 +139,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
 	if(i2c_eeprom_write_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
-		#if DEBUGSOO > 2
+		#if DEBUGSOO > 5
 	   		os_printf("EW f_s\n");
 		#endif
    		fram_store.TotalCnt -= pcnt;
@@ -171,7 +171,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 			#if DEBUGSOO > 4
 				os_printf("RESET EDGE\n");
 			#endif
-			dbg_printf(1, "Res.edge");
+			dbg_printf("Res.edge\n");
 			gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
 			Sensor_Edge = 0;
 		}
@@ -181,7 +181,7 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 		ets_set_idle_cb(user_idle, NULL);
 		user_idle_func_working = 0;
 		if(wifi_station_get_connect_status() == STATION_GOT_IP && !flg_open_all_service) {// some problem with WiFi here
-			dbg_printf(1, "WiFi trouble");
+			dbg_printf("WiFi trouble\n");
 			wifi_station_connect();
 		}
 	}
@@ -237,7 +237,7 @@ xRepeat:   			fram_init();
    				}
    				WDT_FEED = WDT_FEED_MAGIC; // WDT
    				if(i2c_eeprom_write_block(I2C_FRAM_ID, (uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
-					#if DEBUGSOO > 2
+					#if DEBUGSOO > 5
   						os_printf("EW PrCnt %d\n", FRAM_Status);
 					#endif
    					if(FRAM_Status == 0) {
@@ -267,18 +267,18 @@ static void gpio_int_handler(void)
 #if DEBUGSOO > 4
 		os_printf("*%u,%d*\n", tm, Sensor_Edge);
 #endif
-		dbg_printf(0,"*%d* %u", Sensor_Edge, tm - PowerCntTime);
+		dbg_printf("*%d* %u", Sensor_Edge, tm - PowerCntTime);
 		if(tm - PowerCntTime > cfg_meter.Debouncing_Timeout) { // skip if interval less than x us
 			PowerCntTime = tm;
 			if(!Sensor_Edge) { // Front edge
 				PowerCnt++;
-				dbg_printf(0," =%u", PowerCnt);
+				dbg_printf(" =%u", PowerCnt);
 				system_os_post(SENSOR_TASK_PRIO, GPIO_Int_Signal, SENSOR_PIN);
 			}
 		    Sensor_Edge ^= 1; // next edge
 		}
 	    gpio_pin_intr_state_set(SENSOR_PIN, Sensor_Edge ? SENSOR_BACK_EDGE : SENSOR_FRONT_EDGE);
-	    dbg_printf(1, "");
+	    dbg_printf("\n");
 	}
 }
 
@@ -305,7 +305,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 	fram_init();
 	// restore workspace from FRAM
 	if(i2c_eeprom_read_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
-		#if DEBUGSOO > 2
+		#if DEBUGSOO > 5
 			os_printf("ER f_s\n");
 		#endif
 		return;
@@ -332,13 +332,13 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > 2) cnt = 2;
 		if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
-			#if DEBUGSOO > 2
+			#if DEBUGSOO > 5
 				os_printf("ER curr\n");
 			#endif
 			return;
 		} else if(cnt < 2) {
 			if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts, (uint8 *)&CntCurrent.Cnt2, 1)) {
-				#if DEBUGSOO > 2
+				#if DEBUGSOO > 5
 					os_printf("ER curr2\n");
 				#endif
 				return;
@@ -480,40 +480,6 @@ void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 		os_free(buf);
 		os_memset(&fram_store, 0, sizeof(fram_store));
 		*(uint32 *)&CntCurrent = 0;
-	}
-}
-
-///// debug to RAM //////
-extern char print_mem_buf[1024];
-void ICACHE_FLASH_ATTR dbg_printf_out(char c)
-{
-	if(Debug_RAM_addr != NULL && Debug_RAM_len < DEBUG_RAM_BUF_SIZE) {
-		Debug_RAM_addr[Debug_RAM_len++] = c;
-	}
-}
-// Write debug info to RAM buffer, max string length must be 16 byte!
-void ICACHE_FLASH_ATTR dbg_printf(uint8 newstr, const char *format, ...) {
-	if(Debug_RAM_addr == NULL) return;
-	va_list args;
-	va_start(args, format);
-	ets_vprintf(dbg_printf_out, ((uint32)format >> 30)? rom_strcpy(print_mem_buf, (void *)format, sizeof(print_mem_buf)-1) : format, args);
-	va_end(args);
-	if(newstr && Debug_RAM_len < DEBUG_RAM_BUF_SIZE - 0xF - 1) Debug_RAM_len = (Debug_RAM_len + 0xF) & ~0xF;
-}
-void ICACHE_FLASH_ATTR dbg_start(void)
-{
-	if(Debug_RAM_addr == NULL) Debug_RAM_addr = os_malloc(DEBUG_RAM_BUF_SIZE);
-	if(Debug_RAM_addr != NULL) {
-		os_memset(Debug_RAM_addr, 0, DEBUG_RAM_BUF_SIZE);
-		Debug_RAM_len = (((uint32)Debug_RAM_addr + 0xF) & ~0xF) - (uint32)Debug_RAM_addr;
-	}
-}
-void ICACHE_FLASH_ATTR dbg_stop(void)
-{
-	if(Debug_RAM_addr != NULL) {
-		os_free(Debug_RAM_addr);
-		Debug_RAM_addr = NULL;
-		Debug_RAM_len = 0;
 	}
 }
 

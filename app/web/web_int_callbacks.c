@@ -1396,9 +1396,11 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         }
         else ifcmp("dbg_") { // debug to RAM
         	cstr += 4;
-        	ifcmp("ram") tcp_puts("%d", Debug_RAM_addr != NULL);
-        	else ifcmp("addr") tcp_puts("0x%x", ((uint32)Debug_RAM_addr + 0xF) & ~(0xF));
+        	ifcmp("enable") tcp_puts("%d", Debug_level);
+        	else ifcmp("addr") tcp_puts("0x%x", (uint32)Debug_RAM_addr);
+        	else ifcmp("size") tcp_puts("%u", Debug_RAM_size);
         	else ifcmp("len") tcp_puts("%u", Debug_RAM_len);
+        	else ifcmp("ram") dbg_tcp_send(ts_conn);
         }
 // PowerMeter
 		else tcp_put('?');
