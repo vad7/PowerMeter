@@ -11,8 +11,6 @@ inc:timer.inc
 inc:footer.inc
 inc:timer.inc
 inc:footer.inc
-inc:timer.inc
-inc:footer.inc
 inc:grfx1.inc
 inc:grfx2.inc
 sys_heap
