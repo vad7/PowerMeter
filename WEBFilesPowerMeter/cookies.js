@@ -13,26 +13,26 @@ function getCookie(name) {
 function setCookie(name, value) {
 	document.cookie = name + "=" + escape(value) + "; path=/";
 }
-function setCookieElem(id, defv) {
-	var val = getCookie(id);
+function setCookieElem(name, defv) {
+	var val = getCookie(name);
 	if (val == null) {
 		val = defv;
-		setCookie(id, val);
+		setCookie(name, val);
 	}
-	var f = document.getElementById(id);
+	var f = document.getElementById(name);
 	if(f.type === "checkbox") {
 		f.checked = val == 1 ? true : false;
 	} else {
 		f.value = val;
 	}
 }
-function updCookie(id) {
+function updCookie(name) {
 	var val;
-	var f = document.getElementById(id);
+	var f = document.getElementById(name);
 	if(f.type === "checkbox") {
 		val = f.checked ? 1 : 0;
 	} else {
 		val = f.value;
 	}
-	setCookie(id, val);
+	setCookie(name, val);
 }
