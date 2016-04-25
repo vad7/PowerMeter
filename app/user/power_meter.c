@@ -166,15 +166,6 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 	time_t time = get_sntp_localtime();
 	if(time && (time - fram_store.LastTime >= TIME_STEP_SEC)) { // Passed 1 min
 		ets_set_idle_cb(NULL, NULL);
-		if(Sensor_Edge && system_get_time() - PowerCntTime > 1000000) {
-			// some problem here, after few sec - normal state of edge = 0
-			#if DEBUGSOO > 4
-				os_printf("RESET EDGE\n");
-			#endif
-			dbg_printf("Res.edge\n");
-			gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
-			Sensor_Edge = 0;
-		}
 		user_idle_func_working = 1;
 		ets_intr_unlock();
 		update_cnts(time);
@@ -184,6 +175,15 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 			dbg_printf("WiFi trouble\n");
 			wifi_station_connect();
 		}
+	}
+	if(Sensor_Edge && system_get_time() - PowerCntTime > 500000) { // us
+		// some problem here, after few sec - normal state of edge = 0
+		#if DEBUGSOO > 4
+			os_printf("RESET EDGE\n");
+		#endif
+		dbg_printf("Rst-edge\n");
+		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
+		Sensor_Edge = 0;
 	}
 #if DEBUGSOO > 5
 	else if(print_i2c_page) { // 1..n

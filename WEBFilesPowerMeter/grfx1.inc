@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html><head>
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
-	<title>ESP8266</title>
+	<title>Power Meter</title>
 	<link rel="stylesheet" href="/style.css">
 </head>
 <body>

@@ -15,11 +15,11 @@ inc:grfx1.inc
 inc:grfx2.inc
 sys_heap
 bin_history
-inc:menu0.inc
+inc:menumain.inc
 TotalCntTime
 inc:footer.inc
 inc:time.inc
-inc:menu0.inc
+inc:menumain.inc
 TotalKWT
 TotalCntTime
 sntp_time
@@ -27,6 +27,12 @@ sys_mactime
 inc:footer.inc
 inc:vdd.inc
 inc:time.inc
+LastCnt
+cfg_meter_PulsesPerKWt
+inc:grfx1.inc
+inc:grfx2.inc
+LastCnt
+cfg_meter_PulsesPerKWt
 gpio1_inp
 gpio1_out
 gpio1_dir
@@ -221,7 +227,7 @@ wifi_st_bssid
 inc:footer.inc
 wifi_st_aucn
 wifi_scan
-inc:menu0.inc
+inc:menumain.inc
 cfg_meter_PulsesPerKWt
 TotalCnt
 TotalKWT
