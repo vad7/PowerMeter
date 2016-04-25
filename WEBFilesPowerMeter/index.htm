@@ -4,13 +4,16 @@
 	<title>Power Meter</title>
 	<link rel="stylesheet" href="/style.css">
 </head><body>
-~inc:menu0.inc~
+~inc:menumain.inc~
 <div class="content">
 <h2 class="title">~TotalKWT~ kWt</h2>
 <p class="center">
 <span id="time__~TotalCntTime~_1">?</span>
+<br>
+<br>
+Last minute: <span id="last_kwt">?</span> kWt
 </p>
-<br><br><br>
+<br><br>
 Time: <span id="time__~sntp_time~_2">No SNTP</span><br>
 Start time: <span id="timer_~sys_mactime~_3">?</span><br>
 Power: <span title="Vdd" id="syspower">?</span> V<br>
@@ -18,4 +21,7 @@ Power: <span title="Vdd" id="syspower">?</span> V<br>
 ~inc:footer.inc~
 ~inc:vdd.inc~
 ~inc:time.inc~
+<script type="text/javascript">
+document.getElementById('last_kwt').innerHTML = (~LastCnt~ * 60 / ~cfg_meter_PulsesPerKWt~).toFixed(1);
+</script>
 </body></html>
