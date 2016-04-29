@@ -311,7 +311,6 @@ xEnd:
 //  -2 - flash rd/wr/clr error
 //  -1 - не найден
 //   0..MAX_FOBJ_SIZE - ok, сохраненный размер объекта
-//-----------------------------------------------------------------------------
 sint16 ICACHE_FLASH_ATTR flash_read_cfg(void *ptr, uint16 id, uint16 maxsize)
 {
 	if(maxsize > MAX_FOBJ_SIZE) return -3; // error

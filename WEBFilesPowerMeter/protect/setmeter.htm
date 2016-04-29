@@ -47,6 +47,10 @@
 					<td><input name='cfg_meter_Debouncing' maxlength='10' value='~cfg_meter_Debouncing~'></td>
 				</tr>
 				<tr>
+					<td class="label">Sensor pulse reversed:</td>
+					<td><input type="hidden" name='cfg_meter_revsens' value='0'><input type='checkbox' name='cfg_meter_revsens' value='1'></td>
+				</tr>
+				<tr>
 					<td class="label">Reset all data:</td>
 					<td><input type='password' title='Enter magic word' name='cfg_meter_reset_data' maxlength='10' value=''></td>
 				</tr>
@@ -60,7 +64,8 @@
 ~inc:footer.inc~
 <script type="text/javascript">
 var cfg = {
-	cfg_iot_cloud_enable:"~cfg_iot_cloud_enable~"
+	cfg_iot_cloud_enable:"~cfg_iot_cloud_enable~",
+	cfg_meter_revsens:"~cfg_meter_revsens~"
 }
 setFormValues(document.forms[0], cfg);
 function SubmitFunction() {
