@@ -239,6 +239,7 @@ cfg_meter_i2c_freq
 cfg_meter_Debouncing
 inc:footer.inc
 cfg_iot_cloud_enable
+cfg_meter_revsens
 inc:menu.inc
 cfg_web_port
 cfg_web_twrec

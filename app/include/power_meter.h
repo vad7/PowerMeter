@@ -7,8 +7,8 @@
 #define I2C_SDA_PIN 			2
 #define I2C_SCL_PIN 			0
 #define SENSOR_PIN				3
-#define SENSOR_FRONT_EDGE 		GPIO_PIN_INTR_NEGEDGE
-#define SENSOR_BACK_EDGE 		GPIO_PIN_INTR_POSEDGE
+uint8_t SENSOR_FRONT_EDGE;
+uint8_t SENSOR_BACK_EDGE;
 #define	FRAM_SIZE_DEFAULT		32768
 #define FRAM_MAX_BLOCK_AT_ONCE 	128
 #define DEFAULT_PULSES_PER_0_01_KWT 6 // 600 per kWt
@@ -23,6 +23,7 @@ typedef struct __attribute__((packed)) {
 	uint16  i2c_freq;				// 400 KHz
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
 	char	csv_delimiter; 			// ','
+	uint8	ReverseSensorPulse;		// if 1 - FrontEdge = positive, BackEdge = negative
 //	char sntp_server[20];
 } CFG_METER;
 CFG_METER __attribute__((aligned(4))) cfg_meter;

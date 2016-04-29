@@ -284,24 +284,6 @@ static void gpio_int_handler(void)
 
 void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 {
-	if(FRAM_Status == 1) { // First time only
-		if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(CFG_METER)) != sizeof(CFG_METER)) {
-			// defaults
-			os_memset(&cfg_meter, 0, sizeof(CFG_METER));
-			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
-			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
-			cfg_meter.csv_delimiter = ',';
-			cfg_meter.i2c_freq = 400;
-			cfg_meter.Debouncing_Timeout = 10000; // us
-		}
-		#if DEBUGSOO > 3
-			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
-		#endif
-		*(uint32 *)&CntCurrent = 0;
-		iot_data_first = NULL;
-		LastCnt = 0;
-		LastCnt_Previous = -1;
-	}
 	fram_init();
 	// restore workspace from FRAM
 	if(i2c_eeprom_read_block(I2C_FRAM_ID, 0, (uint8 *)&fram_store, sizeof(fram_store))) {
@@ -374,8 +356,32 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 
 void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 {
-	Debug_RAM_addr = NULL;
 	if(index & 1) {
+		Debug_RAM_addr = NULL;
+		if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(CFG_METER)) <= 0) {
+			// defaults
+			os_memset(&cfg_meter, 0, sizeof(CFG_METER));
+			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
+			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
+			cfg_meter.csv_delimiter = ',';
+			cfg_meter.i2c_freq = 400;
+			cfg_meter.Debouncing_Timeout = 1000; // us
+		}
+		if(cfg_meter.ReverseSensorPulse) {
+			SENSOR_FRONT_EDGE = GPIO_PIN_INTR_POSEDGE;
+			SENSOR_BACK_EDGE  = GPIO_PIN_INTR_NEGEDGE;
+		} else {
+			SENSOR_FRONT_EDGE = GPIO_PIN_INTR_NEGEDGE;
+			SENSOR_BACK_EDGE  = GPIO_PIN_INTR_POSEDGE;
+		}
+		#if DEBUGSOO > 3
+			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
+		#endif
+		*(uint32 *)&CntCurrent = 0;
+		iot_data_first = NULL;
+		LastCnt = 0;
+		LastCnt_Previous = -1;
+
 		ets_isr_mask(1 << ETS_GPIO_INUM); // запрет прерываний GPIOs
 		// setup interrupt and os_task
 		uint32 pins_mask = (1<<SENSOR_PIN);

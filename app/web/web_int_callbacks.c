@@ -937,6 +937,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 		        else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
 		        else ifcmp("i2c_freq") tcp_puts("%u", cfg_meter.i2c_freq);
 		        else ifcmp("Debouncing") tcp_puts("%u", cfg_meter.Debouncing_Timeout);
+		        else ifcmp("revsens") tcp_puts("%u", cfg_meter.ReverseSensorPulse);
 		    }
 	        else ifcmp("iot_") {	// cfg_
 	        	cstr += 4;
