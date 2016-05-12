@@ -388,28 +388,28 @@ typedef struct {
 	time_t	PreviousTime; 	// Previous printed time
 	int32_t	minutes;		// How many minutes printed
 	bool 	FlagContinue;	// Need continue print packed
-	uint8_t OutType;		// 0 - out non zero cnts in min, 1 - kWt per day
+	uint8_t OutType;		// bit_2 - TotalCnt, bit_1 - by date, bit_0 - kWt
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
 	uint8_t	n;
 	int16_t	previous_n;
-	int32_t Sum;			// for OutType=1
+	uint32_t Sum;			// for OutType by date / TotalCnt
 	uint8_t	buf[48];
 	char 	str[32];
 } history_output;
 
 // return True if overflow
-bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t *Time, int32_t num)
+bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t *Time, uint32_t num)
 {
 	struct tm tm;
 	_localtime(Time, &tm);
 	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
-	if(hst->OutType) { // kWt per day
+	if(hst->OutType & 0b0001) { // kWt
 		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
-		L += ets_sprintf(hst->str + L, "%d.%03d\r\n", num / 1000, num % 1000);
+		L += ets_sprintf(hst->str + L, "%u.%03u\r\n", num / 1000, num % 1000);
 	} else {
-		L += ets_sprintf(hst->str + L, "%d\r\n", num);
+		L += ets_sprintf(hst->str + L, "%u\r\n", num);
 	}
 	if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
 		return true;
@@ -455,6 +455,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		hst->LastTime = fram_store.LastTime;
 		hst->previous_n = -1;
+		if(hst->OutType & 0b0100) hst->Sum = LastCnt; // TotalCnt
 		tcp_puts("date,power\r\n"); // csv header
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
     // Get/put as many bytes as possible
@@ -498,9 +499,10 @@ xErrorI2C:
 					int16_t num;
 xContinue:
 					num = packed_flag ? 0 : n;
-					if(hst->OutType) { // by day
-						hst->Sum += num;
-						if(hst->LastTime / 60 % 1440) { // time is not 00:00 - skip
+					if(hst->OutType & 0b0100) hst->Sum -= num; // TotalCnt
+					if(hst->OutType & 0b0010) { // by day
+						if((hst->OutType & 0b0100) == 0) hst->Sum += num; // Not TotalCnt(+)
+						if(hst->LastTime / 60 % 1440 != (hst->OutType & 0b0100) ? 1439 : 0) { // time is not 00:00 / 23:59(TotalCnt) - skip
 							goto xSkip;
 						}
 					} else {
@@ -509,9 +511,9 @@ xContinue:
 						}
 						if(!(hst->previous_n || num)) goto xSkip; // multi-zeros will be skipped
 					}
-					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType ? hst->Sum : num)) {
+					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType & 0b0010 ? hst->Sum : num)) {
 xBufferFull:
-						hst->Sum -= num;
+						hst->Sum -= (hst->OutType & 0b0100) ? -num : num; // by day(-) / TotalCnt(+)
 						hst->len = len;
 						hst->i = i;
 						hst->n = n;
@@ -524,7 +526,7 @@ xBufferFull:
 						SetSCB(SCB_RETRYCB);
 						return;
 					}
-					hst->Sum = 0;
+					if((hst->OutType & 0b0100) == 0) hst->Sum = 0; // not TotalCnt
 xSkip:
 					hst->previous_n = num;
 					hst->PreviousTime = hst->LastTime;
@@ -1180,9 +1182,12 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         		web_get_ram(ts_conn);
         	}
 #endif
-        	// history.csv
+        	// history*.csv
         	else ifcmp("history") {
-				web_conn->udata_start = Web_ShowByDay;				// OutType: 0 - out non zero cnts in min, 1 - kWt per date
+        		cstr += 7;
+        		web_conn->udata_start = 0;
+        		ifcmp("cnt") web_conn->udata_start = 0b0100;
+				web_conn->udata_start |= (Web_ShowByDay<<1) | Web_ShowByKWT;	// OutType
 				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
 				web_get_history(ts_conn);
         	}
@@ -1390,6 +1395,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
         else ifcmp("ChartMaxDays") tcp_puts("%u", Web_ChartMaxDays);
         else ifcmp("ShowByDay") tcp_puts("%d", Web_ShowByDay);
+        else ifcmp("ShowByKWT") tcp_puts("%d", Web_ShowByKWT);
         else ifcmp("iot_") {
         	cstr += 4;
             ifcmp("LastSt_time") tcp_puts("%u", iot_last_status_time);
