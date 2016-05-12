@@ -141,17 +141,18 @@ function type(d) {
 <br><br><br>
 <form method="post" action="history.htm">
 Max days: <input type="text" id="ChartMaxDays" maxlength="10" title="0 - all">
- by day, kWt: <input type="checkbox" id="ShowByDay">
-<input type="submit" value="Refresh" onClick="updCookie('ChartMaxDays');updCookie('ShowByDay');" class="button">
+ by day: <input type="checkbox" id="ShowByDay"> kWt: <input type="checkbox" id="ShowByKWT"> &nbsp;
+<input type="submit" value="Refresh" onClick="updCookie('ChartMaxDays');updCookie('ShowByDay');updCookie('ShowByKWT');" class="button">
 </form>
 <br>
 Last: <span id="time__~TotalCntTime~_1">?</span><br>
-<a href="history.csv">Download history.csv</a><br>
-<a href="/protect/fram_all.bin">Download all FRAM memory</a><br>
+Download: <a href="history.csv">History.csv</a> &nbsp;&nbsp; <a href="historycnt.csv">Cumulative total</a> &nbsp;&nbsp; 
+<a href="/protect/fram_all.bin">FRAM memory</a><br>
 ~inc:footer.inc~
 <script src="cookies.js"></script>
 <script>
 setCookieElem("ShowByDay", 0);
+setCookieElem("ShowByKWT", 1);
 setCookieElem("ChartMaxDays", 10);
 </script>
 ~inc:time.inc~

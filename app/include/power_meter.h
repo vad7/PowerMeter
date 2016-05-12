@@ -51,7 +51,8 @@ uint32 LastCnt_Previous;
 uint32 KWT_Previous;		// *1000
 // Cookies:
 uint32 Web_ChartMaxDays; 	// ~ChartMaxDays~
-uint32 Web_ShowByDay; 		// ~ShowByDay~
+uint8  Web_ShowByDay; 		// ~ShowByDay~
+uint8  Web_ShowByKWT; 		// ~ShowByKWT~
 //
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
