@@ -79,7 +79,11 @@
 //#define USE_GPIOs_intr
 //#define USE_UART1 // включить UART1 для отладки
 //#define USE_OVERLAY 8192 // включить в трансляцию возможность работы с оверлеями (максимальный размер кода оверлея)
-#define I2C_FRAM_ID 0x50
+
+//#define USE_I2C 	  // драйвер I2C
+//#define I2C_ID 0x50
+#define USE_HSPI	  // дрйвер  HSPI
+
 #define UTC_OFFSET +3 // Moscow time
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #endif // PROGECT_NAME
