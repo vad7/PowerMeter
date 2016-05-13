@@ -1,9 +1,12 @@
 /*
  * I2C.c
  *
- * Created: 17.01.2014 14:00:10
+ * Created: 17.01.2014 14:00:10, modified 2016
  *  Author: Vadim Kulakov, vad7@yahoo.com
  */
+#include "user_config.h"
+
+#ifdef USE_I2C
 
 //#define IC2_MULTI_MASTER	// If other master(s) available, if omitted - only ONE master on I2C bus
 
@@ -192,3 +195,4 @@ uint8_t ICACHE_FLASH_ATTR i2c_eeprom_write_block(uint8_t addr, uint32_t pos, uin
 	return cnt;
 }
 
+#endif

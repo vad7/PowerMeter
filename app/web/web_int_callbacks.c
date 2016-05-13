@@ -28,7 +28,7 @@
 #include "sys_const_utils.h"
 #include "wifi_events.h"
 #include "power_meter.h"
-#include "driver/i2c.h"
+#include "driver/eeprom.h"
 #include "time.h"
 #include "iot_cloud.h"
 
@@ -455,7 +455,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		hst->LastTime = fram_store.LastTime;
 		hst->previous_n = -1;
-		if(hst->OutType & 0b0100) hst->Sum = LastCnt; // TotalCnt
+		if(hst->OutType & 0b0100) hst->Sum = fram_store.TotalCnt; // TotalCnt
 		tcp_puts("date,power\r\n"); // csv header
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
     // Get/put as many bytes as possible
@@ -472,7 +472,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		#if DEBUGSOO > 4
 			os_printf(" st %u -> len: %u, ", hst->PtrCurrent, len);
 		#endif
-		if(i2c_eeprom_read_block(I2C_FRAM_ID, StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
+		if(eeprom_read_block(StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 xErrorI2C:
 			#if DEBUGSOO > 2
 				os_printf("i2c R error\n");
@@ -481,7 +481,7 @@ xErrorI2C:
 		} else {
 			if(len == 1) { // may be packed - load previous byte from end
 				hst->buf[1] = hst->buf[0];
-				if(i2c_eeprom_read_block(I2C_FRAM_ID, cfg_meter.Fram_Size - 1, hst->buf, 1)) goto xErrorI2C;
+				if(eeprom_read_block(cfg_meter.Fram_Size - 1, hst->buf, 1)) goto xErrorI2C;
 				len = 2;
 			}
 			for(i = len - 1; i > 0; i--) { // first byte may be not proceeded
@@ -502,16 +502,17 @@ xContinue:
 					if(hst->OutType & 0b0100) hst->Sum -= num; // TotalCnt
 					if(hst->OutType & 0b0010) { // by day
 						if((hst->OutType & 0b0100) == 0) hst->Sum += num; // Not TotalCnt(+)
-						if(hst->LastTime / 60 % 1440 != (hst->OutType & 0b0100) ? 1439 : 0) { // time is not 00:00 / 23:59(TotalCnt) - skip
+						if(hst->LastTime % 86400L / 60 != (hst->OutType & 0b0100) ? 1439 : 0) { // time is not 00:00 / 23:59(TotalCnt) - skip
 							goto xSkip;
 						}
+						dbg_printf("T:%u\n", hst->LastTime);
 					} else {
 						if(hst->previous_n == 0 && num) { // out 0 if num after multi zero
 							if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
 						}
 						if(!(hst->previous_n || num)) goto xSkip; // multi-zeros will be skipped
 					}
-					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType & 0b0010 ? hst->Sum : num)) {
+					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType & 0b0110 ? hst->Sum : num)) {
 xBufferFull:
 						hst->Sum -= (hst->OutType & 0b0100) ? -num : num; // by day(-) / TotalCnt(+)
 						hst->len = len;
@@ -573,7 +574,7 @@ void ICACHE_FLASH_ATTR web_get_i2c_eeprom(TCP_SERV_CONN *ts_conn)
 #if DEBUGSOO > 2
 	os_printf("%u+%u ",web_conn->udata_start, len);
 #endif
-	if(i2c_eeprom_read_block(I2C_FRAM_ID, web_conn->udata_start, web_conn->msgbuf + web_conn->msgbuflen, len)) {
+	if(eeprom_read_block(web_conn->udata_start, web_conn->msgbuf + web_conn->msgbuflen, len)) {
 		os_printf("i2c R error %u, %u\n", web_conn->udata_start, len);
 		//FRAM_Status = 2;
 	} else {

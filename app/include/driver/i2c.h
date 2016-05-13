@@ -1,22 +1,12 @@
 /*
-    I2C driver for the ESP8266 
-    Copyright (C) 2014 Rudy Hardeman (zarya) 
+ * I2C.c
+ *
+ * Created: 17.01.2014 14:00:10, modified 2016
+ *  Author: Vadim Kulakov, vad7@yahoo.com
+ */
+#include "user_config.h"
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
-
+#ifdef USE_I2C
 #ifndef __I2C_H__
 #define __I2C_H__
 
@@ -44,4 +34,5 @@ uint8_t i2c_Read(uint8_t ack);
 uint8_t i2c_eeprom_read_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt) ICACHE_FLASH_ATTR;
 uint8_t i2c_eeprom_write_block(uint8_t addr, uint32_t pos, uint8_t *buffer, uint32_t cnt) ICACHE_FLASH_ATTR;
 
+#endif
 #endif
