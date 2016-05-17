@@ -1393,7 +1393,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
             	KWT_Previous = KWT;
         	}
         }
+#ifdef USE_I2C
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
+#endif
         else ifcmp("ChartMaxDays") tcp_puts("%u", Web_ChartMaxDays);
         else ifcmp("ShowByDay") tcp_puts("%d", Web_ShowByDay);
         else ifcmp("ShowByKWT") tcp_puts("%d", Web_ShowByKWT);

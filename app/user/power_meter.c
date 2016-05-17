@@ -25,7 +25,12 @@ uint8  FRAM_STORE_Readed	= 0;
 uint8  user_idle_func_working = 0;
 
 void ICACHE_FLASH_ATTR fram_init(void) {
-	eeprom_init(cfg_meter.i2c_freq);
+#ifdef USE_I2C
+	i2c_init(cfg_meter.i2c_freq);
+#endif
+#ifdef USE_HSPI
+	spi_init();
+#endif
 }
 
 void ICACHE_FLASH_ATTR NextPtrCurrent(uint8 cnt)
@@ -404,7 +409,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 			os_printf("Systime: %d, io3=%x\n", system_get_time(), p3);
 			if(p3 == 0) {
 				uart_wait_tx_fifo_empty();
-				#define blocklen 256
+				#define blocklen 64
 				uint8 *buf = os_zalloc(blocklen);
 				if(buf == NULL) {
 					os_printf("Err malloc!\n");
