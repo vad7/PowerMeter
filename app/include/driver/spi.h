@@ -51,7 +51,7 @@ void ICACHE_FLASH_ATTR
 /*
 * The MIT License (MIT)
 * 
-* spi_write_read_block(), spi_write_read_byte()
+* spi_write_read_block(), spi_write_read_byte(), SPI overlap
 * and other improvements written by Vadim Kulakov, 2016
 *
 * spi_transaction() written by David Ogilvy (MetalPhreak), 2015
@@ -91,7 +91,9 @@ void ICACHE_FLASH_ATTR
 //Define SPI hardware modules
 #define SPI 0
 #define HSPI 1
-#define spi_no SPI
+#define spi_no HSPI
+#define SPI_OVERLAP // overlap SPI (used by firmware flash), GPIO0 used as CS2
+//#define SPI_QIO
 
 //|Pin Name| GPIO # | HSPI Function |
 //|--------|--------|---------------|
@@ -123,10 +125,11 @@ void spi_clock(uint16 prediv, uint8 cntdiv) ICACHE_FLASH_ATTR;
 
 #ifdef SPI_BLOCK
 
-#define SPI_SEND 1
-#define SPI_RECEIVE 2
+#define SPI_SEND 		1
+#define SPI_RECEIVE 	2
+#define SPI_ADDR_BITS 	16
 
-void spi_write_read_block(uint8 sr, uint8 addr, uint8 * data, uint8 data_size) ICACHE_FLASH_ATTR;
+uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size);
 
 #endif
 #ifdef SPI_TINY

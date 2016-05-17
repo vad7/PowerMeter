@@ -29,6 +29,7 @@
 #include "hw/pin_mux_register.h"
 #include "driver/spi.h"
 #include "sdk/rom2ram.h"
+#include "hw/esp8266.h"
 
 #if DEBUGSOO > 4
 #include "web_utils.h"
@@ -42,7 +43,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void spi_init(void){
-	
+
+#if DEBUGSOO > 4
+	ets_delay_us(50000);
+#endif
+#ifdef SPI_OVERLAP
+	 //hspi overlap to spi, two spi masters on cspi
+	SET_PERI_REG_MASK(PERI_IO_SWAP, PERI_IO_CSPI_OVERLAP); // HOST_INF_SEL
+
+	//set higher priority for spi than hspi
+	SET_PERI_REG_MASK(SPI_EXT3(SPI), 0x1);
+	SET_PERI_REG_MASK(SPI_EXT3(HSPI), 0x3);
+	SET_PERI_REG_MASK(SPI_USER(HSPI), BIT(5));
+
+	//select HSPI CS2 ,disable HSPI CS0 and CS1
+	CLEAR_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS2_DIS);
+	SET_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS0_DIS |SPI_CS1_DIS);
+
+	//SET IO MUX FOR GPIO0 , SELECT PIN FUNC AS SPI CS2
+	//IT WORK AS HSPI CS2 AFTER OVERLAP(THERE IS NO PIN OUT FOR NATIVE HSPI CS1/2)
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_SPICS2);
+
+#ifdef SPI_QIO
+	SET_PERI_REG_MASK(SPI_USER(HSPI), SPI_CS_SETUP|SPI_CS_HOLD|SPI_USR_COMMAND);
+	CLEAR_PERI_REG_MASK(SPI_USER(HSPI), SPI_FLASH_MODE);
+	spi_byte_write(HSPI,0x38);
+
+	SET_PERI_REG_MASK(SPI_CTRL(HSPI), SPI_QIO_MODE|SPI_FASTRD_MODE);
+	SET_PERI_REG_MASK(SPI_USER(HSPI),SPI_FWRITE_QIO);
+#endif
+#endif
+
 	spi_init_gpio(SPI_CLK_80MHZ_NODIV);
 	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
 #ifndef SPI_TINY
@@ -183,9 +214,9 @@ void spi_clock(uint16 prediv, uint8 cntdiv){
 
 #ifdef SPI_BLOCK
 
-// Send (sr & SPI_SEND), Read (sr & SPI_RECEIVE): 8 bit command + data(max 64 bytes), HSPI
+// Send (sr & SPI_SEND), Read (sr & SPI_RECEIVE): <SPI_ADDR_BITS> command + data(max 64 bytes), HSPI
 // if SPI_SEND + SPI_RECEIVE = full-duplex (addr ignored)
-void ICACHE_FLASH_ATTR spi_write_read_block(uint8 sr, uint8 addr, uint8 * data, uint8 data_size)
+uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
 {
 	while(spi_busy(spi_no)); //wait for SPI to be ready
 
@@ -205,7 +236,7 @@ void ICACHE_FLASH_ATTR spi_write_read_block(uint8 sr, uint8 addr, uint8 * data, 
 
 	if(sr != SPI_SEND + SPI_RECEIVE) {
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_ADDR); //enable ADDRess function in SPI module
-		WRITE_PERI_REG(SPI_ADDR(spi_no), addr<<(32-8)); //align address data to high bits
+		WRITE_PERI_REG(SPI_ADDR(spi_no), addr<<(32-SPI_ADDR_BITS)); //align address data to high bits
 	}
 
 	//########## Begin SPI Transaction ##########//
@@ -221,7 +252,7 @@ void ICACHE_FLASH_ATTR spi_write_read_block(uint8 sr, uint8 addr, uint8 * data, 
 			os_printf("\n");
 		#endif
 	}
-
+	return 0;
 }
 #endif
 

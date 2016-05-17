@@ -616,7 +616,7 @@ void ICACHE_FLASH_ATTR startup(void)
 //	system_restoreclock(); // STARTUP_CPU_CLK
 	init_wifi(buf, info.st_mac); // инициализация WiFi
 	//
-	power_meter_init(1); // init i2c GPIO
+	power_meter_init(1); // init CFG, GPIO
 	//
 #if DEF_SDK_VERSION >= 1400
 //* skip saving to EEPROM
