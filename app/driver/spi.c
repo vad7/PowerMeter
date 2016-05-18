@@ -1,7 +1,7 @@
 /*
 * The MIT License (MIT)
 * 
-* spi_write_read_block(), spi_write_read_byte()
+* spi_write_read_block(), spi_write_read_byte(), SPI overlap
 * and other improvements written by Vadim Kulakov, 2016
 *
 * spi_transaction() written by David Ogilvy (MetalPhreak), 2015
@@ -33,6 +33,7 @@
 
 #if DEBUGSOO > 4
 #include "web_utils.h"
+#include "hw/uart_register.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,14 +43,16 @@
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void spi_init(void){
+void ICACHE_FLASH_ATTR spi_init(void){
 
 #if DEBUGSOO > 4
-	ets_delay_us(50000);
+	os_printf("SPI init\n");
+	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
+
 #ifdef SPI_OVERLAP
 	 //hspi overlap to spi, two spi masters on cspi
-	SET_PERI_REG_MASK(PERI_IO_SWAP, PERI_IO_CSPI_OVERLAP); // HOST_INF_SEL
+	SET_PERI_REG_MASK(0x3ff00028, PERI_IO_CSPI_OVERLAP); //	SET_PERI_REG_MASK(HOST_INF_SEL, PERI_IO_CSPI_OVERLAP);
 
 	//set higher priority for spi than hspi
 	SET_PERI_REG_MASK(SPI_EXT3(SPI), 0x1);
@@ -58,7 +61,7 @@ void spi_init(void){
 
 	//select HSPI CS2 ,disable HSPI CS0 and CS1
 	CLEAR_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS2_DIS);
-	SET_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS0_DIS |SPI_CS1_DIS);
+	SET_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS0_DIS | SPI_CS1_DIS);
 
 	//SET IO MUX FOR GPIO0 , SELECT PIN FUNC AS SPI CS2
 	//IT WORK AS HSPI CS2 AFTER OVERLAP(THERE IS NO PIN OUT FOR NATIVE HSPI CS1/2)
@@ -74,7 +77,33 @@ void spi_init(void){
 #endif
 #endif
 
-	spi_init_gpio(SPI_CLK_80MHZ_NODIV);
+#if spi_no == SPI
+		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x005|(SPI_CLK_80MHZ_NODIV<<8)); //Set bit 8 if 80MHz sysclock required
+#ifndef SPI_OVERLAP
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, 1);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U, 1);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);
+#if SPI_NOT_USE_CS == 0
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);
+#endif
+#endif
+#else
+#ifndef SPI_OVERLAP
+		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(SPI_CLK_80MHZ_NODIV<<9)); //Set bit 9 if 80MHz sysclock required
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //GPIO14 is HSPI CLK pin (Clock)
+#if SPI_NOT_USE_CS == 0
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
+#endif
+#endif
+#endif
+
+#if DEBUGSOO > 4
+	os_printf("SPI init2\n");
+	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+#endif
+
 	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
 #ifndef SPI_TINY
 #ifndef SPI_BLOCK
@@ -104,6 +133,11 @@ void spi_init(void){
 	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_MOSI | SPI_DOUTDIN);
 #endif
 #endif
+#if DEBUGSOO > 4
+	os_printf("SPI init end\n");
+	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+#endif
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +154,7 @@ void spi_init(void){
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void spi_mode(uint8 spi_cpha,uint8 spi_cpol){
+void ICACHE_FLASH_ATTR spi_mode(uint8 spi_cpha,uint8 spi_cpol){
 	if(spi_cpha) {
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CK_OUT_EDGE);
 	} else {
@@ -136,51 +170,6 @@ void spi_mode(uint8 spi_cpha,uint8 spi_cpol){
 
 
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function Name: spi_init_gpio
-//   Description: Initialises the GPIO pins for use as SPI pins.
-//    Parameters:
-//				  sysclk_as_spiclk - SPI_CLK_80MHZ_NODIV (1) if using 80MHz
-//									 sysclock for SPI clock. 
-//									 SPI_CLK_USE_DIV (0) if using divider to
-//									 get lower SPI clock speed.
-//				 
-////////////////////////////////////////////////////////////////////////////////
-
-void spi_init_gpio(uint8 sysclk_as_spiclk){
-
-//	if(spi_no > 1) return; //Not required. Valid spi_no is checked with if/elif below.
-
-	uint32 clock_div_flag = 0;
-	if(sysclk_as_spiclk){
-		clock_div_flag = 0x0001;	
-	} 
-
-	if(spi_no==SPI){
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x005|(clock_div_flag<<8)); //Set bit 8 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, 1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U, 1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);
-#if SPI_NOT_USE_CS == 0
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);
-#endif
-	}else if(spi_no==HSPI){
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(clock_div_flag<<9)); //Set bit 9 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //GPIO14 is HSPI CLK pin (Clock)
-#if SPI_NOT_USE_CS == 0
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
-#endif
-	}
-
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 //
 // Function Name: spi_clock
 //   Description: sets up the control registers for the SPI clock (when sysclk_as_spiclk = 0)
@@ -191,10 +180,8 @@ void spi_init_gpio(uint8 sysclk_as_spiclk){
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void spi_clock(uint16 prediv, uint8 cntdiv){
+void ICACHE_FLASH_ATTR spi_clock(uint16 prediv, uint8 cntdiv){
 	
-	if(spi_no > 1) return;
-
 	if((prediv==0)|(cntdiv==0)){
 
 		WRITE_PERI_REG(SPI_CLOCK(spi_no), SPI_CLK_EQU_SYSCLK);
@@ -218,12 +205,19 @@ void spi_clock(uint16 prediv, uint8 cntdiv){
 // if SPI_SEND + SPI_RECEIVE = full-duplex (addr ignored)
 uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
 {
+
+#if DEBUGSOO > 4
+	os_printf("Read block start\n");
+	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+#endif
+
+	if(data_size > 64) return 1;
 	while(spi_busy(spi_no)); //wait for SPI to be ready
 
 	CLEAR_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_MOSI|SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY|SPI_WR_BYTE_ORDER|SPI_RD_BYTE_ORDER);
 
 	//########## Setup Bit-lengths ##########//
-	uint32 d = ((8-1)&SPI_USR_ADDR_BITLEN)<<SPI_USR_ADDR_BITLEN_S; // Number of bits in Address
+	uint32 d = ((SPI_ADDR_BITS-1)&SPI_USR_ADDR_BITLEN)<<SPI_USR_ADDR_BITLEN_S; // Number of bits in Address
 	if(sr & SPI_SEND) { // send
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_MOSI | (sr & SPI_RECEIVE ? SPI_DOUTDIN : 0)); // +receive full-duplex if set
 		d |= ((data_size*8-1)&SPI_USR_MOSI_BITLEN)<<SPI_USR_MOSI_BITLEN_S; // Number of bits to Send
@@ -246,7 +240,7 @@ uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_siz
 
 	if(sr & SPI_RECEIVE) { // receive
 		copy_s4d1(data, (void *)SPI_W0(spi_no), data_size);
-		#if DEBUGSOO > 5
+		#if DEBUGSOO > 4
 			os_printf("SPI_R: ");
 			print_hex_dump(data, data_size, ' ');
 			os_printf("\n");
@@ -321,7 +315,7 @@ uint8 ICACHE_FLASH_ATTR spi_write_read_byte(uint8 dout_data)
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void spi_tx_byte_order(uint8 byte_order){
+void ICACHE_FLASH_ATTR spi_tx_byte_order(uint8 byte_order){
 
 	if(byte_order){
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_WR_BYTE_ORDER);
@@ -349,7 +343,7 @@ void spi_tx_byte_order(uint8 byte_order){
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void spi_rx_byte_order(uint8 spi_no, uint8 byte_order)
+void ICACHE_FLASH_ATTR spi_rx_byte_order(uint8 spi_no, uint8 byte_order)
 {
 	if(byte_order){
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_RD_BYTE_ORDER);
@@ -380,7 +374,7 @@ void spi_rx_byte_order(uint8 spi_no, uint8 byte_order)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32 spi_transaction(uint8 cmd_bits, uint16 cmd_data, uint32 addr_bits, uint32 addr_data, uint32 dout_bits, uint32 dout_data,
+uint32 ICACHE_FLASH_ATTR spi_transaction(uint8 cmd_bits, uint16 cmd_data, uint32 addr_bits, uint32 addr_data, uint32 dout_bits, uint32 dout_data,
 				uint32 din_bits, uint32 dummy_bits)
 {
 

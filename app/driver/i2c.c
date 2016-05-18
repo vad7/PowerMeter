@@ -31,7 +31,7 @@ void i2c_delay_small(void)	{ uint32 t1,t2; GET_CCOUNT(t1); do GET_CCOUNT(t2); wh
 
 
 // freq = 100..400 in kHzm if = 0 don't change/default
-void ICACHE_FLASH_ATTR i2c_Init(uint32 freq)
+void ICACHE_FLASH_ATTR i2c_init(uint32 freq)
 {
 	if(freq) { // re-calc delay
 		i2c_delay_time = 35750 / 80 * ets_get_cpu_frequency() / freq; // 89=400Khz, 250=143Khz, 357=100Khz, 500=75Khz

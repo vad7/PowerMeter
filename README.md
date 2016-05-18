@@ -10,6 +10,9 @@ VCC - 3.3V<br>
 Q1 - Photo transistor<br> 
 FM24* - I2C FRAM memory<br> 
 
+SPI overlap FRAM memory (FM25V02) schematic (may be switched in user_config.h - USE_HSPI and remark USE_I2C): 
+![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter-SPI.jpg)
+
 ESP-01 module: 
 
 ![alt tag](https://github.com/vad7/PowerMeter/blob/master/esp-01.jpg)

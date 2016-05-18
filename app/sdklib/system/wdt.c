@@ -145,6 +145,13 @@ void ICACHE_FLASH_ATTR os_print_reset_error(void)
 			}
 		}
 		uart_wait_tx_fifo_empty();
+		#if DEBUGSOO > 3
+		if(rst_inf->reason == RST_EVENT_EXP) {
+			os_printf("Halt!\n");
+			ets_isr_mask(0xFFFFFFFF); // mask all interrupts
+			while(1) WDT_FEED = WDT_FEED_MAGIC; // WDT
+		}
+		#endif
 	}
 	// rst_inf->reason = 0;
 }
