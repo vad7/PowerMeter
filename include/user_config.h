@@ -3,7 +3,11 @@
 
 #include "sdk/sdk_config.h"
 
+<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 #define SYS_VERSION "0.6.1"
+=======
+#define SYS_VERSION "0.6.2"
+>>>>>>> f4a498e SPI overlap, speed = 40Mhz 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define WEB_DEFAULT_SOFTAP_IP	DEFAULT_SOFTAP_IP // ip 192.168.4.1
@@ -82,7 +86,7 @@
 
 //#define USE_I2C 	  // драйвер I2C
 //#define I2C_ID 0x50
-#define USE_HSPI	  // дрйвер  HSPI
+#define USE_HSPI	  // драйвер SPI overlap
 
 #define UTC_OFFSET +3 // Moscow time
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -4,13 +4,16 @@
 Have the webserver, Over-The-Air firmware updating.
 
 Schematic: 
+
 ![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter.jpg)
 
 VCC - 3.3V<br> 
 Q1 - Photo transistor<br> 
 FM24* - I2C FRAM memory<br> 
 
-SPI overlap FRAM memory (FM25V02) schematic (may be switched in user_config.h - USE_HSPI and remark USE_I2C): 
+SPI overlap FRAM memory (FM25V02) schematic,  
+must be switched in user_config.h - set USE_HSPI and remark USE_I2C, set SPI_SPEED?=40 in the makefile:
+ 
 ![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter-SPI.jpg)
 
 ESP-01 module: 
@@ -32,4 +35,5 @@ Based on [esp8266web](https://github.com/pvvx/esp8266web.git)
 8. Рисование графиков с зумом с помощью java библиотеки d3.js. 
 9. Выкладывание данных в IoT cloud - thingspeak.com через GET запрос (iot_cloud.с).
 10. Отладка в RAM память.
-11. Другие мелкие доработки и исправления.
+11. SPI overlap
+12. Другие доработки и исправления.

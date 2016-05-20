@@ -34,6 +34,10 @@
 #include "power_meter.h"
 #include "iot_cloud.h"
 
+#if DEBUGSOO > 4
+#include "driver/eeprom.h"
+#endif
+
 #ifdef USE_NETBIOS
 #include "netbios.h"
 #endif
@@ -337,7 +341,19 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			cstr+=6;
 			ifcmp("TotalCnt") fram_store.TotalCnt = val;
 			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
-			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
+			else ifcmp("Fram_Size") {
+
+#if DEBUGSOO > 4
+				fram_store.LastTime = val;
+				if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
+					os_printf("EW f_s\n");
+				}
+#else
+				cfg_meter.Fram_Size = val;
+#endif
+
+
+			}
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
 			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
 			else ifcmp("Debouncing") cfg_meter.Debouncing_Timeout = val;

@@ -11,6 +11,7 @@
 #include "flash_eep.h"
 #include "wifi.h"
 #include "hw/spi_register.h"
+#include "hw/pin_mux_register.h"
 #include "sdk/rom2ram.h"
 #include "web_iohw.h"
 #include "tcp2uart.h"
@@ -49,6 +50,7 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 #if DEBUGSOO > 0
 	os_printf("\nSDK Init - Ok\nHeap size: %d bytes\n", system_get_free_heap_size());
 	os_printf("Flash ID: %08x, size: %u\n", spi_flash_get_id(), spi_flash_real_size());
+	os_printf("PERIPHS_IO_MUX = %X\n\n",  READ_PERI_REG(PERIPHS_IO_MUX));
     os_printf("Curr cfg size: %d b\n", current_cfg_length());
 
 	struct ets_store_wifi_hdr whd;

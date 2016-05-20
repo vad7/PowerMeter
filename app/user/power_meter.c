@@ -33,7 +33,7 @@ void ICACHE_FLASH_ATTR fram_init(void) {
 #endif
 }
 
-void ICACHE_FLASH_ATTR NextPtrCurrent(uint8 cnt)
+void NextPtrCurrent(uint8 cnt)
 {
 	fram_store.PtrCurrent += cnt;
 	if(fram_store.PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts)
@@ -49,7 +49,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 			FRAM_Store_Init();
 			if(FRAM_Status) return;
 		} else {
-			#if DEBUGSOO > 5
+			#if DEBUGSOO > 4
 				os_printf("FRAM Reinit\n");
 			#endif
 			fram_init();
@@ -124,14 +124,14 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		uint32 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > to_save) cnt = to_save;
 		if(eeprom_write_block(StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
-			#if DEBUGSOO > 5
+			#if DEBUGSOO > 4
 		   		os_printf("EW curr\n");
 			#endif
 		   	goto xError;
 		}
 		if(cnt < to_save) { // overflow
 			if(eeprom_write_block(StartArrayOfCnts, ((uint8 *)&CntCurrent) + cnt, to_save - cnt)) {
-				#if DEBUGSOO > 5
+				#if DEBUGSOO > 4
 			   		os_printf("EW curr2\n");
 				#endif
 			   	goto xError;
@@ -144,7 +144,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
 	if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
-		#if DEBUGSOO > 5
+		#if DEBUGSOO > 4
 	   		os_printf("EW f_s\n");
 		#endif
    		fram_store.TotalCnt -= pcnt;
@@ -161,11 +161,12 @@ xError:
 	iot_cloud_send(1);
 }
 
-#if DEBUGSOO > 5
+#if DEBUGSOO > 4
 uint8 print_i2c_page = 0;
 #endif
 
-void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
+void user_idle(void) // idle function for ets_run
+// ICACHE_FLASH_ATTR
 {
 	//FRAM_speed_test();
 	time_t time = get_sntp_localtime();
@@ -190,11 +191,11 @@ void ICACHE_FLASH_ATTR user_idle(void) // idle function for ets_run
 		gpio_pin_intr_state_set(SENSOR_PIN, SENSOR_FRONT_EDGE);
 		Sensor_Edge = 0;
 	}
-#if DEBUGSOO > 5
+#if DEBUGSOO > 4
 	else if(print_i2c_page) { // 1..n
 		ets_set_idle_cb(NULL, NULL);
 		ets_intr_unlock();
-		#define READSIZE 256
+		#define READSIZE 64
 		uint8 *buf = os_malloc(READSIZE);
 		if(buf == NULL) {
 			os_printf("Error malloc %d bytes", READSIZE);
@@ -221,7 +222,7 @@ x1:			os_printf("\n");
 
 }
 
-static void ICACHE_FLASH_ATTR GPIO_Task_NewData(os_event_t *e)
+void GPIO_Task_NewData(os_event_t *e)
 {
     switch(e->sig) {
     	case GPIO_Int_Signal:
@@ -242,7 +243,7 @@ xRepeat:   			fram_init();
    				}
    				WDT_FEED = WDT_FEED_MAGIC; // WDT
    				if(eeprom_write_block((uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
-					#if DEBUGSOO > 5
+					#if DEBUGSOO > 4
   						os_printf("EW PrCnt %d\n", FRAM_Status);
 					#endif
    					if(FRAM_Status == 0) {
@@ -292,15 +293,17 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 	fram_init();
 	// restore workspace from FRAM
 	if(eeprom_read_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
-		#if DEBUGSOO > 5
+		#if DEBUGSOO > 4
 			os_printf("ER f_s\n");
 		#endif
 		return;
 	}
 	if(fram_store.LastTime == 0xFFFFFFFF) { // new memory or error
 		os_memset(&fram_store, 0, sizeof(fram_store));
+#if DEBUGSOO == 0
 		return;
-/* skip clear
+#else
+		// clear FARM
 		if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
@@ -308,24 +311,24 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			return;
 		}
 		// write begin marker - 0,0
-		if(eeprom_write_block(cfg_meter.Fram_Size - 2, (uint8 *)&fram_store, 2)) {
+		if(eeprom_write_block(cfg_meter.Fram_Size - 2, (uint8 *)&fram_store, 4)) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
 			#endif
 			return;
 		}
-*/
+#endif
 	} else if(fram_store.LastTime) { // LastTime must be filled to read CntCurrent
 		uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > 2) cnt = 2;
 		if(eeprom_read_block(StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
-			#if DEBUGSOO > 5
+			#if DEBUGSOO > 4
 				os_printf("ER curr\n");
 			#endif
 			return;
 		} else if(cnt < 2) {
 			if(eeprom_read_block(StartArrayOfCnts, (uint8 *)&CntCurrent.Cnt2, 1)) {
-				#if DEBUGSOO > 5
+				#if DEBUGSOO > 4
 					os_printf("ER curr2\n");
 				#endif
 				return;
