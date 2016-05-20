@@ -59,26 +59,28 @@
 #define SPI_BYTE_ORDER_HIGH_TO_LOW 0
 #define SPI_BYTE_ORDER_LOW_TO_HIGH 0
 
-#ifndef CPU_CLK_FREQ //Should already be defined in eagle_soc.h
-#define CPU_CLK_FREQ 80 * 1000000
-#endif
-
-//Define some default SPI clock settings
+//Define some default SPI clock settings,
+//SPI_CLK_FREQ = CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV)
 #define SPI_CLK_PREDIV 1
 #define SPI_CLK_CNTDIV 2
-#define SPI_CLK_FREQ CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV) // 80 / 2 = 40 MHz
+
+#ifdef SPI_OVERLAP
+	#if USE_FIX_QSPI_FLASH == 80 && SPI_CLK_80MHZ_NODIV == 0
+		#error "SPI overlap available only if flash SPI speed less than 80Mhz!"
+	#endif
+#endif
 
 void spi_init(void) ICACHE_FLASH_ATTR;
-void spi_mode(uint8 spi_cpha,uint8 spi_cpol) ICACHE_FLASH_ATTR;
 void spi_clock(uint16 prediv, uint8 cntdiv) ICACHE_FLASH_ATTR;
+//void spi_mode(uint8 spi_cpha,uint8 spi_cpol) ICACHE_FLASH_ATTR;
 
 #ifdef SPI_BLOCK
 
 #define SPI_SEND 		1
 #define SPI_RECEIVE 	2
-#define SPI_ADDR_BITS 	16
+#define SPI_ADDR_BITS 	(8 + 16) // opcode + address
 
-uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size);
+void spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size);
 
 #endif
 #ifdef SPI_TINY

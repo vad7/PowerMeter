@@ -36,6 +36,8 @@
 #include "hw/uart_register.h"
 #endif
 
+#define WAIT_HSPI_IDLE() 	while(READ_PERI_REG(SPI_EXT2(HSPI))||(READ_PERI_REG(SPI_CMD(HSPI))&0xfffc0000));
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function Name: spi_init
@@ -45,11 +47,7 @@
 
 void ICACHE_FLASH_ATTR spi_init(void){
 
-#if DEBUGSOO > 4
-	os_printf("SPI init\n");
-	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-
+	WAIT_HSPI_IDLE();
 #ifdef SPI_OVERLAP
 	 //hspi overlap to spi, two spi masters on cspi
 	SET_PERI_REG_MASK(0x3ff00028, PERI_IO_CSPI_OVERLAP); //	SET_PERI_REG_MASK(HOST_INF_SEL, PERI_IO_CSPI_OVERLAP);
@@ -57,54 +55,44 @@ void ICACHE_FLASH_ATTR spi_init(void){
 	//set higher priority for spi than hspi
 	SET_PERI_REG_MASK(SPI_EXT3(SPI), 0x1);
 	SET_PERI_REG_MASK(SPI_EXT3(HSPI), 0x3);
-	SET_PERI_REG_MASK(SPI_USER(HSPI), BIT(5));
+	//SET_PERI_REG_MASK(SPI_USER(HSPI), SPI_CS_SETUP);
 
 	//select HSPI CS2 ,disable HSPI CS0 and CS1
 	CLEAR_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS2_DIS);
 	SET_PERI_REG_MASK(SPI_PIN(HSPI), SPI_CS0_DIS | SPI_CS1_DIS);
 
+#if SPI_NOT_USE_CS == 0
 	//SET IO MUX FOR GPIO0 , SELECT PIN FUNC AS SPI CS2
 	//IT WORK AS HSPI CS2 AFTER OVERLAP(THERE IS NO PIN OUT FOR NATIVE HSPI CS1/2)
 	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_SPICS2);
-
-#ifdef SPI_QIO
-	SET_PERI_REG_MASK(SPI_USER(HSPI), SPI_CS_SETUP|SPI_CS_HOLD|SPI_USR_COMMAND);
-	CLEAR_PERI_REG_MASK(SPI_USER(HSPI), SPI_FLASH_MODE);
-	spi_byte_write(HSPI,0x38);
-
-	SET_PERI_REG_MASK(SPI_CTRL(HSPI), SPI_QIO_MODE|SPI_FASTRD_MODE);
-	SET_PERI_REG_MASK(SPI_USER(HSPI),SPI_FWRITE_QIO);
 #endif
+
 #endif
 
 #if spi_no == SPI
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x005|(SPI_CLK_80MHZ_NODIV<<8)); //Set bit 8 if 80MHz sysclock required
+		WRITE_PERI_REG(PERIPHS_IO_MUX, (READ_PERI_REG(PERIPHS_IO_MUX) & ~(SPI0_CLK_EQU_SYS_CLK)) | (SPI0_CLK_EQU_SYS_CLK * SPI_CLK_80MHZ_NODIV)); // Set bit if 80MHz sysclock required
 #ifndef SPI_OVERLAP
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, 1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U, 1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, 1);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, FUNC_SPIQ_MISO);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, FUNC_SPID_MOSI);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SPICLK);
 #if SPI_NOT_USE_CS == 0
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, 1);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U, FUNC_SPICS0);
 #endif
 #endif
 #else
+		WRITE_PERI_REG(PERIPHS_IO_MUX, (READ_PERI_REG(PERIPHS_IO_MUX) & ~(SPI1_CLK_EQU_SYS_CLK)) | (SPI1_CLK_EQU_SYS_CLK * SPI_CLK_80MHZ_NODIV)); // Set bit if 80MHz sysclock required
 #ifndef SPI_OVERLAP
-		WRITE_PERI_REG(PERIPHS_IO_MUX, 0x105|(SPI_CLK_80MHZ_NODIV<<9)); //Set bit 9 if 80MHz sysclock required
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, 2); //GPIO12 is HSPI MISO pin (Master Data In)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 2); //GPIO13 is HSPI MOSI pin (Master Data Out)
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, 2); //GPIO14 is HSPI CLK pin (Clock)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, FUNC_HSPIQ_MISO); //GPIO12 is HSPI MISO pin (Master Data In)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, FUNC_HSPID_MOSI); //GPIO13 is HSPI MOSI pin (Master Data Out)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTMS_U, FUNC_HSPI_CLK); //GPIO14 is HSPI CLK pin (Clock)
 #if SPI_NOT_USE_CS == 0
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 2); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, FUNC_HSPI_CS0); //GPIO15 is HSPI CS pin (Chip Select / Slave Select)
 #endif
 #endif
-#endif
-
-#if DEBUGSOO > 4
-	os_printf("SPI init2\n");
-	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 
 	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
+
 #ifndef SPI_TINY
 #ifndef SPI_BLOCK
 	spi_tx_byte_order(SPI_BYTE_ORDER_HIGH_TO_LOW);
@@ -112,10 +100,6 @@ void ICACHE_FLASH_ATTR spi_init(void){
 #endif
 #endif
 
-#if SPI_NOT_USE_CS == 0 && DELAY_BEFORE_CHANGE_CS
-	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CS_SETUP|SPI_CS_HOLD); // set delay before and after CS change
-#endif
-	CLEAR_PERI_REG_MASK(SPI_USER(spi_no), SPI_FLASH_MODE);
 #ifdef SPI_TINY
 #ifndef SPI_BLOCK
 	//disable MOSI, MISO, ADDR, COMMAND, DUMMY, etc in case previously set.
@@ -133,9 +117,15 @@ void ICACHE_FLASH_ATTR spi_init(void){
 	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_MOSI | SPI_DOUTDIN);
 #endif
 #endif
-#if DEBUGSOO > 4
-	os_printf("SPI init end\n");
-	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+
+#ifdef SPI_QIO
+	SET_PERI_REG_MASK(SPI_USER(HSPI), SPI_CS_SETUP|SPI_CS_HOLD|SPI_USR_COMMAND);
+	CLEAR_PERI_REG_MASK(SPI_USER(HSPI), SPI_FLASH_MODE);
+	uint8 cmd[1] = { 0x38 }; // Enter QPI mode
+	spi_write_read_block(SPI_SEND+SPI_RECEIVE, 0, cmd, 1);
+
+	SET_PERI_REG_MASK(SPI_CTRL(HSPI), SPI_QIO_MODE|SPI_FASTRD_MODE);
+	SET_PERI_REG_MASK(SPI_USER(HSPI),SPI_FWRITE_QIO);
 #endif
 
 }
@@ -153,7 +143,7 @@ void ICACHE_FLASH_ATTR spi_init(void){
 //				             (1) Clock is high when inactive
 //
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 void ICACHE_FLASH_ATTR spi_mode(uint8 spi_cpha,uint8 spi_cpol){
 	if(spi_cpha) {
 		SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CK_OUT_EDGE);
@@ -167,8 +157,7 @@ void ICACHE_FLASH_ATTR spi_mode(uint8 spi_cpha,uint8 spi_cpol){
 		CLEAR_PERI_REG_MASK(SPI_PIN(spi_no), SPI_IDLE_EDGE);
 	}
 }
-
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function Name: spi_clock
@@ -203,18 +192,16 @@ void ICACHE_FLASH_ATTR spi_clock(uint16 prediv, uint8 cntdiv){
 
 // Send (sr & SPI_SEND), Read (sr & SPI_RECEIVE): <SPI_ADDR_BITS> command + data(max 64 bytes), HSPI
 // if SPI_SEND + SPI_RECEIVE = full-duplex (addr ignored)
-uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
+void spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
 {
-
-#if DEBUGSOO > 4
-	os_printf("Read block start\n");
-	while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-
-	if(data_size > 64) return 1;
+	if(data_size > 64) return;
 	while(spi_busy(spi_no)); //wait for SPI to be ready
 
-	CLEAR_PERI_REG_MASK(SPI_USER(spi_no), SPI_USR_MOSI|SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY|SPI_WR_BYTE_ORDER|SPI_RD_BYTE_ORDER);
+#if SPI_NOT_USE_CS == 0 && DELAY_BEFORE_CHANGE_CS
+	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CS_SETUP|SPI_CS_HOLD); // set delay before and after CS change
+#endif
+	CLEAR_PERI_REG_MASK(SPI_CTRL(spi_no), SPI_QIO_MODE|SPI_DIO_MODE|SPI_DOUT_MODE|SPI_QOUT_MODE);
+	CLEAR_PERI_REG_MASK(SPI_USER(spi_no), SPI_FLASH_MODE|SPI_USR_MOSI|SPI_USR_MISO|SPI_USR_COMMAND|SPI_USR_ADDR|SPI_USR_DUMMY|SPI_WR_BYTE_ORDER|SPI_RD_BYTE_ORDER);
 
 	//########## Setup Bit-lengths ##########//
 	uint32 d = ((SPI_ADDR_BITS-1)&SPI_USR_ADDR_BITLEN)<<SPI_USR_ADDR_BITLEN_S; // Number of bits in Address
@@ -240,13 +227,12 @@ uint8_t spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_siz
 
 	if(sr & SPI_RECEIVE) { // receive
 		copy_s4d1(data, (void *)SPI_W0(spi_no), data_size);
-		#if DEBUGSOO > 4
+		#if DEBUGSOO > 5
 			os_printf("SPI_R: ");
 			print_hex_dump(data, data_size, ' ');
 			os_printf("\n");
 		#endif
 	}
-	return 0;
 }
 #endif
 

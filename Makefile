@@ -12,7 +12,7 @@ UPLOADADDR = http://aesp8266/fsupload
 UPLOADOVL = ./ovls/bin/10dof.ovl
 
 # SPI_SPEED = 40MHz or 80MHz
-SPI_SPEED?=80
+SPI_SPEED?=40
 # SPI_MODE: QIO, DIO, QOUT, DOUT
 SPI_MODE?=QIO
 # SPI_SIZE: 512KB for all size Flash ! (512 kbytes .. 16 Mbytes Flash autodetect)
