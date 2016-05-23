@@ -433,8 +433,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 	bool packed_flag;
 
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
-    // Check if this is a first round call
-    if(CheckSCB(SCB_RETRYCB)==0) {
+    if(CheckSCB(SCB_RETRYCB)==0) {  // Check if this is a first round call
 #if DEBUGSOO > 2
 		os_printf("Output History %u, %u: ", web_conn->udata_start, web_conn->udata_stop);
 #endif
@@ -455,8 +454,13 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		hst->LastTime = fram_store.LastTime;
 		hst->previous_n = 0xFFFFFFFF;
-		if(hst->OutType & 0b0100) hst->Sum = fram_store.TotalCnt; // TotalCnt
 		tcp_puts("date,power\r\n"); // csv header
+		if(hst->OutType & 0b0100) { // TotalCnt
+			hst->Sum = fram_store.TotalCnt;
+			if((hst->OutType & 0b0010) == 0) { // not By day
+				web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->Sum);
+			}
+		}
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
     // Get/put as many bytes as possible
 	if(hst->FlagContinue) {
@@ -499,6 +503,7 @@ xErrorI2C:
 				do {
 xContinue:
 					num = packed_flag ? 0 : n;
+					if(hst->OutType & 0b0100) hst->Sum -= num; // TotalCnt
 					if(hst->OutType & 0b0010) { // by day
 						if((hst->OutType & 0b0100) == 0) hst->Sum += num; // Not TotalCnt(+)
 						if(hst->LastTime % 86400 / 60 != (hst->OutType & 0b0100 ? 1439 : 0)) { // time is not 00:00 / 23:59(TotalCnt) - skip
@@ -531,7 +536,6 @@ xBufferFull:
 xSkip:
 					if(hst->OutType & 0b0100) { // TotalCnt
 						hst->previous_n = hst->Sum;
-						hst->Sum -= num; // TotalCnt
 					} else {
 						hst->previous_n = num;
 					}
@@ -540,13 +544,7 @@ xSkip:
 					hst->LastTime -= TIME_STEP_SEC;
 					if(hst->minutes) {
 						hst->minutes -= 1;
-						if(hst->minutes == 0) {
-xEnd:
-							if(hst->OutType & 0b0100) { // TotalCnt
-								if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->Sum)) goto xBufferFull;
-							}
-							goto xEnd2;
-						}
+						if(hst->minutes == 0) goto xEnd;
 					}
 				} while(packed_flag && --n);
 			}
@@ -560,7 +558,7 @@ xEnd:
 			}
 		}
 	} while(1);
-xEnd2:
+xEnd:
 	#if DEBUGSOO > 4
 		os_printf("End(mbs=%u) ", web_conn->msgbufsize);
 	#endif
