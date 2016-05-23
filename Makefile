@@ -7,7 +7,7 @@
 ESPOPTION ?= -p COM9 -b 460800
 #115200
 
-UPLOADADDR = http://aesp8266/fsupload
+UPLOADADDR = http://sesp8266/fsupload
 
 UPLOADOVL = ./ovls/bin/ina219.ovl
 
