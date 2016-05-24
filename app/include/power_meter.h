@@ -10,7 +10,7 @@
 uint8_t SENSOR_FRONT_EDGE;
 uint8_t SENSOR_BACK_EDGE;
 #define	FRAM_SIZE_DEFAULT		32768
-#define FRAM_MAX_BLOCK_AT_ONCE 	128
+#define FRAM_MAX_BLOCK_AT_ONCE 	64		// FARM SPI read/write is limited to 64 bytes at one time
 #define DEFAULT_PULSES_PER_0_01_KWT 6 // 600 per kWt
 #define TIME_STEP_SEC			60 // 1 minute
 #define SENSOR_TASK_PRIO			USER_TASK_PRIO_2 // Hi prio, _0,1 - may be used

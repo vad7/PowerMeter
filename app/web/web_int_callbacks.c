@@ -453,14 +453,13 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
-		hst->previous_n = 0xFFFFFFFF;
 		tcp_puts("date,power\r\n"); // csv header
 		if(hst->OutType & 0b0100) { // TotalCnt
 			hst->Sum = fram_store.TotalCnt;
 			if((hst->OutType & 0b0010) == 0) { // not By day
-				web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->Sum);
+				hst->previous_n = hst->Sum; // save value and wait changing
 			}
-		}
+		} else hst->previous_n = 0xFFFFFFFF;
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
     // Get/put as many bytes as possible
 	if(hst->FlagContinue) {
@@ -480,7 +479,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		if(eeprom_read_block(StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 xErrorI2C:
 			#if DEBUGSOO > 2
-				os_printf("i2c R error\n");
+				os_printf("fram R error\n");
 			#endif
 			break;
 		} else {
@@ -496,28 +495,37 @@ xErrorI2C:
 				#endif
 				packed_flag = hst->buf[i-1] == 0; // packed
 				if(packed_flag) {
-					if(n == 0) goto xEnd; // end
+					if(n == 0) { // end
+xEnd:
+						// if TotalCnt - print sum, otherwise 0;
+						if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, (hst->OutType & 0b0110) ? hst->Sum : 0)) goto xBufferFull;
+						goto xEndExit;
+					}
 					if(n == 1) packed_flag = 0; // special case "0,1" - last min = 1, previous min = 0
 					else i--;
 				}
 				do {
 xContinue:
 					num = packed_flag ? 0 : n;
+					uint32_t prn_num;
 					if(hst->OutType & 0b0100) hst->Sum -= num; // TotalCnt
 					if(hst->OutType & 0b0010) { // by day
 						if((hst->OutType & 0b0100) == 0) hst->Sum += num; // Not TotalCnt(+)
 						if(hst->LastTime % 86400 / 60 != (hst->OutType & 0b0100 ? 1439 : 0)) { // time is not 00:00 / 23:59(TotalCnt) - skip
 							goto xSkip;
 						}
-					} else if(hst->OutType & 0b0100) { // TotalCnt
+						prn_num = hst->Sum;
+					} else if(hst->OutType & 0b0100) { // TotalCnt not by day
 						if(hst->previous_n == hst->Sum) goto xSkip; // Skip the same value
+						prn_num = hst->previous_n;
 					} else {
 						if(hst->previous_n == 0 && num) { // out 0 if num after multi zero
 							if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
 						}
 						if(!(hst->previous_n || num)) goto xSkip; // multi-zeros will be skipped
+						prn_num = num;
 					}
-					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, hst->OutType & 0b0110 ? hst->Sum : num)) {
+					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, prn_num)) {
 xBufferFull:
 						hst->Sum = (hst->OutType & 0b0100) ? hst->Sum + num : hst->Sum - num; // TotalCnt(+) / by day(-)
 						hst->len = len;
@@ -534,12 +542,7 @@ xBufferFull:
 					}
 					if((hst->OutType & 0b0100) == 0) hst->Sum = 0; // not TotalCnt
 xSkip:
-					if(hst->OutType & 0b0100) { // TotalCnt
-						hst->previous_n = hst->Sum;
-					} else {
-						hst->previous_n = num;
-					}
-					hst->previous_n = (hst->OutType & 0b0100) ? hst->Sum : num;
+					hst->previous_n = (hst->OutType & 0b0100) ? hst->Sum : num; // TotalCnt = sum
 					hst->PreviousTime = hst->LastTime;
 					hst->LastTime -= TIME_STEP_SEC;
 					if(hst->minutes) {
@@ -558,7 +561,7 @@ xSkip:
 			}
 		}
 	} while(1);
-xEnd:
+xEndExit:
 	#if DEBUGSOO > 4
 		os_printf("End(mbs=%u) ", web_conn->msgbufsize);
 	#endif
