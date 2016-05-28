@@ -14,7 +14,7 @@
 
 #include "i2c.h"
 #define eeprom_read_block(addr, buffer, len)  i2c_eeprom_read_block(I2C_ID, addr, buffer, len)
-#define eeprom_write_block(addr, buffer, len) i2c_eeprom_read_block(I2C_ID, addr, buffer, len)
+#define eeprom_write_block(addr, buffer, len) i2c_eeprom_write_block(I2C_ID, addr, buffer, len)
 #else
 #ifdef USE_HSPI
 

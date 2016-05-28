@@ -85,7 +85,9 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	if(pcnt == 0) { // new zero
 		if(CntCurrent.Cnt1) { // Cnt1 filled, something going wrong
 			#if DEBUGSOO > 2
-				os_printf("Suddenly Cnt1 = %d, zeroing\n", time, fram_store.LastTime);
+				os_printf("Suddenly Cnt1 = %d, %u\n", time, fram_store.LastTime);
+			#else
+				dbg_printf("Cnt1=%d>0", CntCurrent.Cnt1);
 			#endif
 			*(uint32 *)&CntCurrent = 0;
 			SaveCntCurrent = CntCurrent;
@@ -126,6 +128,8 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		if(eeprom_write_block(StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
 			#if DEBUGSOO > 4
 		   		os_printf("EW curr\n");
+			#else
+		   		dbg_printf("EW c\n");
 			#endif
 		   	goto xError;
 		}
@@ -133,6 +137,8 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 			if(eeprom_write_block(StartArrayOfCnts, ((uint8 *)&CntCurrent) + cnt, to_save - cnt)) {
 				#if DEBUGSOO > 4
 			   		os_printf("EW curr2\n");
+				#else
+			   		dbg_printf("EW c2\n");
 				#endif
 			   	goto xError;
 			}
@@ -146,7 +152,9 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
 		#if DEBUGSOO > 4
 	   		os_printf("EW f_s\n");
-		#endif
+		#else
+	   		dbg_printf("EW f_s\n");
+	   	#endif
    		fram_store.TotalCnt -= pcnt;
    		fram_store.LastTime -= TIME_STEP_SEC;  // seconds
 xError:
@@ -231,20 +239,23 @@ void GPIO_Task_NewData(os_event_t *e)
    				os_printf("*T: %u, n=%d\n", PowerCntTime, PowerCnt);
 #endif
    				// update current PowerCnt
-   				ets_intr_lock();
-   				fram_store.PowerCnt += PowerCnt;
-   				PowerCnt = 0;
-   				ets_intr_unlock();
    				if(FRAM_Status == 1) {
    					FRAM_Store_Init();
    					if(FRAM_Status) goto xEnd;
    				} else if(FRAM_Status == 2){
 xRepeat:   			fram_init();
    				}
-   				WDT_FEED = WDT_FEED_MAGIC; // WDT
-   				if(eeprom_write_block((uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
+   				ets_intr_lock();
+   				fram_store.PowerCnt += PowerCnt;
+   				PowerCnt = 0;
+   				ets_intr_unlock();
+   				dbg_printf("pcnt=%u\n",fram_store.PowerCnt);
+  				WDT_FEED = WDT_FEED_MAGIC; // WDT
+   				if(eeprom_write_block(0 + (uint8 *)&fram_store.PowerCnt - (uint8 *)&fram_store, (uint8 *)&fram_store.PowerCnt, sizeof(fram_store.PowerCnt))) {
 					#if DEBUGSOO > 4
   						os_printf("EW PrCnt %d\n", FRAM_Status);
+					#else
+  						dbg_printf("EW pcnt %d\n", FRAM_Status);
 					#endif
    					if(FRAM_Status == 0) {
    	   					FRAM_Status = 2;
@@ -279,6 +290,7 @@ static void gpio_int_handler(void)
 			if(!Sensor_Edge) { // Front edge
 				PowerCnt++;
 				dbg_printf(" =%u", PowerCnt);
+				if(FRAM_Status) dbg_printf(" (%d)", FRAM_Status);
 				system_os_post(SENSOR_TASK_PRIO, GPIO_Int_Signal, SENSOR_PIN);
 			}
 		    Sensor_Edge ^= 1; // next edge
@@ -303,7 +315,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 #if DEBUGSOO == 0
 		return;
 #else
-		// clear FARM
+		// clear FRAM
 		if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
@@ -327,7 +339,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			#endif
 			return;
 		} else if(cnt < 2) {
-			if(eeprom_read_block(StartArrayOfCnts, (uint8 *)&CntCurrent.Cnt2, 1)) {
+			if(eeprom_read_block(StartArrayOfCnts, &CntCurrent.Cnt2, 1)) {
 				#if DEBUGSOO > 4
 					os_printf("ER curr2\n");
 				#endif
