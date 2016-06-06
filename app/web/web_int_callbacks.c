@@ -388,7 +388,7 @@ typedef struct {
 	time_t	PreviousTime; 	// Previous printed time
 	int32_t	minutes;		// How many minutes printed
 	bool 	FlagContinue;	// Need continue print packed
-	uint8_t OutType;		// bit_2 - TotalCnt, bit_1 - by date, bit_0 - kWt
+	uint8_t OutType;		// 0b0100 - TotalCnt, 0b0010 - by date, 0b0001 - kWt
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
@@ -406,6 +406,7 @@ bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, ti
 	_localtime(Time, &tm);
 	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
 	if(hst->OutType & 0b0001) { // kWt
+		if((hst->OutType & 0b0110) == 0) num *= 6;
 		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
 		L += ets_sprintf(hst->str + L, "%u.%03u\r\n", num / 1000, num % 1000);
 	} else {
