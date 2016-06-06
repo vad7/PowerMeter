@@ -7,9 +7,9 @@
 ESPOPTION ?= -p COM9 -b 460800
 #115200
 
-UPLOADADDR = http://aesp8266/fsupload
+UPLOADADDR = http://sesp8266/fsupload
 
-UPLOADOVL = ./ovls/bin/10dof.ovl
+UPLOADOVL = ./ovls/bin/ina219.ovl
 
 # SPI_SPEED = 40MHz or 80MHz
 SPI_SPEED?=80
