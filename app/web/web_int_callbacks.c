@@ -406,7 +406,7 @@ bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, ti
 	_localtime(Time, &tm);
 	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
 	if(hst->OutType & 0b0001) { // kWt
-		if((hst->OutType & 0b0110) == 0) num *= 6;
+		if((hst->OutType & 0b0110) == 0) num *= 60; // kwt per hour
 		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
 		L += ets_sprintf(hst->str + L, "%u.%03u\r\n", num / 1000, num % 1000);
 	} else {
