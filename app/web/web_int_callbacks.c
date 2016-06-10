@@ -1400,8 +1400,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
         else ifcmp("TotalKWT") {
         	cstr += 8;
-        	uint64 KWT = fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
-        	tcp_puts("%d.%03d", KWT / 1000, KWT % 1000);
+        	uint64 KWT = (uint64)fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
+        	tcp_puts("%u.%03u", KWT / 1000, ((uint32)KWT) % 1000);
         	ifcmp("_New") { // only new value
         		if(KWT_Previous == KWT) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
             	KWT_Previous = KWT;
