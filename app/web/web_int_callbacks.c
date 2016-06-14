@@ -1400,11 +1400,10 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
         else ifcmp("TotalKWT") {
         	cstr += 8;
-        	uint64 KWT = (uint64)fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt;
-        	tcp_puts("%u.%03u", KWT / 1000, ((uint32)KWT) % 1000);
+        	tcp_puts("%u.%03u", fram_store.TotalCnt / (cfg_meter.PulsesPer0_01KWt * 100), (fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt) % 1000);
         	ifcmp("_New") { // only new value
-        		if(KWT_Previous == KWT) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
-            	KWT_Previous = KWT;
+        		if(KWT_Previous == fram_store.TotalCnt) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
+            	KWT_Previous = fram_store.TotalCnt;
         	}
         }
 #ifdef USE_I2C
@@ -1426,6 +1425,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	else ifcmp("len") tcp_puts("%u", Debug_RAM_len);
         	else ifcmp("ram") dbg_tcp_send(ts_conn);
         }
+        else ifcmp("mktime") tcp_puts("%s %s", __DATE__, __TIME__); // make date time
 // PowerMeter
 		else tcp_put('?');
 }

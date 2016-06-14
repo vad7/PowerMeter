@@ -21,13 +21,14 @@ inc:footer.inc
 inc:time.inc
 bin_historycnt
 inc:menumain.inc
-TotalKWT
 TotalCntTime
 sntp_time
 sys_mactime
 inc:footer.inc
 inc:vdd.inc
 inc:time.inc
+TotalCnt
+cfg_meter_PulsesPerKWt
 LastCnt
 cfg_meter_PulsesPerKWt
 inc:grfx1.inc

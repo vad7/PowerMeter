@@ -6,7 +6,7 @@
 </head><body>
 ~inc:menumain.inc~
 <div class="content">
-<h2 class="title">~TotalKWT~ kWt</h2>
+<h2 class="title"><span id="TotalKWT">?</span> kWt</h2>
 <p class="center">
 <span id="time__~TotalCntTime~_1">?</span>
 <br>
@@ -22,6 +22,7 @@ Power: <span title="Vdd" id="syspower">?</span> V<br>
 ~inc:vdd.inc~
 ~inc:time.inc~
 <script type="text/javascript">
+document.getElementById('TotalKWT').innerHTML = (~TotalCnt~ / ~cfg_meter_PulsesPerKWt~).toFixed(3);
 document.getElementById('last_kwt').innerHTML = (~LastCnt~ * 60 / ~cfg_meter_PulsesPerKWt~).toFixed(2);
 </script>
 </body></html>
