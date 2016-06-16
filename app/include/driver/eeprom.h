@@ -15,6 +15,7 @@
 #include "i2c.h"
 #define eeprom_read_block(addr, buffer, len)  i2c_eeprom_read_block(I2C_ID, addr, buffer, len)
 #define eeprom_write_block(addr, buffer, len) i2c_eeprom_write_block(I2C_ID, addr, buffer, len)
+#define eeprom_init(freq) i2c_init(freq)
 #else
 #ifdef USE_HSPI
 
@@ -27,6 +28,7 @@
 #define EEPROM_SLEEP	0b10111001
 #define EEPROM_RDID		0b10011111 // Read device ID
 
+#define eeprom_init(freq) spi_init(freq)
 uint8_t eeprom_read_block(uint32_t addr, uint8_t *buffer, uint32_t len);
 uint8_t eeprom_write_block(uint32_t addr, uint8_t *buffer, uint32_t len);
 #endif

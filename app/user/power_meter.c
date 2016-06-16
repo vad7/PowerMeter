@@ -25,12 +25,7 @@ uint8  FRAM_STORE_Readed	= 0;
 uint8  user_idle_func_working = 0;
 
 void ICACHE_FLASH_ATTR fram_init(void) {
-#ifdef USE_I2C
-	i2c_init(cfg_meter.i2c_freq);
-#endif
-#ifdef USE_HSPI
-	spi_init();
-#endif
+	eeprom_init(cfg_meter.fram_freq);
 }
 
 void NextPtrCurrent(uint8 cnt)
@@ -384,7 +379,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
 			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
 			cfg_meter.csv_delimiter = ',';
-			cfg_meter.i2c_freq = 400;
+			cfg_meter.fram_freq = 400;
 			cfg_meter.Debouncing_Timeout = 1000; // us
 		}
 		if(cfg_meter.ReverseSensorPulse) {

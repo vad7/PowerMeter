@@ -45,7 +45,8 @@
 //				 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ICACHE_FLASH_ATTR spi_init(void){
+// SPI clock - freq (kHz). if freq is more than (USE_FIX_QSPI_FLASH / 2) than spi clock equal USE_FIX_QSPI_FLASH
+void ICACHE_FLASH_ATTR spi_init(uint32 freq){
 
 	WAIT_HSPI_IDLE();
 #ifdef SPI_OVERLAP
@@ -91,7 +92,7 @@ void ICACHE_FLASH_ATTR spi_init(void){
 #endif
 #endif
 
-	spi_clock(SPI_CLK_PREDIV, SPI_CLK_CNTDIV);
+	spi_clock(USE_FIX_QSPI_FLASH * (1000/2) / freq, 2); // USE_FIX_QSPI_FLASH: 20, 26, 40, 80
 
 #ifndef SPI_TINY
 #ifndef SPI_BLOCK
@@ -196,6 +197,7 @@ void spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
 {
 	if(data_size > 64) return;
 	while(spi_busy(spi_no)); //wait for SPI to be ready
+	WAIT_HSPI_IDLE();
 
 #if SPI_NOT_USE_CS == 0 && DELAY_BEFORE_CHANGE_CS
 	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CS_SETUP|SPI_CS_HOLD); // set delay before and after CS change

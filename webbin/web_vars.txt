@@ -57,6 +57,7 @@ TotalCntTime
 i2c_errors
 iot_LastSt_time
 iot_LastSt
+mktime
 wifi_ap_ssid
 sys_webver
 sys_sdkver
@@ -237,7 +238,7 @@ cfg_meter_PulsesPerKWt
 cfg_meter_csv_delim
 cfg_iot_ini
 cfg_meter_Fram_Size
-cfg_meter_i2c_freq
+cfg_meter_FramFr
 cfg_meter_Debouncing
 inc:footer.inc
 cfg_iot_cloud_enable

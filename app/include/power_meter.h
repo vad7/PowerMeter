@@ -20,7 +20,7 @@ typedef struct __attribute__((packed)) {
 	uint32 	Fram_Size;				// 32768
 	uint32  Debouncing_Timeout;		// us
 	uint16 	PulsesPer0_01KWt; 		// 6
-	uint16  i2c_freq;				// 400 KHz
+	uint16  fram_freq;				// i2c = 400 kHz / spi = 20 MHz
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
 	char	csv_delimiter; 			// ','
 	uint8	ReverseSensorPulse;		// if 1 - FrontEdge = positive, BackEdge = negative

@@ -111,8 +111,8 @@ void ICACHE_FLASH_ATTR
 
 //Define some default SPI clock settings,
 //SPI_CLK_FREQ = CPU_CLK_FREQ/(SPI_CLK_PREDIV*SPI_CLK_CNTDIV)
-#define SPI_CLK_PREDIV 1
-#define SPI_CLK_CNTDIV 2
+//#define SPI_CLK_PREDIV 1
+//#define SPI_CLK_CNTDIV 2
 
 #ifdef SPI_OVERLAP
 	#if USE_FIX_QSPI_FLASH == 80 && SPI_CLK_80MHZ_NODIV == 0
@@ -120,7 +120,7 @@ void ICACHE_FLASH_ATTR
 	#endif
 #endif
 
-void spi_init(void) ICACHE_FLASH_ATTR;
+void spi_init(uint32 freq) ICACHE_FLASH_ATTR;
 void spi_clock(uint16 prediv, uint8 cntdiv) ICACHE_FLASH_ATTR;
 //void spi_mode(uint8 spi_cpha,uint8 spi_cpol) ICACHE_FLASH_ATTR;
 
