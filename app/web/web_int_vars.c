@@ -343,7 +343,7 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
 			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
 			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
-			else ifcmp("i2c_freq") cfg_meter.i2c_freq = val;
+			else ifcmp("FramFr") cfg_meter.fram_freq = val;
 			else ifcmp("Debouncing") cfg_meter.Debouncing_Timeout = val;
 			else ifcmp("revsens") cfg_meter.ReverseSensorPulse = val;
 			else ifcmp("reset_data") {
