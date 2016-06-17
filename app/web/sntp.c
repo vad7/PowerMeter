@@ -371,6 +371,9 @@ static void ICACHE_FLASH_ATTR sntp_initialize_request(struct sntp_msg *req)
  */
 static void ICACHE_FLASH_ATTR sntp_retry(void* arg)
 {
+	#if DEBUGSOO > 1
+		os_printf("SNTP retry\n");
+	#endif
 	LWIP_UNUSED_ARG(arg);
 	LWIP_DEBUGF(SNTP_DEBUG_STATE, ("sntp_retry: Next request will be sent in %"U32_F" ms\n",
 		sntp->sntp_retry_timeout));
@@ -491,6 +494,9 @@ static void ICACHE_FLASH_ATTR sntp_recv(void *arg, struct udp_pcb* pcb,
 		}
 	}
 	pbuf_free(p);
+	#if DEBUGSOO > 1
+		os_printf("SNTP code: %d\n", err);
+	#endif
 	if (err == ERR_OK) {
 		/* Correct response, reset retry timeout */
 		SNTP_RESET_RETRY_TIMEOUT();

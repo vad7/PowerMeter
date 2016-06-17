@@ -38,7 +38,7 @@
 #include "overlay.h"
 #endif
 
-#if DEBUGSOO > 5
+#if DEBUGSOO > 4
 #include "hw/uart_register.h"
 #endif
 
@@ -1456,6 +1456,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 				}
 #if DEBUGSOO > 4
 				os_printf("\nlen=%d, block_size=%d, content_len=%d, sizeboundary= %d, ret=%d, data = %d, load=%d", len, block_size, web_conn->content_len, pupload->sizeboundary, ret, pupload->pbndr - ts_conn->pbufi, ts_conn->sizei);
+				while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 				if(pupload->fsize < len) block_size = pupload->fsize;
 				else block_size = len;
@@ -1474,6 +1475,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 						if((pupload->faddr & 0x0000FFFF)==0) {
 #if DEBUGSOO > 2
 							os_printf("Clear flash page addr %p... ", pupload->faddr);
+							while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 							spi_flash_erase_block(pupload->faddr>>16);
 						}
@@ -1481,11 +1483,13 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 					else if((pupload->faddr & 0x00000FFF) == 0) {
 #if DEBUGSOO > 2
 						os_printf("Clear flash sector addr %p... ", pupload->faddr);
+						while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 						spi_flash_erase_sector(pupload->faddr>>12);
 					}
 #if DEBUGSOO > 2
 					os_printf("Write flash addr:%p[0x%04x]\n", pupload->faddr, block_size);
+					while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 					spi_flash_write(pupload->faddr, (uint32 *)pstr, (block_size + 3)&(~3));
 
@@ -1494,6 +1498,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 				}
 #if DEBUGSOO > 4
 				os_printf("trim#%u\n", len);
+				while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 #endif
 				if(len) {
 					ts_conn->cntri += len;

@@ -197,7 +197,6 @@ void spi_write_read_block(uint8 sr, uint32 addr, uint8 * data, uint8 data_size)
 {
 	if(data_size > 64) return;
 	while(spi_busy(spi_no)); //wait for SPI to be ready
-	WAIT_HSPI_IDLE();
 
 #if SPI_NOT_USE_CS == 0 && DELAY_BEFORE_CHANGE_CS
 	SET_PERI_REG_MASK(SPI_USER(spi_no), SPI_CS_SETUP|SPI_CS_HOLD); // set delay before and after CS change

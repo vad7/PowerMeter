@@ -18,7 +18,7 @@ extern bool system_get_os_print(void);
 // int os_printf_plus(const char *format, ...)
 // Использует буфер в области RAM-BIOS
 //-----------------------------------------------------------------------------
-int ICACHE_FLASH_ATTR __wrap_os_printf_plus(const char *format, ...)
+int __wrap_os_printf_plus(const char *format, ...)
 //int ICACHE_FLASH_ATTR rom_printf(const char *format, ...)
 {
 	int i = 0;
@@ -36,7 +36,7 @@ int ICACHE_FLASH_ATTR __wrap_os_printf_plus(const char *format, ...)
 // Использует буфер в области RAM-BIOS
 // Вывод может быть расположен в IRAM
 //-----------------------------------------------------------------------------
-void ICACHE_FLASH_ATTR _sprintf_out(char c)
+void _sprintf_out(char c)
 {
 	if(_sprintf_buf != NULL) {
 		write_align4_chr(_sprintf_buf++, c); // *_sprintf_buf++ = c;
@@ -44,7 +44,7 @@ void ICACHE_FLASH_ATTR _sprintf_out(char c)
 	}
 }
 
-int ICACHE_FLASH_ATTR ets_sprintf(char *str, const char *format, ...)
+int ets_sprintf(char *str, const char *format, ...)
 {
 	_sprintf_buf = str;
 	va_list args;
