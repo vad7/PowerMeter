@@ -38,7 +38,7 @@ int ICACHE_FLASH_ATTR iram_buf_init(void)
 }
 
 /* Копирует данные из области align(4) (flash, iram, registers) в область align(1) (ram) */
-int ICACHE_RAM_ATTR copy_s4d1(unsigned char * pd, void * ps, unsigned int len)
+int copy_s4d1(unsigned char * pd, void * ps, unsigned int len)
 {
 	union {
 		unsigned char uc[4];
@@ -154,7 +154,7 @@ unsigned int ICACHE_RAM_ATTR rom_strlen(const char * ps)
 	}
 }
 /* strcpy() из сегментов flash и IRAM */
-char * ICACHE_RAM_ATTR rom_strcpy(char * pd_, void * ps, unsigned int maxlen)
+char * rom_strcpy(char * pd_, void * ps, unsigned int maxlen)
 {
 	if(pd_ == (0) || ps == (0) || maxlen == 0) return (0);
 	union {

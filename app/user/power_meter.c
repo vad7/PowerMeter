@@ -270,6 +270,7 @@ xEnd: 			if(user_idle_func_working == 0 && ets_idle_cb == NULL) {
     }
 }
 
+// Do not use ICACHE* attr here!
 static void gpio_int_handler(void)
 {
 	uint32 gpio_status = GPIO_STATUS;
@@ -277,7 +278,7 @@ static void gpio_int_handler(void)
 	if(gpio_status & (1<<SENSOR_PIN)) {
 		uint32 tm = system_get_time();
 #if DEBUGSOO > 4
-		os_printf("*%u,%d*\n", tm, Sensor_Edge);
+		__wrap_os_printf_plus("*%u,%d*\n", tm, Sensor_Edge);
 #endif
 		dbg_printf("*%d* %u", Sensor_Edge, tm - PowerCntTime);
 		if(tm - PowerCntTime > cfg_meter.Debouncing_Timeout) { // skip if interval less than x us

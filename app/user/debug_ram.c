@@ -18,14 +18,14 @@ uint32 Debug_RAM_len = 0;
 uint8  Debug_level = 0;
 //uint8  Save_system_set_os_print = 0xFF;
 
-void ICACHE_FLASH_ATTR dbg_printf_out(char c)
+void dbg_printf_out(char c)
 {
 	if(Debug_RAM_addr != NULL && Debug_RAM_len < Debug_RAM_size) {
 		Debug_RAM_addr[Debug_RAM_len++] = c;
 	}
 }
 // Write debug info to RAM buffer
-void ICACHE_FLASH_ATTR dbg_printf(const char *format, ...) {
+void dbg_printf(const char *format, ...) {
 	if(Debug_RAM_addr == NULL) return;
 	va_list args;
 	va_start(args, format);

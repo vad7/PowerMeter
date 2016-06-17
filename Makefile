@@ -12,7 +12,7 @@ UPLOADADDR = http://aesp8266/fsupload
 UPLOADOVL = ./ovls/bin/10dof.ovl
 
 # SPI_SPEED = 40MHz or 80MHz
-SPI_SPEED?=40
+SPI_SPEED?=80
 # SPI_MODE: QIO, DIO, QOUT, DOUT
 SPI_MODE?=QIO
 # SPI_SIZE: 512KB for all size Flash ! (512 kbytes .. 16 Mbytes Flash autodetect)
@@ -217,8 +217,9 @@ endif
 #	@echo "Fullflash firmware.bin size  : " $(shell printf '%u\n' $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )
 #	@echo "Max firmware.bin size for OTA: " $(shell printf '%u\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) )) )
 #	@echo "*Space available to allow OTA: " $(shell printf '%d\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) - $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )) )
+	@rm -f web/.output/eagle/obj/web_int_callbacks.*
 
-all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS) 
+all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS)
 
 $(SPECIAL_MKTARGETS): $(INPLIB) 
 	@$(RM) -f $@
@@ -319,3 +320,4 @@ $(foreach image,$(GEN_IMAGES),$(eval $(call MakeImage,$(basename $(image)))))
 INCLUDES := $(INCLUDES) -I $(PDIR)include
 #PDIR := ../$(PDIR)
 #sinclude $(PDIR)Makefile
+

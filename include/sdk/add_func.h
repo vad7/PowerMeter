@@ -72,8 +72,8 @@ bool system_upgrade_userbin_set(uint32 flag); // system_get_boot_version(), stor
 
 int atoi(const char *str) ICACHE_FLASH_ATTR;
 
-int os_printf_plus(const char *format, ...) ICACHE_FLASH_ATTR;
-int ets_sprintf(char *str, const char *format, ...) ICACHE_FLASH_ATTR;
+int os_printf_plus(const char *format, ...);
+int ets_sprintf(char *str, const char *format, ...);
 
 void wifi_softap_set_default_ssid(void) ICACHE_FLASH_ATTR;
 void wDev_Set_Beacon_Int(uint32_t) ICACHE_FLASH_ATTR;
