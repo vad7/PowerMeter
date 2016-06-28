@@ -392,6 +392,7 @@ typedef struct {
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
+	bool	previous_skipped;
 	uint8_t	n;
 	uint32_t previous_n;		// to skip multi-zeros or in TotalCnt mode the same value
 	uint32_t Sum;			// for OutType by date / TotalCnt
@@ -520,10 +521,13 @@ xContinue:
 						if(hst->previous_n == hst->Sum) goto xSkip; // Skip the same value
 						prn_num = hst->previous_n;
 					} else {
-						if(hst->previous_n == 0 && num) { // out 0 if num after multi zero
+						if(hst->previous_n == 0 && num && hst->previous_skipped) { // out 0 if num after multi zero
 							if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
 						}
-						if(!(hst->previous_n || num)) goto xSkip; // multi-zeros will be skipped
+						if(!(hst->previous_n || num)) {
+							hst->previous_skipped = 1;
+							goto xSkip; // multi-zeros will be skipped
+						}
 						prn_num = num;
 					}
 					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, prn_num)) {
@@ -542,6 +546,7 @@ xBufferFull:
 						return;
 					}
 					if((hst->OutType & 0b0100) == 0) hst->Sum = 0; // not TotalCnt
+					hst->previous_skipped = 0;
 xSkip:
 					hst->previous_n = (hst->OutType & 0b0100) ? hst->Sum : num; // TotalCnt = sum
 					hst->PreviousTime = hst->LastTime;
