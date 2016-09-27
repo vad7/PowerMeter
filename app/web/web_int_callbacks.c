@@ -388,26 +388,33 @@ typedef struct {
 	time_t	PreviousTime; 	// Previous printed time
 	int32_t	minutes;		// How many minutes printed
 	bool 	FlagContinue;	// Need continue print packed
-	uint8_t OutType;		// 0b0100 - TotalCnt, 0b0010 - by date, 0b0001 - kWt
+	uint8_t OutType;		// 0b1000 - TotalCnt, 0b0100 - by hour, 0b0010 - by day, 0b0001 - kWt
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
-	bool	previous_skipped;
 	uint8_t	n;
 	uint32_t previous_n;		// to skip multi-zeros or in TotalCnt mode the same value
 	uint32_t Sum;			// for OutType by date / TotalCnt
+	uint32_t *Hours;
 	uint8_t	buf[48];
 	char 	str[32];
 } history_output;
 
+// history_output.OutType
+#define HST_TotalCnt	0b1000
+#define HST_ByHour		0b0100
+#define HST_ByDay		0b0010
+#define HST_kWt			0b0001
+
 // return True if overflow
-bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t *Time, uint32_t num)
+bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t Time, uint32_t num)
 {
 	struct tm tm;
-	_localtime(Time, &tm);
+	if(hst->OutType & HST_TotalCnt) Time -= 60; // TotalCnt
+	_localtime(&Time, &tm);
 	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
-	if(hst->OutType & 0b0001) { // kWt
-		if((hst->OutType & 0b0110) == 0) num *= 60; // kwt per hour
+	if(hst->OutType & HST_kWt) { // kWt
+		if((hst->OutType & (HST_TotalCnt | HST_ByHour | HST_ByDay)) == 0) num *= 60; // kwt per hour
 		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
 		L += ets_sprintf(hst->str + L, "%u.%03u\r\n", num / 1000, num % 1000);
 	} else {
@@ -456,9 +463,17 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		hst->LastTime = fram_store.LastTime;
 		tcp_puts("date,power\r\n"); // csv header
-		if(hst->OutType & 0b0100) { // TotalCnt
+		if(hst->OutType & HST_ByHour) {
+			if((hst->Hours = (uint32 *) os_zalloc(24 * sizeof(uint32_t))) == NULL) {
+				#if DEBUGSOO > 2
+					os_printf("Error malloc hours: %u\n", sizeof(history_output));
+				#endif
+				return;
+			}
+		}
+		if(hst->OutType & HST_TotalCnt) { // TotalCnt
 			hst->Sum = fram_store.TotalCnt;
-			if((hst->OutType & 0b0010) == 0) { // not By day
+			if((hst->OutType & HST_ByDay) == 0) { // not By day
 				hst->previous_n = hst->Sum; // save value and wait changing
 			}
 		} else hst->previous_n = 0xFFFFFFFF;
@@ -499,8 +514,18 @@ xErrorI2C:
 				if(packed_flag) {
 					if(n == 0) { // end
 xEnd:
-						// if TotalCnt - print sum, otherwise 0;
-						if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, (hst->OutType & 0b0110) ? hst->Sum : 0)) goto xBufferFull;
+						if(hst->OutType & HST_ByHour) {
+							//print buffer	hst->Hours
+
+
+
+
+
+
+						} else {
+							// if TotalCnt - print sum, otherwise 0;
+							if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & 0b0110) ? hst->Sum : 0)) goto xBufferFull;
+						}
 						goto xEndExit;
 					}
 					if(n == 1) packed_flag = 0; // special case "0,1" - last min = 1, previous min = 0
@@ -510,29 +535,24 @@ xEnd:
 xContinue:
 					num = packed_flag ? 0 : n;
 					uint32_t prn_num;
-					if(hst->OutType & 0b0100) hst->Sum -= num; // TotalCnt
-					if(hst->OutType & 0b0010) { // by day
-						if((hst->OutType & 0b0100) == 0) hst->Sum += num; // Not TotalCnt(+)
-						if(hst->LastTime % 86400 / 60 != (hst->OutType & 0b0100 ? 1439 : 0)) { // time is not 00:00 / 23:59(TotalCnt) - skip
+					if(hst->OutType & HST_TotalCnt) hst->Sum -= num; // TotalCnt
+					if(hst->OutType & HST_ByDay) { // by day
+						if((hst->OutType & HST_TotalCnt) == 0) hst->Sum += num; // Not TotalCnt(+)
+						if(hst->LastTime % 86400 / 60 != 0) { // time is not 00:00 - skip
 							goto xSkip;
 						}
 						prn_num = hst->Sum;
-					} else if(hst->OutType & 0b0100) { // TotalCnt not by day
+					} else if(hst->OutType & HST_TotalCnt) { // TotalCnt not by day
 						if(hst->previous_n == hst->Sum) goto xSkip; // Skip the same value
 						prn_num = hst->previous_n;
 					} else {
-						if(hst->previous_n == 0 && num && hst->previous_skipped) { // out 0 if num after multi zero
-							if(web_get_history_put_csv_str(web_conn, hst, &hst->PreviousTime, 0)) goto xBufferFull;
-						}
-						if(!(hst->previous_n || num)) {
-							hst->previous_skipped = 1;
-							goto xSkip; // multi-zeros will be skipped
-						}
 						prn_num = num;
 					}
-					if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, prn_num)) {
+					if(hst->OutType & HST_ByHour) {
+						hst->Hours[hst->LastTime % 86400 / 3600] += prn_num;
+					} else if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, prn_num)) {
 xBufferFull:
-						hst->Sum = (hst->OutType & 0b0100) ? hst->Sum + num : hst->Sum - num; // TotalCnt(+) / by day(-)
+						hst->Sum = (hst->OutType & HST_TotalCnt) ? hst->Sum + num : hst->Sum - num; // TotalCnt(+) / by day(-)
 						hst->len = len;
 						hst->i = i;
 						hst->n = n;
@@ -545,10 +565,9 @@ xBufferFull:
 						SetSCB(SCB_RETRYCB);
 						return;
 					}
-					if((hst->OutType & 0b0100) == 0) hst->Sum = 0; // not TotalCnt
-					hst->previous_skipped = 0;
+					if((hst->OutType & HST_TotalCnt) == 0) hst->Sum = 0; // not TotalCnt
+					hst->previous_n = (hst->OutType & HST_TotalCnt) ? hst->Sum : num; // TotalCnt = sum
 xSkip:
-					hst->previous_n = (hst->OutType & 0b0100) ? hst->Sum : num; // TotalCnt = sum
 					hst->PreviousTime = hst->LastTime;
 					hst->LastTime -= TIME_STEP_SEC;
 					if(hst->minutes) {
@@ -960,6 +979,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 		        else ifcmp("FramFr") tcp_puts("%u", cfg_meter.fram_freq);
 		        else ifcmp("Debouncing") tcp_puts("%u", cfg_meter.Debouncing_Timeout);
 		        else ifcmp("revsens") tcp_puts("%u", cfg_meter.ReverseSensorPulse);
+		        else ifcmp("T1St") tcp_puts("%u", cfg_meter.TimeT1Start);
+		        else ifcmp("T1En") tcp_puts("%u", cfg_meter.TimeT1End);
 		    }
 	        else ifcmp("iot_") {	// cfg_
 	        	cstr += 4;
@@ -1206,8 +1227,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	else ifcmp("history") {
         		cstr += 7;
         		web_conn->udata_start = 0;
-        		ifcmp("cnt") web_conn->udata_start = 0b0100;
-				web_conn->udata_start |= (Web_ShowByDay<<1) | Web_ShowByKWT;	// OutType
+				web_conn->udata_start = (Web_ShowBy<<1) | Web_ShowByKWT;	// OutType
+        		ifcmp("cnt") web_conn->udata_start = (web_conn->udata_start & ~HST_ByHour) | HST_TotalCnt;
 				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
 				web_get_history(ts_conn);
         	}
@@ -1392,6 +1413,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("PowerCnt") tcp_puts("%u", fram_store.PowerCnt);
         else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
         else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
+        else ifcmp("TotalCntT1") tcp_puts("%u", fram_store.TotalCntT1);
+        else ifcmp("TotalCntT2") tcp_puts("%u", fram_store.TotalCnt - fram_store.TotalCntT1);
+        else ifcmp("Str_T1&T2") tcp_puts("%u", fram_store.TotalCnt - fram_store.TotalCntT1);
         else ifcmp("LastCnt") {
         	cstr += 7;
         	tcp_puts("%u", LastCnt);
@@ -1415,8 +1439,8 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
 #endif
         else ifcmp("ChartMaxDays") tcp_puts("%u", Web_ChartMaxDays);
-        else ifcmp("ShowByDay") tcp_puts("%d", Web_ShowByDay);
         else ifcmp("ShowByKWT") tcp_puts("%d", Web_ShowByKWT);
+        else ifcmp("ShowBy") tcp_puts("%d", Web_ShowBy);
         else ifcmp("iot_") {
         	cstr += 4;
             ifcmp("LastSt_time") tcp_puts("%u", iot_last_status_time);

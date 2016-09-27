@@ -346,6 +346,8 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 			else ifcmp("FramFr") cfg_meter.fram_freq = val;
 			else ifcmp("Debouncing") cfg_meter.Debouncing_Timeout = val;
 			else ifcmp("revsens") cfg_meter.ReverseSensorPulse = val;
+			else ifcmp("T1St") cfg_meter.TimeT1Start = val;
+			else ifcmp("T1En") cfg_meter.TimeT1End = val;
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -406,8 +408,8 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		// sys_write_cfg();
 	}
 	else ifcmp("ChartMaxDays") Web_ChartMaxDays = val;
-	else ifcmp("ShowByDay") Web_ShowByDay = val;
 	else ifcmp("ShowByKWT") Web_ShowByKWT = val;
+	else ifcmp("ShowBy") Web_ShowBy = val;
 	else ifcmp("iot_") { // from iot_cloud.ini
 		cstr+=4;
 		uint16 len = os_strlen(pvar) + 1;
