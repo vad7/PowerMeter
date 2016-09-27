@@ -24,15 +24,18 @@ typedef struct __attribute__((packed)) {
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
 	char	csv_delimiter; 			// ','
 	uint8	ReverseSensorPulse;		// if 1 - FrontEdge = positive, BackEdge = negative
+	uint16	TimeT1Start;			// hh,mm
+	uint16	TimeT1End;				// hh,mm. if TimeT1Start != TimeT1End != 0 - Dual tariffs used
 //	char sntp_server[20];
 } CFG_METER;
 CFG_METER __attribute__((aligned(4))) cfg_meter;
 
 typedef struct __attribute__((packed)) {
-	uint32 PowerCnt;
-	uint32 TotalCnt;
+	uint32 PowerCnt;	// not processed count
+	uint32 TotalCnt;	// saved value
 	uint32 PtrCurrent;
 	time_t LastTime;
+	uint32 TotalCntT1;	// TotalCntT2 = TotalCnt - TotalCntT1
 	//uint8 Reserved[];
 } FRAM_STORE;
 FRAM_STORE __attribute__((aligned(4))) fram_store;
@@ -51,8 +54,8 @@ uint32 LastCnt_Previous;
 uint32 KWT_Previous;		// *1000
 // Cookies:
 uint32 Web_ChartMaxDays; 	// ~ChartMaxDays~
-uint8  Web_ShowByDay; 		// ~ShowByDay~
 uint8  Web_ShowByKWT; 		// ~ShowByKWT~
+uint8  Web_ShowBy; 			// ~ShowBy~ : 0 - all, 1 - by day, 2 - by hour
 //
 
 void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
