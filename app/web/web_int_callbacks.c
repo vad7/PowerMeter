@@ -462,9 +462,9 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
-		tcp_puts("date,power\r\n"); // csv header
+		tcp_puts("date,value\r\n"); // csv header
 		if(hst->OutType & HST_ByHour) {
-			if((hst->Hours = (uint32 *) os_zalloc(24 * sizeof(uint32_t))) == NULL) {
+			if((hst->Hours = (uint32_t *) os_zalloc(25 * sizeof(uint32_t))) == NULL) {
 				#if DEBUGSOO > 2
 					os_printf("Error malloc hours: %u\n", sizeof(history_output));
 				#endif
@@ -515,13 +515,11 @@ xErrorI2C:
 					if(n == 0) { // end
 xEnd:
 						if(hst->OutType & HST_ByHour) {
-							//print buffer	hst->Hours
-
-
-
-
-
-
+							hst->LastTime = fram_store.LastTime / 86400 * 86400;
+							for(n = 0; n <= 24; n++) {
+								if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, hst->Hours[n])) break;
+								hst->LastTime += 3600;
+							}
 						} else {
 							// if TotalCnt - print sum, otherwise 0;
 							if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & 0b0110) ? hst->Sum : 0)) goto xBufferFull;
@@ -550,7 +548,7 @@ xContinue:
 					}
 					if(hst->OutType & HST_ByHour) {
 						hst->Hours[hst->LastTime % 86400 / 3600] += prn_num;
-					} else if(web_get_history_put_csv_str(web_conn, hst, &hst->LastTime, prn_num)) {
+					} else if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, prn_num)) {
 xBufferFull:
 						hst->Sum = (hst->OutType & HST_TotalCnt) ? hst->Sum + num : hst->Sum - num; // TotalCnt(+) / by day(-)
 						hst->len = len;

@@ -16,6 +16,8 @@ inc:grfx2.inc
 sys_heap
 bin_history
 inc:menumain.inc
+ShowBy
+ShowBy
 TotalCntTime
 inc:footer.inc
 inc:time.inc
@@ -28,6 +30,10 @@ inc:footer.inc
 inc:vdd.inc
 inc:time.inc
 TotalCnt
+cfg_meter_PulsesPerKWt
+TotalCntT1
+cfg_meter_PulsesPerKWt
+TotalCntT2
 cfg_meter_PulsesPerKWt
 LastCnt
 cfg_meter_PulsesPerKWt
