@@ -24,6 +24,7 @@ typedef struct __attribute__((packed)) {
 	uint8	iot_cloud_enable;		// use "protect/iot_cloud.ini" to send data to iot cloud
 	char	csv_delimiter; 			// ','
 	uint8	ReverseSensorPulse;		// if 1 - FrontEdge = positive, BackEdge = negative
+	int16_t	TimeAdjust;				// -+ sec
 	uint16	TimeT1Start;			// hh,mm
 	uint16	TimeT1End;				// hh,mm. if TimeT1Start != TimeT1End != 0 - Dual tariffs used
 //	char sntp_server[20];

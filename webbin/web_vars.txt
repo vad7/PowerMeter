@@ -17,9 +17,11 @@ sys_heap
 bin_history
 inc:menumain.inc
 ShowBy
-ShowBy
 TotalCntTime
 inc:footer.inc
+ShowByKWT
+ChartMaxDays
+ShowBy
 inc:time.inc
 bin_historycnt
 inc:menumain.inc
@@ -31,6 +33,8 @@ inc:vdd.inc
 inc:time.inc
 TotalCnt
 cfg_meter_PulsesPerKWt
+cfg_meter_T1St
+cfg_meter_T1En
 TotalCntT1
 cfg_meter_PulsesPerKWt
 TotalCntT2
@@ -54,6 +58,7 @@ PowerCnt
 inc:menu.inc
 TotalKWT
 TotalCnt
+TotalCntT1
 PtrCurrent
 CntCurrent1
 CntCurrent2
@@ -240,7 +245,12 @@ inc:menumain.inc
 cfg_meter_PulsesPerKWt
 TotalCnt
 TotalKWT
+TotalCntT1
+TotalKWTT1
 cfg_meter_PulsesPerKWt
+cfg_meter_TAdj
+cfg_meter_T1St
+cfg_meter_T1En
 cfg_meter_csv_delim
 cfg_iot_ini
 cfg_meter_Fram_Size

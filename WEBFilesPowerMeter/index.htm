@@ -24,7 +24,7 @@ Power: <span title="Vdd" id="syspower">?</span> V<br>
 ~inc:time.inc~
 <script type="text/javascript">
 document.getElementById('TotalKWT').innerHTML = (~TotalCnt~ / ~cfg_meter_PulsesPerKWt~).toFixed(3);
-document.getElementById('Str_T1_T2').innerHTML = "Day: " + (~TotalCntT1~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + " Night: " + (~TotalCntT2~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + "<br><br>";
+if("~cfg_meter_T1St~" != 0 || "~cfg_meter_T1En~" != 0) document.getElementById('Str_T1_T2').innerHTML = "Day: " + (~TotalCntT1~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + " &nbsp; Night: " + (~TotalCntT2~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + "<br><br>";
 document.getElementById('last_kwt').innerHTML = (~LastCnt~ * 60 / ~cfg_meter_PulsesPerKWt~).toFixed(2);
 </script>
 </body></html>

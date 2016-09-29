@@ -22,6 +22,10 @@ function setCookieElem(name, defv) {
 	var f = document.getElementById(name);
 	if(f.type === "checkbox") {
 		f.checked = val == 1 ? true : false;
+	} else if(f.type === "radio") {
+		var f = document.getElementsByName(name);
+		for(var i=0; i<f.length; i++)
+			f[i].checked = f[i].value == val;
 	} else {
 		f.value = val;
 	}
@@ -31,6 +35,13 @@ function updCookie(name) {
 	var f = document.getElementById(name);
 	if(f.type === "checkbox") {
 		val = f.checked ? 1 : 0;
+	} else if(f.type === "radio") {
+		var f = document.getElementsByName(name);
+		for(var i=0; i<f.length; i++)
+			if(f[i].checked) { 
+				val = f[i].value;
+				break;
+			}
 	} else {
 		val = f.value;
 	}

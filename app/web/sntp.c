@@ -300,6 +300,8 @@ struct ssntp {
 
 struct ssntp *sntp DATA_IRAM_ATTR;
 
+int16_t sntp_time_adjust = 0; // sec
+
 /* function prototypes */
 static void sntp_request(void *arg) ICACHE_FLASH_ATTR;
 #if SNTP_RETRY_TIMEOUT_EXP
@@ -720,13 +722,13 @@ void ICACHE_FLASH_ATTR sntp_close(void)
  */
 time_t ICACHE_FLASH_ATTR get_sntp_time(void)
 {
-	return sntp == NULL ? 0 : sntp->sntp_time;
+	return sntp == NULL ? 0 : sntp->sntp_time + sntp_time_adjust;
 }
 
 time_t ICACHE_FLASH_ATTR get_sntp_localtime(void)
 {
 	if (sntp == NULL || sntp->sntp_time == 0) return 0;
-	return sntp->sntp_time + sntp->sntp_time_zone * 3600;
+	return sntp->sntp_time + sntp_time_adjust + sntp->sntp_time_zone * 3600;
 }
 
 // comvert local time to UTC time
