@@ -143,6 +143,15 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	if(to_add) *(uint32 *)&CntCurrent = 0; // clear for next
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
+	uint8_t now_T1 = 0;
+	if(cfg_meter.TimeT1Start && cfg_meter.TimeT1End) { // Multi tariffs
+		struct tm tm;
+		_localtime(&fram_store.LastTime, &tm);
+		uint16 st, end, tt = tm.tm_hour * 60 + tm.tm_min; // min
+		st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100;
+		end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100;
+		if((now_T1 = (end > st && tt >= st && tt <= end) || (end < st && (tt >= st || tt <= end)))) fram_store.TotalCntT1 += pcnt;
+	}
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
 	if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
 		#if DEBUGSOO > 4
@@ -151,6 +160,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	   		dbg_printf("EW f_s\n");
 	   	#endif
    		fram_store.TotalCnt -= pcnt;
+   		if(now_T1) fram_store.TotalCntT1 -= pcnt;
    		fram_store.LastTime -= TIME_STEP_SEC;  // seconds
 xError:
 		CntCurrent = SaveCntCurrent;
@@ -397,6 +407,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 		iot_data_first = NULL;
 		LastCnt = 0;
 		LastCnt_Previous = -1;
+		sntp_time_adjust = cfg_meter.TimeAdjust;
 
 		ets_isr_mask(1 << ETS_GPIO_INUM); // запрет прерываний GPIOs
 		// setup interrupt and os_task

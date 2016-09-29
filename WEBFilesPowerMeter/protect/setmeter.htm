@@ -15,11 +15,27 @@
 					<td class="label">Total cnt, kWt * ~cfg_meter_PulsesPerKWt~:
 					<input title='change?' type='checkbox' name='change_totalcnt' value='0'> 
 					</td>
-					<td><input title='0..4294967295' id='TCnt' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'>&ensp;&larr;&ensp;<input title='0.00..999999.99' id='kWt' size='8' value='~TotalKWT~' onchange='CalcTotalCnt()'>&nbsp;kWt</td>
+					<td><input title='0..4294967295' id='TCnt' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'>&ensp;&larr;&ensp;<input title='0.00..999999.99' id='kWt' size='8' value='~TotalKWT~' onchange='CalcTotalCnt("TCnt","kWt")'>&nbsp;kWt</td>
+				</tr>
+				<tr>
+					<td class="label">Total T1 cnt: &uarr; &nbsp;</td>
+					<td><input title='0..4294967295' id='TCntT1' name='cfg_meter_TotalCntT1' maxlength='10' value='~TotalCntT1~'>&ensp;&larr;&ensp;<input title='0.00..999999.99' id='T1kWt' size='8' value='~TotalKWTT1~' onchange='CalcTotalCnt("TCntT1","T1kWt")'>&nbsp;kWt</td>
 				</tr>
 				<tr>
 					<td class="label">Pulses per kWt:</td>
 					<td><input title='100,200,300,..10000' id='PkWt' name='cfg_meter_PulsesPerKWt' maxlength='5' value='~cfg_meter_PulsesPerKWt~'></td>
+				</tr>
+				<tr>
+					<td class="label">Adjust Time:</td>
+					<td><input title='sec' name='cfg_meter_TAdj' maxlength='6' value='~cfg_meter_TAdj~'></td>
+				</tr>
+				<tr>
+					<td class="label">Tariff 1 Start (incl):</td>
+					<td><input title='hhmm' name='cfg_meter_T1St' maxlength='4' value='~cfg_meter_T1St~'></td>
+				</tr>
+				<tr>
+					<td class="label">Tariff 1 End (incl):</td>
+					<td><input title='hhmm' name='cfg_meter_T1En' maxlength='4' value='~cfg_meter_T1En~'></td>
 				</tr>
 				<tr>
 					<td class="label">Delimiter in .csv:</td>
@@ -52,7 +68,7 @@
 				</tr>
 				<tr>
 					<td class="label">Reset all data:</td>
-					<td><input type='password' title='Enter magic word' name='cfg_meter_reset_data' maxlength='10' value=''></td>
+					<td><input type='password' title='Enter R....' name='cfg_meter_reset_data' maxlength='10' value=''></td>
 				</tr>
  			</table>
 		<p class="center">
@@ -76,8 +92,8 @@ function SubmitFunction() {
 		document.getElementsByName('cfg_iot_ini')[0].removeAttribute('name');
 	}
 }
-function CalcTotalCnt() {
-	document.getElementById('TCnt').value = Math.round(document.getElementById('kWt').value * document.getElementById('PkWt').value);
+function CalcTotalCnt(cnt, kwt) {
+	document.getElementById(cnt).value = Math.round(document.getElementById(kwt).value * document.getElementById('PkWt').value);
 }
 </script>
 </body></html>

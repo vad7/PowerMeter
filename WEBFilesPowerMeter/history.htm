@@ -29,10 +29,10 @@ svg {
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 var margin = {top: 10, right: 40, bottom: 80, left: 40},
-	margin2 = {top: 150, right: 40, bottom: 20, left: 40},
+	margin2 = {top: 250, right: 40, bottom: 20, left: 40},
 	width = 640 - margin.left - margin.right,
-	height = 200 - margin.top - margin.bottom,
-	height2 = 200 - margin2.top - margin2.bottom;
+	height = 300 - margin.top - margin.bottom,
+	height2 = 300 - margin2.top - margin2.bottom;
 
 var parseDate = d3.time.format("%Y-%m-%d %X").parse;
 
@@ -154,14 +154,8 @@ function type(d) {
 <form method="post" action="history.htm">
 Max days: <input type="text" id="ChartMaxDays" maxlength="10" title="0 - all">
 &nbsp <input type="checkbox" id="ShowByKWT"> kWt, &nbsp;
-By: <input type="radio" name="ShowBy" value="0"> all <input type="radio" name="ShowBy" value="1"> day <input type="radio" name="ShowBy" value="2"> hour &nbsp;
-<input type="submit" value="Refresh" onClick="updCookie('ChartMaxDays');updCookie('ShowByDay');updCookie('ShowByKWT');" class="button">
-<script type="text/javascript">
-	var f = document.getElementsByName("ShowBy");
-	for(var i=0; i<f.length; i++){
-		if(f[i].value == "~ShowBy~") f[i].checked = true;
-	}
-</script>
+By: <input type="radio" id="ShowBy" name="ShowBy" value="0"> all <input type="radio" name="ShowBy" value="1"> day <input type="radio" name="ShowBy" value="2"> hour &nbsp;
+<input type="submit" value="Refresh" onClick="updCookie('ChartMaxDays');updCookie('ShowBy');updCookie('ShowByKWT');" class="button">
 </form>
 <br>
 Last: <span id="time__~TotalCntTime~_1">?</span><br>
@@ -170,9 +164,9 @@ Download: <a href="history.csv">History.csv</a> &nbsp;&nbsp; <a href="historycnt
 ~inc:footer.inc~
 <script src="cookies.js"></script>
 <script>
-setCookieElem("ShowByKWT", 1);
-setCookieElem("ShowBy", 0);
-setCookieElem("ChartMaxDays", 10);
+	setCookieElem("ShowByKWT", "~ShowByKWT~");
+	setCookieElem("ChartMaxDays", "~ChartMaxDays~");
+	setCookieElem("ShowBy", "~ShowBy~");
 </script>
 ~inc:time.inc~
 </body></html>

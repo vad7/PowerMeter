@@ -753,6 +753,7 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 #endif
 	if(syscfg.web_port != 80) tcp_puts(":%u", syscfg.web_port);
 }
+
 /******************************************************************************
  * FunctionName : web_callback
  * Description  : callback, DO NOT send thru tcp_puts more than SCB_SEND_SIZE (128 bytes)!
@@ -762,7 +763,6 @@ void ICACHE_FLASH_ATTR get_new_url(TCP_SERV_CONN *ts_conn)
 void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 {
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
-		web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
 //        uint8 *cstr = &web_conn->msgbuf[web_conn->msgbuflen];
         {
            uint8 *vstr = os_strchr(cstr, '=');
@@ -977,8 +977,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 		        else ifcmp("FramFr") tcp_puts("%u", cfg_meter.fram_freq);
 		        else ifcmp("Debouncing") tcp_puts("%u", cfg_meter.Debouncing_Timeout);
 		        else ifcmp("revsens") tcp_puts("%u", cfg_meter.ReverseSensorPulse);
-		        else ifcmp("T1St") tcp_puts("%u", cfg_meter.TimeT1Start);
-		        else ifcmp("T1En") tcp_puts("%u", cfg_meter.TimeT1End);
+		        else ifcmp("TAdj") tcp_puts("%d", cfg_meter.TimeAdjust);
+		        else ifcmp("T1St") tcp_puts("%04u", cfg_meter.TimeT1Start);
+		        else ifcmp("T1En") tcp_puts("%04u", cfg_meter.TimeT1End);
 		    }
 	        else ifcmp("iot_") {	// cfg_
 	        	cstr += 4;
@@ -1410,10 +1411,9 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 // PowerMeter
         else ifcmp("PowerCnt") tcp_puts("%u", fram_store.PowerCnt);
         else ifcmp("TotalCntTime") tcp_puts("%u", sntp_local_to_UTC_time(fram_store.LastTime));
-        else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("TotalCntT1") tcp_puts("%u", fram_store.TotalCntT1);
         else ifcmp("TotalCntT2") tcp_puts("%u", fram_store.TotalCnt - fram_store.TotalCntT1);
-        else ifcmp("Str_T1&T2") tcp_puts("%u", fram_store.TotalCnt - fram_store.TotalCntT1);
+        else ifcmp("TotalCnt") tcp_puts("%u", fram_store.TotalCnt);
         else ifcmp("LastCnt") {
         	cstr += 7;
         	tcp_puts("%u", LastCnt);
@@ -1425,13 +1425,16 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         else ifcmp("PtrCurrent") tcp_puts("%u", fram_store.PtrCurrent);
         else ifcmp("CntCurrent1") tcp_puts("%u", CntCurrent.Cnt1);
         else ifcmp("CntCurrent2") tcp_puts("%u", CntCurrent.Cnt2);
-        else ifcmp("TotalKWT") {
+        else ifcmp("TotalKWT") { // TotalKWT, TotalKWTT1, TotalKWTT2; TotalKWT_New, TotalKWT_NewT1, TotalKWT_NewT2
         	cstr += 8;
-        	tcp_puts("%u.%03u", fram_store.TotalCnt / (cfg_meter.PulsesPer0_01KWt * 100), (fram_store.TotalCnt * 10 / cfg_meter.PulsesPer0_01KWt) % 1000);
         	ifcmp("_New") { // only new value
-        		if(KWT_Previous == fram_store.TotalCnt) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud
-            	KWT_Previous = fram_store.TotalCnt;
+        		if(fram_store.TotalCnt == KWT_Previous) web_conn->webflag |= SCB_USER; // do not send data to IoT cloud;
+        		KWT_Previous = fram_store.TotalCnt;
+        		cstr += 4;
         	}
+        	typeof(fram_store.TotalCnt) cnt;
+        	cnt = rom_xstrcmp(cstr, "T1") ? fram_store.TotalCntT1 : rom_xstrcmp(cstr, "T2") ? fram_store.TotalCnt - fram_store.TotalCntT1 : fram_store.TotalCnt;
+        	tcp_puts("%u.%03u", cnt / (cfg_meter.PulsesPer0_01KWt * 100), (cnt * 10 / cfg_meter.PulsesPer0_01KWt) % 1000);
         }
 #ifdef USE_I2C
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);
