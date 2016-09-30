@@ -516,14 +516,14 @@ xErrorI2C:
 xEnd:
 						if(hst->OutType & HST_ByHour) {
 							hst->LastTime = fram_store.LastTime / 86400 * 86400;
-							for(n = 0; n <= 24; n++) {
+							for(n = 0; n < 24; n++) {
 								if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, hst->Hours[n])) break;
 								hst->LastTime += 3600;
 							}
-						} else {
-							// if TotalCnt - print sum, otherwise 0;
-							if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & 0b0110) ? hst->Sum : 0)) goto xBufferFull;
+							hst->LastTime--;
 						}
+						// if TotalCnt/ByDay - print sum, otherwise 0;
+						if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & (HST_TotalCnt | HST_ByDay)) ? hst->Sum : 0)) goto xBufferFull;
 						goto xEndExit;
 					}
 					if(n == 1) packed_flag = 0; // special case "0,1" - last min = 1, previous min = 0

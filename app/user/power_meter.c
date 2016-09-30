@@ -148,8 +148,8 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 		struct tm tm;
 		_localtime(&fram_store.LastTime, &tm);
 		uint16 st, end, tt = tm.tm_hour * 60 + tm.tm_min; // min
-		st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100;
-		end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100;
+		st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100 + 1; 	// +1 - to correct for inclusive value
+		end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100 + 1; 	// +1 - to correct for inclusive value
 		if((now_T1 = (end > st && tt >= st && tt <= end) || (end < st && (tt >= st || tt <= end)))) fram_store.TotalCntT1 += pcnt;
 	}
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
