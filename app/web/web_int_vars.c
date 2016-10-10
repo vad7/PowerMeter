@@ -337,7 +337,9 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 		else ifcmp("meter_") {	// cfg_
 			cstr+=6;
 			ifcmp("TotalCnt") {
-				fram_store.TotalCnt = val;
+				cstr+=8;
+				ifcmp("T1") fram_store.TotalCntT1 = val;
+				else fram_store.TotalCnt = val;
 				eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store));
 			}
 			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
