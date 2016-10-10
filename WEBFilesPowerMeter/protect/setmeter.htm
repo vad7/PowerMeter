@@ -13,7 +13,7 @@
 			<table class="form">
 				<tr>
 					<td class="label">Total cnt, kWt * ~cfg_meter_PulsesPerKWt~:
-					<input title='change?' type='checkbox' name='change_totalcnt' value='0'> 
+					<input title='change?' type='checkbox' id='chg_tcnt' value='0'> 
 					</td>
 					<td><input title='0..4294967295' id='TCnt' name='cfg_meter_TotalCnt' maxlength='10' value='~TotalCnt~'>&ensp;&larr;&ensp;<input title='0.00..999999.99' id='kWt' size='8' value='~TotalKWT~' onchange='CalcTotalCnt("TCnt","kWt")'>&nbsp;kWt</td>
 				</tr>
@@ -34,7 +34,7 @@
 					<td><input title='hhmm' name='cfg_meter_T1St' maxlength='4' value='~cfg_meter_T1St~'></td>
 				</tr>
 				<tr>
-					<td class="label">Tariff 1 End (incl):</td>
+					<td class="label">Tariff 1 End:</td>
 					<td><input title='hhmm' name='cfg_meter_T1En' maxlength='4' value='~cfg_meter_T1En~'></td>
 				</tr>
 				<tr>
@@ -47,7 +47,7 @@
 				</tr>
 				<tr>
 					<td class="label">IoT cloud setup:
-					<input title='change?' type='checkbox' name='change_iot_ini' value='0'></td>
+					<input title='change?' type='checkbox' id='chg_iot' value='0'></td>
 					<td><textarea title='protect/iot_cloud.ini' name='cfg_iot_ini' rows=4 cols=50 wrap="off" maxlength=1023>~cfg_iot_ini~</textarea></td>
 				</tr>
 				<tr>
@@ -85,10 +85,11 @@ var cfg = {
 }
 setFormValues(document.forms[0], cfg);
 function SubmitFunction() {
-	if(!document.getElementsByName('change_totalcnt')[0].checked) {
-		document.getElementsByName('cfg_meter_TotalCnt')[0].removeAttribute('name');
+	if(!document.getElementsById('chg_tcnt').checked) {
+		document.getElementsById('TCnt').removeAttribute('name');
+		document.getElementsById('TCntT1').removeAttribute('name');
 	}
-	if(!document.getElementsByName('change_iot_ini')[0].checked) {
+	if(!document.getElementsById('chg_iot').checked) {
 		document.getElementsByName('cfg_iot_ini')[0].removeAttribute('name');
 	}
 }
