@@ -66,6 +66,7 @@ void power_meter_clear_all_data(void) ICACHE_FLASH_ATTR;
 uint8_t iot_cloud_init(void) ICACHE_FLASH_ATTR;
 void iot_data_clear(void) ICACHE_FLASH_ATTR;
 void iot_cloud_send(uint8 fwork) ICACHE_FLASH_ATTR;
+uint8_t check_add_CntT1(time_t *LastTime, uint32 *CntT1, uint32 add) ICACHE_FLASH_ATTR;
 
 void uart_wait_tx_fifo_empty(void) ICACHE_FLASH_ATTR;
 void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;

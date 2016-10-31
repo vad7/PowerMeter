@@ -393,9 +393,13 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 #endif
 #ifdef USE_SNTP
 		else ifcmp("sntp") {
-			syscfg.cfg.b.sntp_ena = (val)? 1 : 0;
-			if(syscfg.cfg.b.sntp_ena) sntp_inits(UTC_OFFSET);
-			else sntp_close();
+			cstr += 4;
+			ifcmp("_time") sntp_set_time(val);
+			else {
+				syscfg.cfg.b.sntp_ena = (val)? 1 : 0;
+				if(syscfg.cfg.b.sntp_ena) sntp_inits(UTC_OFFSET);
+				else sntp_close();
+			}
 		}
 #endif
 #ifdef USE_CAPTDNS

@@ -388,47 +388,43 @@ typedef struct {
 	time_t	PreviousTime; 	// Previous printed time
 	int32_t	minutes;		// How many minutes printed
 	bool 	FlagContinue;	// Need continue print packed
-	uint8_t OutType;		// 0b1000 - TotalCnt, 0b0100 - by hour, 0b0010 - by day, 0b0001 - kWt
+	uint8_t OutType;		// HST_*
 	int32_t	len;
 	int32_t	i;
 	bool 	packed_flag;
 	uint8_t	n;
-	uint32_t previous_n;		// to skip multi-zeros or in TotalCnt mode the same value
-	uint32_t Sum;			// for OutType by date / TotalCnt
-	uint32_t *Hours;
+	uint32	previous_n;		// to skip multi-zeros or in TotalCnt mode the same value
+	uint32	Sum;			// for OutType by date / TotalCnt
+	uint32	SumT1;			// for OutType by date / TotalCnt
+	uint32	*Hours;
+	uint16_t StringSizeMax;  // 32, 64, 900
 	uint8_t	buf[48];
-	char 	str[32];
 } history_output;
 
 // history_output.OutType
+#define HST_MTariffs   0b10000
 #define HST_TotalCnt	0b1000
 #define HST_ByHour		0b0100
 #define HST_ByDay		0b0010
 #define HST_kWt			0b0001
 
 // return True if overflow
-bool web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t Time, uint32_t num)
+void web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, time_t Time, uint32_t num)
 {
 	struct tm tm;
 	if(hst->OutType & HST_TotalCnt) Time -= 60; // TotalCnt
 	_localtime(&Time, &tm);
-	uint16 L = ets_sprintf(hst->str, "%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
+	tcp_puts("%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
 	if(hst->OutType & HST_kWt) { // kWt
 		if((hst->OutType & (HST_TotalCnt | HST_ByHour | HST_ByDay)) == 0) num *= 60; // kwt per hour
 		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
-		L += ets_sprintf(hst->str + L, "%u.%03u\r\n", num / 1000, num % 1000);
+		tcp_puts("%u.%03u\r\n", num / 1000, num % 1000);
 	} else {
-		L += ets_sprintf(hst->str + L, "%u\r\n", num);
+		tcp_puts("%u\r\n", num);
 	}
-	if(web_conn->msgbuflen + L + 1 > web_conn->msgbufsize) { // overflow
-		return true;
-	}
-	os_memcpy(&web_conn->msgbuf[web_conn->msgbuflen], hst->str, L);
-	web_conn->msgbuflen += L;
 	#if DEBUGSOO > 4
 		os_printf("%02d.%02d.%04d %02d:%02d:%02d,%d\n", tm.tm_mday, tm.tm_mon, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec, num);
 	#endif
-	return false;
 }
 
 // Output history by 1 min from last record to previous,
@@ -453,6 +449,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			#endif
 			return;
 		}
+		hst->StringSizeMax = 32;
 		hst->minutes = web_conn->udata_stop;
 		web_conn->udata_stop = (uint32)hst;
 		hst->OutType = web_conn->udata_start;
@@ -464,7 +461,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		hst->LastTime = fram_store.LastTime;
 		tcp_puts("date,value\r\n"); // csv header
 		if(hst->OutType & HST_ByHour) {
-			if((hst->Hours = (uint32_t *) os_zalloc(25 * sizeof(uint32_t))) == NULL) {
+			if((hst->Hours = (uint32 *) os_zalloc(25 * sizeof(uint32))) == NULL) {
 				#if DEBUGSOO > 2
 					os_printf("Error malloc hours: %u\n", sizeof(history_output));
 				#endif
@@ -473,8 +470,13 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		}
 		if(hst->OutType & HST_TotalCnt) { // TotalCnt
 			hst->Sum = fram_store.TotalCnt;
+			if(hst->OutType & HST_MTariffs) {
+				hst->Sum = fram_store.TotalCntT1;
+				hst->StringSizeMax = 64;
+			}
 			if((hst->OutType & HST_ByDay) == 0) { // not By day
 				hst->previous_n = hst->Sum; // save value and wait changing
+				hst->StringSizeMax = 900;
 			}
 		} else hst->previous_n = 0xFFFFFFFF;
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
@@ -484,6 +486,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		i = hst->i;
 		n = hst->n;
 		packed_flag = hst->packed_flag;
+		if(hst->minutes == 0 || (packed_flag && n == 0)) goto xEnd;
 		goto xContinue;
 	}
 	do {
@@ -514,16 +517,17 @@ xErrorI2C:
 				if(packed_flag) {
 					if(n == 0) { // end
 xEnd:
+						if(web_conn->msgbuflen + hst->StringSizeMax > web_conn->msgbufsize) goto xBufferFull; // overflow
 						if(hst->OutType & HST_ByHour) {
 							hst->LastTime = fram_store.LastTime / 86400 * 86400;
 							for(n = 0; n < 24; n++) {
-								if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, hst->Hours[n])) break;
+								web_get_history_put_csv_str(web_conn, hst, hst->LastTime, hst->Hours[n]);
 								hst->LastTime += 3600;
 							}
 							hst->LastTime--;
 						}
 						// if TotalCnt/ByDay - print sum, otherwise 0;
-						if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & (HST_TotalCnt | HST_ByDay)) ? hst->Sum : 0)) goto xBufferFull;
+						web_get_history_put_csv_str(web_conn, hst, hst->LastTime, (hst->OutType & (HST_TotalCnt | HST_ByDay)) ? hst->Sum : 0);
 						goto xEndExit;
 					}
 					if(n == 1) packed_flag = 0; // special case "0,1" - last min = 1, previous min = 0
@@ -531,9 +535,25 @@ xEnd:
 				}
 				do {
 xContinue:
+					if(web_conn->msgbuflen + hst->StringSizeMax > web_conn->msgbufsize) { // overflow
+xBufferFull:			hst->len = len;
+						hst->i = i;
+						hst->n = n;
+						hst->packed_flag = packed_flag;
+						hst->FlagContinue = 1;
+						#if DEBUGSOO > 4
+							os_printf("Buf full: %d, %d, %d\n", len, i, n);
+						#endif
+						SetNextFunSCB(web_get_history);
+						SetSCB(SCB_RETRYCB);
+						return;
+					}
 					num = packed_flag ? 0 : n;
 					uint32_t prn_num;
-					if(hst->OutType & HST_TotalCnt) hst->Sum -= num; // TotalCnt
+					if(hst->OutType & HST_TotalCnt) {
+						hst->Sum -= num; // TotalCnt
+						if(hst->OutType & HST_MTariffs) check_add_CntT1(&hst->LastTime, &hst->SumT1, -num);
+					}
 					if(hst->OutType & HST_ByDay) { // by day
 						if((hst->OutType & HST_TotalCnt) == 0) hst->Sum += num; // Not TotalCnt(+)
 						if(hst->LastTime % 86400 / 60 != 0) { // time is not 00:00 - skip
@@ -548,20 +568,8 @@ xContinue:
 					}
 					if(hst->OutType & HST_ByHour) {
 						hst->Hours[hst->LastTime % 86400 / 3600] += prn_num;
-					} else if(web_get_history_put_csv_str(web_conn, hst, hst->LastTime, prn_num)) {
-xBufferFull:
-						hst->Sum = (hst->OutType & HST_TotalCnt) ? hst->Sum + num : hst->Sum - num; // TotalCnt(+) / by day(-)
-						hst->len = len;
-						hst->i = i;
-						hst->n = n;
-						hst->packed_flag = packed_flag;
-						hst->FlagContinue = 1;
-						#if DEBUGSOO > 4
-							os_printf("Buf full: %d, %d, %d\n", len, i, n);
-						#endif
-						SetNextFunSCB(web_get_history);
-						SetSCB(SCB_RETRYCB);
-						return;
+					} else {
+						web_get_history_put_csv_str(web_conn, hst, hst->LastTime, prn_num);
 					}
 					if((hst->OutType & HST_TotalCnt) == 0) hst->Sum = 0; // not TotalCnt
 					hst->previous_n = (hst->OutType & HST_TotalCnt) ? hst->Sum : num; // TotalCnt = sum
@@ -1222,12 +1230,15 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         		web_get_ram(ts_conn);
         	}
 #endif
-        	// history*.csv
+        	// history.csv, historycnt.csv
         	else ifcmp("history") {
         		cstr += 7;
         		web_conn->udata_start = 0;
 				web_conn->udata_start = (Web_ShowBy<<1) | Web_ShowByKWT;	// OutType
-        		ifcmp("cnt") web_conn->udata_start = (web_conn->udata_start & ~HST_ByHour) | HST_TotalCnt;
+        		ifcmp("cnt") {
+        			web_conn->udata_start = (web_conn->udata_start & ~HST_ByHour) | HST_TotalCnt;
+        			if(cfg_meter.TimeT1Start && cfg_meter.TimeT1End) web_conn->udata_start |= HST_MTariffs; // Multi tariffs
+        		}
 				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
 				web_get_history(ts_conn);
         	}

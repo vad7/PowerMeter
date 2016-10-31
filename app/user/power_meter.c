@@ -145,12 +145,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	uint8_t now_T1 = 0;
 	if(cfg_meter.TimeT1Start && cfg_meter.TimeT1End) { // Multi tariffs
-		struct tm tm;
-		_localtime(&fram_store.LastTime, &tm);
-		uint16 st, end, tt = tm.tm_hour * 60 + tm.tm_min; // min
-		st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100 + 1; 	// +1 - to correct for inclusive value
-		end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100; 		// not included
-		if((now_T1 = (end > st && tt >= st && tt <= end) || (end < st && (tt >= st || tt <= end)))) fram_store.TotalCntT1 += pcnt;
+		now_T1 = check_add_CntT1(&fram_store.LastTime, &fram_store.TotalCntT1, pcnt);
 	}
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
 	if(eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store))) {
@@ -172,6 +167,20 @@ xError:
 	FRAM_Status = 0;
 	LastCnt = pcnt;
 	iot_cloud_send(1);
+}
+
+uint8_t ICACHE_FLASH_ATTR check_add_CntT1(time_t *LastTime, uint32 *CntT1, uint32 add)
+{
+	struct tm tm;
+	_localtime(LastTime, &tm);
+	uint16 st, end, tt = tm.tm_hour * 60 + tm.tm_min; // min
+	st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100 + 1; 	// +1 - to correct for inclusive value
+	end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100; 		// not included
+	if((end > st && tt >= st && tt <= end) || (end < st && (tt >= st || tt <= end))) {
+		*CntT1 += add;
+		return 1;
+	}
+	return 0;
 }
 
 #if DEBUGSOO > 4
