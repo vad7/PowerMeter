@@ -66,6 +66,7 @@
 #include <time.h>
 //#include "localtime.h"
 void _localtime(time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
+uint8 sntp_status = 0; // 1 - ok
 
 #if LWIP_UDP
 
@@ -340,6 +341,7 @@ static void ICACHE_FLASH_ATTR sntp_process(u32_t *receive_timestamp) {
 	_localtime(&lt, &tm);
 	os_printf("%04d-%02d-%02d %02d:%02d:%02d +%d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, sntp->sntp_time_zone);
 #endif
+	sntp_status = 1;
 	os_timer_disarm(&sntp->ntp_timer);
 	ets_timer_arm_new(&sntp->ntp_timer, 1000, 1, 1);
 }
@@ -379,6 +381,11 @@ static void ICACHE_FLASH_ATTR sntp_retry(void* arg)
 	LWIP_UNUSED_ARG(arg);
 	LWIP_DEBUGF(SNTP_DEBUG_STATE, ("sntp_retry: Next request will be sent in %"U32_F" ms\n",
 		sntp->sntp_retry_timeout));
+
+#if DEBUGSOO > 4
+	os_printf("sntp failed\n");
+#endif
+	sntp_status = 0;
 
 /* set up a timer to send a retry and increase the retry delay */
 	sys_timeout(sntp->sntp_retry_timeout, sntp_request, NULL);
@@ -735,6 +742,11 @@ time_t ICACHE_FLASH_ATTR get_sntp_localtime(void)
 time_t ICACHE_FLASH_ATTR sntp_local_to_UTC_time(time_t local)
 {
 	return local == 0 ? 0 : local - sntp->sntp_time_zone * 3600;
+}
+
+void ICACHE_FLASH_ATTR sntp_set_time(time_t t)
+{
+	if(sntp != NULL) sntp->sntp_time = t;
 }
 
 #endif /* LWIP_UDP */
