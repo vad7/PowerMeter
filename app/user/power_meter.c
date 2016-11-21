@@ -144,7 +144,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	uint8_t now_T1 = 0;
-	if(cfg_meter.TimeT1Start && cfg_meter.TimeT1End) { // Multi tariffs
+	if(cfg_meter.TimeT1Start || cfg_meter.TimeT1End) { // Multi tariffs
 		now_T1 = check_add_CntT1(&fram_store.LastTime, &fram_store.TotalCntT1, pcnt);
 	}
 	WDT_FEED = WDT_FEED_MAGIC; // WDT

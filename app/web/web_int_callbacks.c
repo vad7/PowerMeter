@@ -417,11 +417,21 @@ void web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, ti
 	tcp_puts("%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
 	if(hst->OutType & HST_kWt) { // kWt
 		if((hst->OutType & (HST_TotalCnt | HST_ByHour | HST_ByDay)) == 0) num *= 60; // kwt per hour
-		num = num * 10 / cfg_meter.PulsesPer0_01KWt;
-		tcp_puts("%u.%03u\r\n", num / 1000, num % 1000);
+		uint32_t n = num * 10 / cfg_meter.PulsesPer0_01KWt;
+		tcp_puts("%u.%03u", n / 1000, n % 1000);
+		if(hst->OutType & HST_MTariffs) {
+			n = hst->SumT1 * 10 / cfg_meter.PulsesPer0_01KWt;
+			tcp_puts("%c%u.%03u", cfg_meter.csv_delimiter, n / 1000, n % 1000);
+			n = (num - hst->SumT1) * 10 / cfg_meter.PulsesPer0_01KWt;
+			tcp_puts("%c%u.%03u", cfg_meter.csv_delimiter, n / 1000, n % 1000);
+		}
 	} else {
-		tcp_puts("%u\r\n", num);
+		tcp_puts("%u", num);
+		if(hst->OutType & HST_MTariffs) {
+			tcp_puts("%c%u%c%u", cfg_meter.csv_delimiter, hst->SumT1, cfg_meter.csv_delimiter, num - hst->SumT1);
+		}
 	}
+	tcp_puts("\r\n");
 	#if DEBUGSOO > 4
 		os_printf("%02d.%02d.%04d %02d:%02d:%02d,%d\n", tm.tm_mday, tm.tm_mon, tm.tm_year, tm.tm_hour, tm.tm_min, tm.tm_sec, num);
 	#endif
@@ -459,7 +469,11 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
-		tcp_puts("date,value\r\n"); // csv header
+		if(hst->OutType & HST_MTariffs) {
+			tcp_puts("date,value,T1,T2\r\n"); // csv header
+		} else {
+			tcp_puts("date,value\r\n"); // csv header
+		}
 		if(hst->OutType & HST_ByHour) {
 			if((hst->Hours = (uint32 *) os_zalloc(25 * sizeof(uint32))) == NULL) {
 				#if DEBUGSOO > 2
@@ -471,7 +485,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		if(hst->OutType & HST_TotalCnt) { // TotalCnt
 			hst->Sum = fram_store.TotalCnt;
 			if(hst->OutType & HST_MTariffs) {
-				hst->Sum = fram_store.TotalCntT1;
+				hst->SumT1 = fram_store.TotalCntT1;
 				hst->StringSizeMax = 64;
 			}
 			if((hst->OutType & HST_ByDay) == 0) { // not By day
@@ -1237,7 +1251,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 				web_conn->udata_start = (Web_ShowBy<<1) | Web_ShowByKWT;	// OutType
         		ifcmp("cnt") {
         			web_conn->udata_start = (web_conn->udata_start & ~HST_ByHour) | HST_TotalCnt;
-        			if(cfg_meter.TimeT1Start && cfg_meter.TimeT1End) web_conn->udata_start |= HST_MTariffs; // Multi tariffs
+        			if(cfg_meter.TimeT1Start || cfg_meter.TimeT1End) web_conn->udata_start |= HST_MTariffs; // Multi tariffs
         		}
 				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
 				web_get_history(ts_conn);
@@ -1458,6 +1472,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
             ifcmp("LastSt_time") tcp_puts("%u", iot_last_status_time);
             else ifcmp("LastSt") tcp_puts("%s", iot_last_status);
         }
+#ifdef DEBUG_TO_RAM
         else ifcmp("dbg_") { // debug to RAM
         	cstr += 4;
         	ifcmp("enable") tcp_puts("%d", Debug_level);
@@ -1466,6 +1481,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	else ifcmp("len") tcp_puts("%u", Debug_RAM_len);
         	else ifcmp("ram") dbg_tcp_send(ts_conn);
         }
+#endif
         else ifcmp("mktime") tcp_puts("%s %s", __DATE__, __TIME__); // make date time
 // PowerMeter
 		else tcp_put('?');
