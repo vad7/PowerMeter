@@ -25,17 +25,15 @@ uint8  FRAM_STORE_Readed	= 0;
 uint8  user_idle_func_working = 0;
 
 void ICACHE_FLASH_ATTR fram_init(void) {
-	eeprom_init(cfg_meter.fram_freq);
+	eeprom_init(cfg_glo.fram_freq);
 }
 
 void NextPtrCurrent(uint8 cnt)
 {
 	fram_store.PtrCurrent += cnt;
-	if(fram_store.PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts)
-		fram_store.PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
+	if(fram_store.PtrCurrent >= cfg_glo.Fram_Size - StartArrayOfCnts)
+		fram_store.PtrCurrent -= cfg_glo.Fram_Size - StartArrayOfCnts;
 }
-
-void FRAM_Store_Init(void) ICACHE_FLASH_ATTR;
 
 void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 {
@@ -118,7 +116,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	}
 	if(to_save) {
 		NextPtrCurrent(0); // set ptr = 0 if ptr garbage
-		uint32 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
+		uint32 cnt = cfg_glo.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > to_save) cnt = to_save;
 		if(eeprom_write_block(StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
 			#if DEBUGSOO > 4
@@ -144,7 +142,7 @@ void ICACHE_FLASH_ATTR update_cnts(time_t time) // 1 minute passed
 	fram_store.TotalCnt += pcnt;
 	fram_store.LastTime += TIME_STEP_SEC;  // seconds
 	uint8_t now_T1 = 0;
-	if(cfg_meter.TimeT1Start || cfg_meter.TimeT1End) { // Multi tariffs
+	if(cfg_glo.TimeT1Start || cfg_glo.TimeT1End) { // Multi tariffs
 		now_T1 = check_add_CntT1(&fram_store.LastTime, &fram_store.TotalCntT1, pcnt);
 	}
 	WDT_FEED = WDT_FEED_MAGIC; // WDT
@@ -174,8 +172,8 @@ uint8_t ICACHE_FLASH_ATTR check_add_CntT1(time_t *LastTime, uint32 *CntT1, uint3
 	struct tm tm;
 	_localtime(LastTime, &tm);
 	uint16 st, end, tt = tm.tm_hour * 60 + tm.tm_min; // min
-	st = (cfg_meter.TimeT1Start / 100) * 60 + cfg_meter.TimeT1Start % 100 + 1; 	// +1 - to correct for inclusive value
-	end = (cfg_meter.TimeT1End / 100) * 60 + cfg_meter.TimeT1End % 100; 		// not included
+	st = (cfg_glo.TimeT1Start / 100) * 60 + cfg_glo.TimeT1Start % 100 + 1; 	// +1 - to correct for inclusive value
+	end = (cfg_glo.TimeT1End / 100) * 60 + cfg_glo.TimeT1End % 100; 		// not included
 	if((end > st && tt >= st && tt <= end) || (end < st && (tt >= st || tt <= end))) {
 		*CntT1 += add;
 		return 1;
@@ -235,7 +233,7 @@ void user_idle(void) // idle function for ets_run
 				os_printf("%02x ", buf[pos]);
 			}
 x1:			os_printf("\n");
-			if(++print_i2c_page > cfg_meter.Fram_Size / READSIZE) print_i2c_page = 0;
+			if(++print_i2c_page > cfg_glo.Fram_Size / READSIZE) print_i2c_page = 0;
 			os_free(buf);
 		}
 		ets_set_idle_cb(user_idle, NULL);
@@ -300,7 +298,7 @@ static void gpio_int_handler(void)
 		__wrap_os_printf_plus("*%u,%d*\n", tm, Sensor_Edge);
 #endif
 		dbg_printf("*%d* %u", Sensor_Edge, tm - PowerCntTime);
-		if(tm - PowerCntTime > cfg_meter.Debouncing_Timeout) { // skip if interval less than x us
+		if(tm - PowerCntTime > cfg_glo.Debouncing_Timeout) { // skip if interval less than x us
 			PowerCntTime = tm;
 			if(!Sensor_Edge) { // Front edge
 				PowerCnt++;
@@ -338,7 +336,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 			return;
 		}
 		// write begin marker - 0,0
-		if(eeprom_write_block(cfg_meter.Fram_Size - 2, (uint8 *)&fram_store, 4)) {
+		if(eeprom_write_block(cfg_glo.Fram_Size - 2, (uint8 *)&fram_store, 4)) {
 			#if DEBUGSOO > 2
 				os_printf("EW init f_s\n");
 			#endif
@@ -346,7 +344,7 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 		}
 #endif
 	} else if(fram_store.LastTime) { // LastTime must be filled to read CntCurrent
-		uint8 cnt = cfg_meter.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
+		uint8 cnt = cfg_glo.Fram_Size - (StartArrayOfCnts + fram_store.PtrCurrent);
 		if(cnt > 2) cnt = 2;
 		if(eeprom_read_block(StartArrayOfCnts + fram_store.PtrCurrent, (uint8 *)&CntCurrent, cnt)) {
 			#if DEBUGSOO > 4
@@ -389,20 +387,20 @@ void ICACHE_FLASH_ATTR FRAM_Store_Init(void)
 	#endif
 }
 
-void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
+void ICACHE_FLASH_ATTR user_initialize(uint8 index)
 {
 	if(index & 1) {
 		Debug_RAM_addr = NULL;
-		if(flash_read_cfg(&cfg_meter, ID_CFG_METER, sizeof(CFG_METER)) <= 0) {
+		if(flash_read_cfg(&cfg_glo, ID_CFG_METER, sizeof(cfg_glo)) <= 0) {
 			// defaults
-			os_memset(&cfg_meter, 0, sizeof(CFG_METER));
-			cfg_meter.Fram_Size = FRAM_SIZE_DEFAULT;
-			cfg_meter.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
-			cfg_meter.csv_delimiter = ',';
-			cfg_meter.fram_freq = 400;
-			cfg_meter.Debouncing_Timeout = 1000; // us
+			os_memset(&cfg_glo, 0, sizeof(cfg_glo));
+			cfg_glo.Fram_Size = FRAM_SIZE_DEFAULT;
+			cfg_glo.PulsesPer0_01KWt = DEFAULT_PULSES_PER_0_01_KWT;
+			cfg_glo.csv_delimiter = ',';
+			cfg_glo.fram_freq = 400;
+			cfg_glo.Debouncing_Timeout = 1000; // us
 		}
-		if(cfg_meter.ReverseSensorPulse) {
+		if(cfg_glo.ReverseSensorPulse) {
 			SENSOR_FRONT_EDGE = GPIO_PIN_INTR_POSEDGE;
 			SENSOR_BACK_EDGE  = GPIO_PIN_INTR_NEGEDGE;
 		} else {
@@ -410,13 +408,13 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 			SENSOR_BACK_EDGE  = GPIO_PIN_INTR_POSEDGE;
 		}
 		#if DEBUGSOO > 3
-			os_printf("FSize=%u, Pulses=%u, ", cfg_meter.Fram_Size, cfg_meter.PulsesPer0_01KWt);
+			os_printf("FSize=%u, Pulses=%u, ", cfg_glo.Fram_Size, cfg_glo.PulsesPer0_01KWt);
 		#endif
 		*(uint32 *)&CntCurrent = 0;
 		iot_data_first = NULL;
 		LastCnt = 0;
 		LastCnt_Previous = -1;
-		sntp_time_adjust = cfg_meter.TimeAdjust;
+		sntp_time_adjust = cfg_glo.TimeAdjust;
 
 		ets_isr_mask(1 << ETS_GPIO_INUM); // запрет прерываний GPIOs
 		// setup interrupt and os_task
@@ -454,7 +452,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 					//i2c_init();
 					WDT_FEED = WDT_FEED_MAGIC; // WDT
 					uint16 i, j;
-					for(i = 0; i < cfg_meter.Fram_Size / blocklen; i++) {
+					for(i = 0; i < cfg_glo.Fram_Size / blocklen; i++) {
 		//				if(eeprom_write_block(i * blocklen, buf, blocklen) == 0) {
 		//					os_printf("EW Bl: %d\n", i);
 		//					break;
@@ -500,7 +498,7 @@ void ICACHE_FLASH_ATTR power_meter_init(uint8 index)
 }
 
 bool ICACHE_FLASH_ATTR write_power_meter_cfg(void) {
-	return flash_save_cfg(&cfg_meter, ID_CFG_METER, sizeof(cfg_meter));
+	return flash_save_cfg(&cfg_glo, ID_CFG_METER, sizeof(cfg_glo));
 }
 
 void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
@@ -514,7 +512,7 @@ void ICACHE_FLASH_ATTR power_meter_clear_all_data(void)
 	uint8 *buf = os_zalloc(buflen);
 	if(buf != NULL) {
 		WDT_FEED = WDT_FEED_MAGIC; // WDT
-		if(eeprom_write_block(cfg_meter.Fram_Size - 2, buf, buflen)) { // wrap from end to 0
+		if(eeprom_write_block(cfg_glo.Fram_Size - 2, buf, buflen)) { // wrap from end to 0
 			#if DEBUGSOO > 0
 				os_printf("Error i2c write\n");
 			#endif

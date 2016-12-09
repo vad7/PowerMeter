@@ -94,6 +94,7 @@ xml_ram
 inc:menu.inc
 cfg_meter_Debouncing
 sys_rdec0x4027F008
+sntp_time
 sys_const_107
 sys_ucnst_0
 sys_vdd33
@@ -337,6 +338,7 @@ sys_sysver
 sys_sdkver
 sys_webver
 sys_clkcpu
+sys_clkspi
 sys_adc
 sys_vdd33
 sys_ucnst_0

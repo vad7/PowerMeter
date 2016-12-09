@@ -28,8 +28,8 @@ typedef struct __attribute__((packed)) {
 	uint16	TimeT1Start;			// hh,mm
 	uint16	TimeT1End;				// hh,mm. if TimeT1Start != TimeT1End != 0 - Dual tariffs used
 //	char sntp_server[20];
-} CFG_METER;
-CFG_METER __attribute__((aligned(4))) cfg_meter;
+} CFG_GLO;
+CFG_GLO __attribute__((aligned(4))) cfg_glo;
 
 typedef struct __attribute__((packed)) {
 	uint32 PowerCnt;	// not processed count
@@ -59,7 +59,8 @@ uint8  Web_ShowByKWT; 		// ~ShowByKWT~
 uint8  Web_ShowBy; 			// ~ShowBy~ : 0 - all, 1 - by day, 2 - by hour
 //
 
-void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
+void user_initialize(uint8 index) ICACHE_FLASH_ATTR;
+void FRAM_Store_Init(void) ICACHE_FLASH_ATTR;
 void user_idle(void); // ICACHE_FLASH_ATTR;
 bool write_power_meter_cfg(void) ICACHE_FLASH_ATTR;
 void power_meter_clear_all_data(void) ICACHE_FLASH_ATTR;

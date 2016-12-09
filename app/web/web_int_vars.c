@@ -342,15 +342,15 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
 				else fram_store.TotalCnt = val;
 				eeprom_write_block(0, (uint8 *)&fram_store, sizeof(fram_store));
 			}
-			else ifcmp("PulsesPerKWt") cfg_meter.PulsesPer0_01KWt = val / 100;
-			else ifcmp("Fram_Size") cfg_meter.Fram_Size = val;
-			else ifcmp("csv_delim") cfg_meter.csv_delimiter = pvar[0];
-			else ifcmp("FramFr") cfg_meter.fram_freq = val;
-			else ifcmp("Debouncing") cfg_meter.Debouncing_Timeout = val;
-			else ifcmp("revsens") cfg_meter.ReverseSensorPulse = val;
-			else ifcmp("TAdj") cfg_meter.TimeAdjust = sntp_time_adjust = val;
-			else ifcmp("T1St") cfg_meter.TimeT1Start = val;
-			else ifcmp("T1En") cfg_meter.TimeT1End = val;
+			else ifcmp("PulsesPerKWt") cfg_glo.PulsesPer0_01KWt = val / 100;
+			else ifcmp("Fram_Size") cfg_glo.Fram_Size = val;
+			else ifcmp("csv_delim") cfg_glo.csv_delimiter = pvar[0];
+			else ifcmp("FramFr") cfg_glo.fram_freq = val;
+			else ifcmp("Debouncing") cfg_glo.Debouncing_Timeout = val;
+			else ifcmp("revsens") cfg_glo.ReverseSensorPulse = val;
+			else ifcmp("TAdj") cfg_glo.TimeAdjust = sntp_time_adjust = val;
+			else ifcmp("T1St") cfg_glo.TimeT1Start = val;
+			else ifcmp("T1En") cfg_glo.TimeT1End = val;
 			else ifcmp("reset_data") {
 				if(os_strcmp(pvar, "RESET") == 0) power_meter_clear_all_data();
 			}
@@ -361,8 +361,8 @@ void ICACHE_FLASH_ATTR web_int_vars(TCP_SERV_CONN *ts_conn, uint8 *pcmd, uint8 *
         else ifcmp("iot_") {	// cfg_
         	cstr += 4;
 			ifcmp("cloud_enable") {
-				uint8 oldflag = cfg_meter.iot_cloud_enable;
-				cfg_meter.iot_cloud_enable = val;
+				uint8 oldflag = cfg_glo.iot_cloud_enable;
+				cfg_glo.iot_cloud_enable = val;
 				if(oldflag != val) iot_cloud_init();
 			}
 			else ifcmp("ini") { // save iot cloud setting

@@ -31,6 +31,6 @@ void uart0_write_char(char c);
 extern void jump_boot(void); // в sdklib\system\main-vectors.c
 void call_jump_boot(void);
 
-extern void power_meter_init(uint8 index) ICACHE_FLASH_ATTR;
+extern void user_initialize(uint8 index) ICACHE_FLASH_ATTR;
 
 #endif /* _INCLUDE_APP_MAIN_H_ */

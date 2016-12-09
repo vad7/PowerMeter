@@ -58,9 +58,9 @@ function pollAJAX() {
 			}
 			continue;
 		}
-		// If we've waited over 4 second, then we timed out
+		// If we've waited over 5 second, then we timed out
 		if ((curAjax.ajaxReq.readyState == 4 && curAjax.ajaxReq.status == 404)
-				|| (elapsed > 4000)) {
+				|| (elapsed > 5000)) {
 			// Invoke the user function with null input
 			if (typeof (curAjax.container) == 'function')
 				curAjax.container(null);

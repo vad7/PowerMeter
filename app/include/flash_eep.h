@@ -10,15 +10,16 @@
 
 #include "user_config.h"
 //-----------------------------------------------------------------------------
-
-#define FMEMORY_SCFG_BANKS 1 //3 // кол-во секторов для сохранения
-#if FMEMORY_SCFG_BANKS == 1
-#define FMEMORY_SCFG_BASE_ADDR 0x7B000
+#define FMEMORY_SCFG_BANK_SIZE flashchip_sector_size // размер сектора, 4096 bytes
+/*
+#if DEF_SDK_VERSION >= 2000
+#define FMEMORY_SCFG_BANKS 2 // кол-во секторов для сохранения (0x7B000 используется для RF_CAL_SEC)
 #else
-#define FMEMORY_SCFG_BASE_ADDR 0x79000 //0x79000 // 0x3B000, 0x3C000, 0x3D000 / 0x79000, 0x7A000, 0x7B000
+#define FMEMORY_SCFG_BANKS 3 // кол-во секторов для сохранения
 #endif
-#define FMEMORY_SCFG_BANK_SIZE 0x01000 // размер сектора, 4096 bytes
-
+*/
+#define FMEMORY_SCFG_BANKS 1 // кол-во секторов для сохранения
+#define FMEMORY_SCFG_BASE_ADDR (sdk_flashchip_size - (FMEMORY_SCFG_BANKS + SDK_CFG_FLASH_SEC)*flashchip_sector_size) // 0x79000, 0x7A000[, 0x7B000]
 //-----------------------------------------------------------------------------
 
 #define ID_CFG_WIFI  0x6977 // id для сохранения установок WiFi (wificonfig)
@@ -29,6 +30,9 @@
 #define ID_CFG_KVDD  0x564B // id для сохранения калибровочных констант (делитель для VDD)
 
 #define ID_CFG_METER 0x524D // id для настроек Power Meter
+#define ID_CFG_CO2   0x4F43 // id для настроек Wireless CO2
+#define ID_CFG_FANS  0x4E46 // id для настроек FANS
+#define ID_CFG_VARS  0x5356 // id для глобальных переменных
 
 //-----------------------------------------------------------------------------
 
@@ -63,8 +67,8 @@ struct uartx_bits_config {
 #define UART1_REGCONFIG0MASK	0x1F8C03F
 #define UART0_REGCONFIG0DEF		0x000001C
 #define UART1_REGCONFIG0DEF		0x000001C
-#define UART0_DEFBAUD  921600 // 921600 //74880  //115200
-#define UART1_DEFBAUD  460800 //230400
+#define UART0_DEFBAUD  9600 // 921600 //74880  //115200
+#define UART1_DEFBAUD  921600 //460800 //230400
 
 struct  UartxCfg { // структура сохранения настроек Uart в Flash
 	uint32 baud;

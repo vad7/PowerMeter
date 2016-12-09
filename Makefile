@@ -4,7 +4,7 @@
 #
 #############################################################
 
-ESPOPTION ?= -p COM9 -b 460800
+ESPOPTION ?= -p COM5 -b 460800
 #115200
 
 UPLOADADDR = http://aesp8266/fsupload
@@ -16,7 +16,7 @@ SPI_SPEED?=80
 # SPI_MODE: QIO, DIO, QOUT, DOUT
 SPI_MODE?=QIO
 # SPI_SIZE: 512KB for all size Flash ! (512 kbytes .. 16 Mbytes Flash autodetect)
-SPI_SIZE?=512
+SPI_SIZE?=4096
 # 
 ADDR_FW1 = 0x00000
 ADDR_FW2 = 0x07000
@@ -27,11 +27,16 @@ USERFBIN = ./webbin/WEBFiles.bin
 #
 FIRMWAREDIR := bin
 CLREEPBIN := ./$(FIRMWAREDIR)/clear_eep.bin
-CLREEPADDR := 0x79000
+#CLREEPADDR := 0x79000
+CLREEPADDR := $(shell printf '0x%X\n' $$(($(SPI_SIZE)*1024 - 7*4096)))
+
 DEFAULTBIN := ./$(FIRMWAREDIR)/esp_init_data_default.bin
-DEFAULTADDR := 0x7C000
+#DEFAULTADDR := 0x7C000
+DEFAULTADDR := $(shell printf '0x%X\n' $$(($(SPI_SIZE)*1024 - 4*4096)))
+
 BLANKBIN := ./$(FIRMWAREDIR)/blank.bin
-BLANKADDR := 0x7E000
+#BLANKADDR := 0x7E000
+BLANKADDR := $(shell printf '0x%X\n' $$(($(SPI_SIZE)*1024 - 2*4096)))
 
 WEB_BASE := $(subst \,/,$(CWD))
 
@@ -99,6 +104,9 @@ CCFLAGS += -g \
 	-fno-tree-ccp	\
 	-foptimize-register-move	\
 	-fno-inline-functions	\
+	-ffunction-sections -fdata-sections\
+	-Xlinker --gc-sections	\
+	-Wl,--gc-sections \
 	-Wl,--wrap=os_printf_plus	\
 	-Wl,-EL	\
 	-nostdlib
@@ -144,26 +152,34 @@ ifeq ($(SPI_SIZE), 256)
     size = 1
     flash = 256
 	flashimageoptions += -fs 2m
+	CCFLAGS += -DFIX_SDK_FLASH_SIZE=262144
 else
     ifeq ($(SPI_SIZE), 1024)
         size = 2
         flash = 1024
 		flashimageoptions += -fs 8m
+		CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576
+		USERFADDR = 0x80000
     else
         ifeq ($(SPI_SIZE), 2048)
             size = 3
             flash = 1024
 			flashimageoptions += -fs 16m
+			CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576			
+			USERFADDR = 0x80000
         else
             ifeq ($(SPI_SIZE), 4096)
                 size = 4
                 flash = 1024
 				flashimageoptions += -fs 32m
+				CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576			
+				USERFADDR = 0x80000
             else
                 size = 0
                 flash = 512
 				flashimageoptions += -fs 4m
-            endif
+				CCFLAGS += -DFIX_SDK_FLASH_SIZE=524288
+             endif
         endif
     endif
 endif
@@ -259,6 +275,11 @@ UploadOvl:
 UploadWeb: $(USERFBIN)
 	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
 	$(UPLOADTOOL) file ./webbin/WEBFiles.bin $(UPLOADADDR)
+
+NewUserBin:
+	@$(RM) -f $(USERFBIN)
+	@cp -f ovls/bin/*.ovl WEBFiles
+	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
 
 $(USERFBIN):
 	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin

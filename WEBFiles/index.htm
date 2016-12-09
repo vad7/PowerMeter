@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html><head>
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8">
-	<title>ESP8266</title>
+	<title>Power Meter</title>
 	<link rel="stylesheet" href="/style.css">
 </head><body>
-~inc:menu.inc~
+~inc:menumain.inc~
 <div class="content">
-<h2 class="title">&#10031;<a href="/help/webvars.htm">Info</a>&#10031;</h2>
+<h2 class="title"><span id="TotalKWT">?</span> kWt</h2>
 <p class="center">
-Name: ~wifi_ap_ssid~ Password: ~wifi_ap_psw~<br>
-TCP2UART connect: ~tcp_remote~, Web connect: ~web_remote~,<br>
-Modbus TCP Connection: ~mdb_remote~<br>
-WEB ver: ~sys_webver~, SDK ver: ~sys_sdkver~.<br>
-Power: <span title="Calculate and adjust the division ratio for sys_vdd33 in 'Debug and Test'!" id='syspower'>?</span> V<br>
-ChipID: ~sys_cid~.<br><br>
-DevTime: <span id='sntptime'>SNTP disable</span><br>
-PowerStartTime: <span id='starttime'>?</span><br><br>
-</p></div>
+<span id="Str_T1_T2"></span>
+<span id="time__~TotalCntTime~_1">?</span>
+<br>
+<br>
+Last minute: <span id="last_kwt">?</span> kWt
+</p>
+<br><br>
+Time: <span id="time__~sntp_time~_2">No SNTP</span><br>
+Start time: <span id="timer_~sys_mactime~_3">?</span><br>
+Power: <span title="Vdd" id="syspower">?</span> V<br>
+</div>
 ~inc:footer.inc~
 ~inc:vdd.inc~
 ~inc:time.inc~
+<script type="text/javascript">
+document.getElementById('TotalKWT').innerHTML = (~TotalCnt~ / ~cfg_meter_PulsesPerKWt~).toFixed(3);
+if("~cfg_meter_T1St~" != 0 || "~cfg_meter_T1En~" != 0) document.getElementById('Str_T1_T2').innerHTML = "Day: " + (~TotalCntT1~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + " &nbsp; Night: " + (~TotalCntT2~ / ~cfg_meter_PulsesPerKWt~).toFixed(3) + "<br><br>";
+document.getElementById('last_kwt').innerHTML = (~LastCnt~ * 60 / ~cfg_meter_PulsesPerKWt~).toFixed(2);
+</script>
 </body></html>

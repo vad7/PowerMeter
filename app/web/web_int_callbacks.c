@@ -27,6 +27,7 @@
 #include "sdk/rom2ram.h"
 #include "sys_const_utils.h"
 #include "wifi_events.h"
+#include "driver/spi_register.h"
 #include "power_meter.h"
 #include "driver/eeprom.h"
 #include "time.h"
@@ -398,7 +399,7 @@ typedef struct {
 	uint32	SumT1;			// for OutType by date / TotalCnt
 	uint32	*Hours;
 	uint16_t StringSizeMax;  // 32, 64, 900
-	uint8_t	buf[48];
+	uint8_t	buf[MAX_EEPROM_BLOCK_LEN];
 } history_output;
 
 // history_output.OutType
@@ -414,21 +415,21 @@ void web_get_history_put_csv_str(WEB_SRV_CONN *web_conn, history_output *hst, ti
 	struct tm tm;
 	if(hst->OutType & HST_TotalCnt) Time -= 60; // TotalCnt
 	_localtime(&Time, &tm);
-	tcp_puts("%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_meter.csv_delimiter);
+	tcp_puts("%04d-%02d-%02d %02d:%02d:00%c", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, cfg_glo.csv_delimiter);
 	if(hst->OutType & HST_kWt) { // kWt
 		if((hst->OutType & (HST_TotalCnt | HST_ByHour | HST_ByDay)) == 0) num *= 60; // kwt per hour
-		uint32_t n = num * 10 / cfg_meter.PulsesPer0_01KWt;
+		uint32_t n = num * 10 / cfg_glo.PulsesPer0_01KWt;
 		tcp_puts("%u.%03u", n / 1000, n % 1000);
 		if(hst->OutType & HST_MTariffs) {
-			n = hst->SumT1 * 10 / cfg_meter.PulsesPer0_01KWt;
-			tcp_puts("%c%u.%03u", cfg_meter.csv_delimiter, n / 1000, n % 1000);
-			n = (num - hst->SumT1) * 10 / cfg_meter.PulsesPer0_01KWt;
-			tcp_puts("%c%u.%03u", cfg_meter.csv_delimiter, n / 1000, n % 1000);
+			n = hst->SumT1 * 10 / cfg_glo.PulsesPer0_01KWt;
+			tcp_puts("%c%u.%03u", cfg_glo.csv_delimiter, n / 1000, n % 1000);
+			n = (num - hst->SumT1) * 10 / cfg_glo.PulsesPer0_01KWt;
+			tcp_puts("%c%u.%03u", cfg_glo.csv_delimiter, n / 1000, n % 1000);
 		}
 	} else {
 		tcp_puts("%u", num);
 		if(hst->OutType & HST_MTariffs) {
-			tcp_puts("%c%u%c%u", cfg_meter.csv_delimiter, hst->SumT1, cfg_meter.csv_delimiter, num - hst->SumT1);
+			tcp_puts("%c%u%c%u", cfg_glo.csv_delimiter, hst->SumT1, cfg_glo.csv_delimiter, num - hst->SumT1);
 		}
 	}
 	tcp_puts("\r\n");
@@ -448,10 +449,11 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 	bool packed_flag;
 
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+	#if DEBUGSOO > 2
+    	uint32 ttt = system_get_time();
+		os_printf("History %u, %u (%u): ", web_conn->udata_start, web_conn->udata_stop, ttt);
+	#endif
     if(CheckSCB(SCB_RETRYCB)==0) {  // Check if this is a first round call
-#if DEBUGSOO > 2
-		os_printf("Output History %u, %u: ", web_conn->udata_start, web_conn->udata_stop);
-#endif
 		hst = os_zalloc(sizeof(history_output));
 		if(hst == NULL) {
 			#if DEBUGSOO > 2
@@ -466,7 +468,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		hst->PtrCurrent = fram_store.PtrCurrent;
 		if(CntCurrent.Cnt2) { // packed available
 			hst->PtrCurrent += CntCurrent.Cnt2 == 1 ? 1 : 2; // 0,1 in CurrentCnt is 0 last minute
-			if(hst->PtrCurrent >= cfg_meter.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_meter.Fram_Size - StartArrayOfCnts;
+			if(hst->PtrCurrent >= cfg_glo.Fram_Size - StartArrayOfCnts) hst->PtrCurrent -= cfg_glo.Fram_Size - StartArrayOfCnts;
 		}
 		hst->LastTime = fram_store.LastTime;
 		if(hst->OutType & HST_MTariffs) {
@@ -481,6 +483,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 				#endif
 				return;
 			}
+			hst->StringSizeMax = 900;
 		}
 		if(hst->OutType & HST_TotalCnt) { // TotalCnt
 			hst->Sum = fram_store.TotalCnt;
@@ -490,7 +493,6 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 			}
 			if((hst->OutType & HST_ByDay) == 0) { // not By day
 				hst->previous_n = hst->Sum; // save value and wait changing
-				hst->StringSizeMax = 900;
 			}
 		} else hst->previous_n = 0xFFFFFFFF;
     } else hst = (history_output *)web_conn->udata_stop; // restore ptr
@@ -505,10 +507,10 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 	}
 	do {
 		uint16_t num = 0;
-		if(hst->PtrCurrent == 0) hst->PtrCurrent = cfg_meter.Fram_Size - StartArrayOfCnts; // jump to the end
+		if(hst->PtrCurrent == 0) hst->PtrCurrent = cfg_glo.Fram_Size - StartArrayOfCnts; // jump to the end
 		len = mMIN(sizeof(hst->buf), hst->PtrCurrent);
 		#if DEBUGSOO > 4
-			os_printf(" st %u -> len: %u, ", hst->PtrCurrent, len);
+			os_printf(" st %u -> len: %u (+%u), ", hst->PtrCurrent, len, system_get_time() - ttt);
 		#endif
 		if(eeprom_read_block(StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 xErrorI2C:
@@ -519,7 +521,7 @@ xErrorI2C:
 		} else {
 			if(len == 1) { // may be packed - load previous byte from end
 				hst->buf[1] = hst->buf[0];
-				if(eeprom_read_block(cfg_meter.Fram_Size - 1, hst->buf, 1)) goto xErrorI2C;
+				if(eeprom_read_block(cfg_glo.Fram_Size - 1, hst->buf, 1)) goto xErrorI2C;
 				len = 2;
 			}
 			for(i = len - 1; i > 0; i--) { // first byte may be not proceeded
@@ -598,7 +600,7 @@ xSkip:
 			}
 			if(i <= 0) { // buffer has been proceeded
 				len -= 1 + i;
-				if(hst->PtrCurrent < len) hst->PtrCurrent += cfg_meter.Fram_Size - StartArrayOfCnts - len;
+				if(hst->PtrCurrent < len) hst->PtrCurrent += cfg_glo.Fram_Size - StartArrayOfCnts - len;
 				else hst->PtrCurrent -= len;
 				#if DEBUGSOO > 4
 					os_printf("H ptr_curr: %u, t%u\n", hst->PtrCurrent, hst->LastTime);
@@ -610,6 +612,7 @@ xEndExit:
 	#if DEBUGSOO > 4
 		os_printf("End(mbs=%u) ", web_conn->msgbufsize);
 	#endif
+	if(hst->Hours) os_free(hst->Hours);
 	os_free(hst);
 	web_conn->udata_stop = 0;
 	ClrSCB(SCB_RETRYCB);
@@ -935,6 +938,10 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
           else ifcmp("res_event") tcp_puts("%u", rtc_get_reset_reason()); // 1 - power/ch_pd, 2 - reset, 3 - software, 4 - wdt ...
           else ifcmp("rst") tcp_puts("%u", system_get_rst_info()->reason);
           else ifcmp("clkcpu") tcp_puts("%u", ets_get_cpu_frequency());
+          else ifcmp("clkspi") {
+        	  uint32 r = READ_PERI_REG(SPI_CLOCK(0));
+        	  tcp_puts("%u", ets_get_cpu_frequency()/(((r>>SPI_CLKDIV_PRE_S)&SPI_CLKDIV_PRE)+1)/(((r>>SPI_CLKCNT_N_S)&SPI_CLKCNT_N)+1));
+          }
           else ifcmp("sleep_old") tcp_puts("%u", deep_sleep_option); // если нет отдельного питания RTC и deep_sleep не устанавливался/применялся при текущем включения питания чипа, то значение неопределенно (там хлам).
 //          else ifcmp("test") { };
           else ifcmp("reset") web_conn->web_disc_cb = (web_func_disc_cb)_ResetVector;
@@ -954,7 +961,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
           else ifcmp("const_") {
         	  cstr += 6;
         	  ifcmp("faddr") {
-        		  tcp_puts("0x%08x", esp_init_data_default_addr);
+        		  tcp_puts("0x%08x", faddr_esp_init_data_default);
         	  }
         	  else tcp_puts("%u", read_sys_const(ahextoul(cstr)));
           }
@@ -993,19 +1000,19 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 		    }
 		    else ifcmp("meter_") { // cfg_
 	        	cstr += 6;
-		        ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_meter.PulsesPer0_01KWt);
-		        else ifcmp("Fram_Size") tcp_puts("%u", cfg_meter.Fram_Size);
-		        else ifcmp("csv_delim") tcp_puts("%c", cfg_meter.csv_delimiter);
-		        else ifcmp("FramFr") tcp_puts("%u", cfg_meter.fram_freq);
-		        else ifcmp("Debouncing") tcp_puts("%u", cfg_meter.Debouncing_Timeout);
-		        else ifcmp("revsens") tcp_puts("%u", cfg_meter.ReverseSensorPulse);
-		        else ifcmp("TAdj") tcp_puts("%d", cfg_meter.TimeAdjust);
-		        else ifcmp("T1St") tcp_puts("%04u", cfg_meter.TimeT1Start);
-		        else ifcmp("T1En") tcp_puts("%04u", cfg_meter.TimeT1End);
+		        ifcmp("PulsesPerKWt") tcp_puts("%u00", cfg_glo.PulsesPer0_01KWt);
+		        else ifcmp("Fram_Size") tcp_puts("%u", cfg_glo.Fram_Size);
+		        else ifcmp("csv_delim") tcp_puts("%c", cfg_glo.csv_delimiter);
+		        else ifcmp("FramFr") tcp_puts("%u", cfg_glo.fram_freq);
+		        else ifcmp("Debouncing") tcp_puts("%u", cfg_glo.Debouncing_Timeout);
+		        else ifcmp("revsens") tcp_puts("%u", cfg_glo.ReverseSensorPulse);
+		        else ifcmp("TAdj") tcp_puts("%d", cfg_glo.TimeAdjust);
+		        else ifcmp("T1St") tcp_puts("%04u", cfg_glo.TimeT1Start);
+		        else ifcmp("T1En") tcp_puts("%04u", cfg_glo.TimeT1End);
 		    }
 	        else ifcmp("iot_") {	// cfg_
 	        	cstr += 4;
-	        	ifcmp("cloud_enable") tcp_puts("%d", cfg_meter.iot_cloud_enable);
+	        	ifcmp("cloud_enable") tcp_puts("%d", cfg_glo.iot_cloud_enable);
 	            else ifcmp("ini") {
 	        		web_conn->udata_start = 0; // pos in the file
 	        		web_conn->udata_stop = WEBFSOpen(iot_cloud_ini); // file handle
@@ -1223,7 +1230,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
             			web_get_flash(ts_conn);
             		}
             		else ifcmp("const") {
-            	    	web_conn->udata_start = esp_init_data_default_addr;
+            	    	web_conn->udata_start = faddr_esp_init_data_default;
             	    	web_conn->udata_stop = web_conn->udata_start + SIZE_SYS_CONST;
             	    	web_get_flash(ts_conn);
             		}
@@ -1251,7 +1258,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
 				web_conn->udata_start = (Web_ShowBy<<1) | Web_ShowByKWT;	// OutType
         		ifcmp("cnt") {
         			web_conn->udata_start = (web_conn->udata_start & ~HST_ByHour) | HST_TotalCnt;
-        			if(cfg_meter.TimeT1Start || cfg_meter.TimeT1End) web_conn->udata_start |= HST_MTariffs; // Multi tariffs
+        			if(cfg_glo.TimeT1Start || cfg_glo.TimeT1End) web_conn->udata_start |= HST_MTariffs; // Multi tariffs
         		}
 				web_conn->udata_stop = Web_ChartMaxDays * 60*24; 	// how many minutes, 0 = all
 				web_get_history(ts_conn);
@@ -1259,7 +1266,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	// fram_all.bin
         	else ifcmp("fram_all") {
     			web_conn->udata_start = 0;
-    			web_conn->udata_stop = cfg_meter.Fram_Size;
+    			web_conn->udata_stop = cfg_glo.Fram_Size;
     			web_get_i2c_eeprom(ts_conn);
         	}
         	//
@@ -1459,7 +1466,7 @@ void ICACHE_FLASH_ATTR web_int_callback(TCP_SERV_CONN *ts_conn, uint8 *cstr)
         	}
         	typeof(fram_store.TotalCnt) cnt;
         	cnt = rom_xstrcmp(cstr, "T1") ? fram_store.TotalCntT1 : rom_xstrcmp(cstr, "T2") ? fram_store.TotalCnt - fram_store.TotalCntT1 : fram_store.TotalCnt;
-        	tcp_puts("%u.%03u", cnt / (cfg_meter.PulsesPer0_01KWt * 100), (cnt * 10 / cfg_meter.PulsesPer0_01KWt) % 1000);
+        	tcp_puts("%u.%03u", cnt / (cfg_glo.PulsesPer0_01KWt * 100), (cnt * 10 / cfg_glo.PulsesPer0_01KWt) % 1000);
         }
 #ifdef USE_I2C
         else ifcmp("i2c_errors") tcp_puts("%u", I2C_EEPROM_Error);

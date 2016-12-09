@@ -42,6 +42,12 @@
 
 //-----------------------------------------------------------------------------
 #define mMIN(a, b)  ((a<b)?a:b)
+
+#if FMEMORY_SCFG_BANKS == 1 // only 1 sector
+#define get_addr_bscfg(f) FMEMORY_SCFG_BASE_ADDR
+#define bank_head_size 0
+#else
+#define bank_head_size 4
 //-----------------------------------------------------------------------------
 // FunctionName : get_addr_bscfg
 // Опции:
@@ -51,11 +57,6 @@
 // Поиск нового сегмента - с самым большим кодом
 // При первом чтении на пустой памяти - инициализация кода = 0xfffffffe
 //-----------------------------------------------------------------------------
-#if FMEMORY_SCFG_BANKS == 1 // only 1 sector
-#define get_addr_bscfg(f) FMEMORY_SCFG_BASE_ADDR
-#define bank_head_size 0
-#else
-#define bank_head_size 4
 LOCAL ICACHE_FLASH_ATTR uint32 get_addr_bscfg(bool flg)
 {
 	uint32 x1 = (flg)? 0 : 0xFFFFFFFF, x2;
@@ -458,11 +459,11 @@ bool ICACHE_FLASH_ATTR read_tcp_client_url(void)
  *  Чтение пользовательских констант (0 < idx < MAX_IDX_USER_CONST)
  */
 uint32 ICACHE_FLASH_ATTR read_user_const(uint8 idx) {
-#ifdef USE_FIX_SDK_FLASH_SIZE
+#ifdef FIX_SDK_FLASH_SIZE
 	uint32 ret = 0xFFFFFFFF;
 	if (idx < MAX_IDX_USER_CONST) {
 		if (flash_read_cfg(&ret, ID_CFG_KVDD + idx, 4) != 4) {
-			if(idx == 0) ret = 102400; // константа делителя для ReadVDD
+			if(idx == 0) ret = 83000; // 102400; // константа делителя для ReadVDD
 		}
 	}
 	return ret;

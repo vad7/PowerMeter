@@ -58,7 +58,7 @@ void ICACHE_FLASH_ATTR init_done_cb(void)
 	os_printf("Last sec rw count: %u\n\n", whd.wr_cnt);
 #endif
 	//
-	power_meter_init(2); // init FRAM, timer/tasks
+	user_initialize(2); // init FRAM, timer/tasks
 	ets_set_idle_cb(user_idle, NULL); // do not use sleep mode!
 	//
 #ifdef USE_WEB

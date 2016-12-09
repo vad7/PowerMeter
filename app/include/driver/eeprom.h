@@ -12,6 +12,8 @@
 
 #ifdef USE_I2C
 
+#define MAX_EEPROM_BLOCK_LEN 128 // Max allowed value (hardware or speed issue)
+
 #include "i2c.h"
 #define eeprom_read_block(addr, buffer, len)  i2c_eeprom_read_block(I2C_ID, addr, buffer, len)
 #define eeprom_write_block(addr, buffer, len) i2c_eeprom_write_block(I2C_ID, addr, buffer, len)
@@ -20,6 +22,8 @@
 #ifdef USE_HSPI
 
 #include "spi.h"
+
+#define MAX_EEPROM_BLOCK_LEN 64 // Max esp8266 SPI buffer
 
 #define EEPROM_ADDR_BITS (SPI_ADDR_BITS - 8)
 #define EEPROM_WREN 	0b00000110 // Set write enable latch

@@ -25,6 +25,8 @@
 #include "sys_const_utils.h"
 #include "wifi.h"
 #include "sdk/rom2ram.h"
+#include "power_meter.h"
+#include "driver/eeprom.h"
 
 #ifdef WEBSOCKET_ENA
 #include "web_websocket.h"
@@ -1203,6 +1205,18 @@ LOCAL int ICACHE_FLASH_ATTR find_boundary(HTTP_UPLOAD *pupload, uint8 *pstr, uin
 // 200 - найден завершающий разделитель: "\r\n--boundary--"
 // 400 - неизвестный формат content-а
 //-----------------------------------------------------------------------------
+typedef enum
+{
+	UPL_ST_FIND = 0,
+	UPL_ST_NEW = 1,
+	UPL_ST_FLASH = 2, // загрузка файла (сектора) во flash
+	UPL_ST_WEBFS = 3, // загрузка WebFileSystem во flash
+	UPL_ST_FIRMWARE = 4, // загрузка прошивки на место WEBFS
+	UPL_ST_OVL = 5, // загрузка данных/кода оверлея, запуск entry_point
+	UPL_ST_OVLH = 6, // загрузка заголовка данных оверлея
+	UPL_ST_EXTMEM = 7 // загрузка во внешнюю EEPROM/FRAM
+} UPLOAD_FILE_STATUS;
+
 const char disk_ok_filename[] ICACHE_RODATA_ATTR = "/disk_ok.htm";
 const char disk_err1_filename[] ICACHE_RODATA_ATTR = "/disk_er1.htm";
 const char disk_err2_filename[] ICACHE_RODATA_ATTR = "/disk_er2.htm";
@@ -1214,6 +1228,7 @@ const char overlay_filename[] ICACHE_RODATA_ATTR = "overlay";
 const char sector_filename[] ICACHE_RODATA_ATTR = "fsec_";
 #define sector_filename_size 5
 const char file_label[] ICACHE_RODATA_ATTR = "file";
+const char eeprom_filename[] ICACHE_RODATA_ATTR = "eeprom";
 // OTA
 #define OTA_flash_struct_id 0x2341544F // 'OTA#'
 #define firmware_start_magic 0xE9
@@ -1228,7 +1243,7 @@ int ICACHE_FLASH_ATTR OTA_write_header(uint8 fwrite)
 {
 	uint32 *tmpbuf = os_malloc(flashchip_sector_size);
 	if(tmpbuf == NULL) return 500;
-	spi_flash_read(esp_init_data_default_addr, tmpbuf, flashchip_sector_size);
+	spi_flash_read(faddr_esp_init_data_default, tmpbuf, flashchip_sector_size);
 	OTA_flash_struct *OTA = (OTA_flash_struct *)((uint8 *)tmpbuf + MAX_SYS_CONST_BLOCK);
 	if(fwrite) {
 		OTA->id = OTA_flash_struct_id;
@@ -1241,8 +1256,8 @@ int ICACHE_FLASH_ATTR OTA_write_header(uint8 fwrite)
 		if(OTA->id != OTA_flash_struct_id) goto xEnd;
 		os_memset(OTA, 0xFF, sizeof(OTA_flash_struct));
 	}
-	spi_flash_erase_sector(esp_init_data_default_sec);
-	spi_flash_write(esp_init_data_default_addr, tmpbuf, flashchip_sector_size);
+	spi_flash_erase_sector(fsec_esp_init_data_default);
+	spi_flash_write(faddr_esp_init_data_default, tmpbuf, flashchip_sector_size);
 xEnd:
 	os_free(tmpbuf);
 	return 0;
@@ -1259,6 +1274,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 	uint8 *pnext;
 	uint8 *pstr;
 	while(web_conn->content_len && ts_conn->pbufi != NULL) {
+		WDT_FEED = WDT_FEED_MAGIC; // WDT
 		pstr = ts_conn->pbufi;
 		len = ts_conn->sizei;
 #if DEBUGSOO > 4
@@ -1266,7 +1282,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 #endif
 		if(len < (8 + pupload->sizeboundary)) return 0; // разделитель (boundary) не влезет - докачивать буфер
 		switch(pupload->status) {
-			case 0: // поиск boundary
+			case UPL_ST_FIND: // поиск boundary
 			{
 #if DEBUGSOO > 4
 				os_printf("find_bndr ");
@@ -1317,7 +1333,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 				web_conn->content_len -= len;
 				break;
 			}
-			case 1: // прием данных, первый заход, проверка форматов и т.д.
+			case UPL_ST_NEW: // прием данных, первый заход, проверка форматов и т.д.
 			{
 #if DEBUGSOO > 4
 				os_printf("tst,fn='%s'(%s) ", pupload->filename, pupload->name);
@@ -1333,7 +1349,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 								// OTA firmware upload
 								if(OTA_write_header(0)) return 500; // clear OTA header
 								pupload->fsize = file_load_size;
-								pupload->status = 4; // загрузка прошивки на место WEBFS
+								pupload->status = UPL_ST_FIRMWARE; // загрузка прошивки на место WEBFS
 							} else {
 								if(isWEBFSLocked) return 400;
 								SetSCB(SCB_REDIR);
@@ -1351,7 +1367,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 							#if DEBUGSOO > 4
 								os_printf("updisk[%u]=ok,m=%u ", dhead->disksize, WEBFS_max_size() );
 							#endif
-							pupload->status = 3; // = 3 загрузка WebFileSystem во flash
+							pupload->status = UPL_ST_WEBFS; // = 3 загрузка WebFileSystem во flash
 						}
 						pupload->faddr = WEBFS_base_addr();
 						isWEBFSLocked = true;
@@ -1376,11 +1392,11 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 						pupload->segs = fhead->head.number_segs;
 						if(pupload->segs) {
 							pupload->fsize = sizeof(struct SPIFlashHeadSegment);
-							pupload->status = 6; // = 6 загрузка файла оверлея, начать с загрузки заголовка сегмента
+							pupload->status = UPL_ST_OVLH; // = 6 загрузка файла оверлея, начать с загрузки заголовка сегмента
 						}
 						else {
 							pupload->fsize = 0;
-							pupload->status = 5; // = 5 загрузка файла оверлея, запуск entry_point
+							pupload->status = UPL_ST_OVL; // = 5 загрузка файла оверлея, запуск entry_point
 						}
 						//
 						len = sizeof(struct SPIFlashHeader);
@@ -1393,16 +1409,22 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 #endif
 					else if(rom_xstrcmp(pupload->name, sysconst_filename)) {
 						pupload->fsize = SIZE_SYS_CONST;
-						pupload->faddr = esp_init_data_default_addr;
-						pupload->status = 2; // = 2 загрузка файла во flash
+						pupload->faddr = faddr_esp_init_data_default;
+						pupload->status = UPL_ST_FLASH; // = 2 загрузка файла во flash
 						break;
 					}
 					else if(rom_xstrcmp(pupload->name, sector_filename)) {
 						pupload->fsize = SPI_FLASH_SEC_SIZE;
 						pupload->faddr = ahextoul(&pupload->name[sector_filename_size]) << 12;
-						pupload->status = 2; // = 2 загрузка файла сектора во flash
+						pupload->status = UPL_ST_FLASH; // = 2 загрузка файла сектора во flash
 						break;
-					};
+					}
+					else if(rom_xstrcmp(pupload->name, eeprom_filename)) {
+						pupload->fsize = cfg_glo.Fram_Size;
+						pupload->faddr = 0;
+						pupload->status = UPL_ST_EXTMEM;
+						break;
+					}
 					if(isWEBFSLocked) return 400;
 					SetSCB(SCB_REDIR);
 					rom_xstrcpy(pupload->filename, disk_err3_filename); // os_memcpy(pupload->filename,"/disk_er3.htm\0",14); // неизвестный тип
@@ -1423,7 +1445,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 					if(ret == 200) return ret;
 					// найден следующий boundary
 					len = pupload->pbndr - ts_conn->pbufi;
-					pupload->status = 0; // = 0 найден следующий boundary
+					pupload->status = UPL_ST_FIND; // = 0 найден следующий boundary
 #if DEBUGSOO > 4
 					os_printf("trim#%u\n", len );
 #endif
@@ -1435,9 +1457,10 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 //				return 400;
 			}
 //			default:
-			case 2: // загрузка файла во flash
-			case 3: // загрузка WebFileSystem во flash (скорость записи W25Q128 ~175 килобайт в сек, полный диск на 15,5МБ пишется 90..100 сек )
-			case 4: // загрузка прошивки
+			case UPL_ST_FLASH: // загрузка файла во flash
+			case UPL_ST_WEBFS: // загрузка WebFileSystem во flash (скорость записи W25Q128 ~175 килобайт в сек, полный диск на 15,5МБ пишется 90..100 сек )
+			case UPL_ST_FIRMWARE: // загрузка прошивки
+			case UPL_ST_EXTMEM: // загрузка во внешнюю EEPROM/FRAM
 			{
 #if DEBUGSOO > 4
 				os_printf("fdata ");
@@ -1454,48 +1477,56 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 				else {
 					len = mMIN(max_len_buf_write_flash, web_conn->content_len - 8 - pupload->sizeboundary);
 				}
-#if DEBUGSOO > 4
-				os_printf("\nlen=%d, block_size=%d, content_len=%d, sizeboundary= %d, ret=%d, data = %d, load=%d", len, block_size, web_conn->content_len, pupload->sizeboundary, ret, pupload->pbndr - ts_conn->pbufi, ts_conn->sizei);
-				while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-				if(pupload->fsize < len) block_size = pupload->fsize;
-				else block_size = len;
+				if(pupload->status == UPL_ST_EXTMEM) {
+					len = mMIN(len, MAX_EEPROM_BLOCK_LEN);
+					block_size = mMIN(pupload->fsize, len);
+					#if DEBUGSOO > 4
+						os_printf("\nlen=%d, block_size=%d, content_len=%d, sizeboundary= %d, ret=%d, data = %d, load=%d", len, block_size, web_conn->content_len, pupload->sizeboundary, ret, pupload->pbndr - ts_conn->pbufi, ts_conn->sizei);
+						while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+					#endif
+					if(block_size) eeprom_write_block(pupload->faddr, pstr, block_size);
+				} else {
+					block_size = mMIN(pupload->fsize, len);
 #if (DEF_SDK_VERSION >= 1000) && (DEF_SDK_VERSION <= 1012)
 #define SET_CPU_CLK_SPEED 1
-				if(syscfg.cfg.b.hi_speed_enable) {
-					ets_intr_lock();
-					REG_CLR_BIT(0x3ff00014, BIT(0));
-					os_update_cpu_frequency(80);
-					ets_intr_unlock();
-				}
-#endif
-				if(block_size) { // идут данные файла
-//					tcpsrv_unrecved_win(ts_conn); // для ускорения, пока стрирается-пишется уже обновит окно (включено в web_rx_buf)
-					if(pupload->faddr >= FLASH_MIN_SIZE && (pupload->status == 3 || pupload->status == 4)) { // WebFS or Flash
-						if((pupload->faddr & 0x0000FFFF)==0) {
-#if DEBUGSOO > 2
-							os_printf("Clear flash page addr %p... ", pupload->faddr);
-							while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-							spi_flash_erase_block(pupload->faddr>>16);
-						}
+					if(syscfg.cfg.b.hi_speed_enable) {
+						ets_intr_lock();
+						REG_CLR_BIT(0x3ff00014, BIT(0));
+						os_update_cpu_frequency(80);
+						ets_intr_unlock();
 					}
-					else if((pupload->faddr & 0x00000FFF) == 0) {
-#if DEBUGSOO > 2
-						os_printf("Clear flash sector addr %p... ", pupload->faddr);
+#endif
+					#if DEBUGSOO > 4
+						os_printf("\nlen=%d, block_size=%d, content_len=%d, sizeboundary= %d, ret=%d, data = %d, load=%d", len, block_size, web_conn->content_len, pupload->sizeboundary, ret, pupload->pbndr - ts_conn->pbufi, ts_conn->sizei);
 						while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-						spi_flash_erase_sector(pupload->faddr>>12);
+					#endif
+					if(block_size) { // идут данные файла
+//						tcpsrv_unrecved_win(ts_conn); // для ускорения, пока стрирается-пишется уже обновит окно (включено в web_rx_buf)
+						if(pupload->faddr >= FLASH_MIN_SIZE && (pupload->status == UPL_ST_WEBFS || pupload->status == UPL_ST_FIRMWARE)) { // WebFS or Flash
+							if((pupload->faddr & 0x0000FFFF)==0) {
+								#if DEBUGSOO > 2
+									os_printf("Clear flash page addr %p... ", pupload->faddr);
+									while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+								#endif
+								spi_flash_erase_block(pupload->faddr>>16);
+							}
+						}
+						else if((pupload->faddr & 0x00000FFF) == 0) {
+							#if DEBUGSOO > 2
+								os_printf("Clear flash sector addr %p... ", pupload->faddr);
+								while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+							#endif
+							spi_flash_erase_sector(pupload->faddr>>12);
+						}
+						#if DEBUGSOO > 2
+							os_printf("Write flash addr:%p[0x%04x]\n", pupload->faddr, block_size);
+							while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
+						#endif
+						spi_flash_write(pupload->faddr, (uint32 *)pstr, (block_size + 3)&(~3));
 					}
-#if DEBUGSOO > 2
-					os_printf("Write flash addr:%p[0x%04x]\n", pupload->faddr, block_size);
-					while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
-#endif
-					spi_flash_write(pupload->faddr, (uint32 *)pstr, (block_size + 3)&(~3));
-
-					pupload->fsize -= block_size;
-					pupload->faddr += block_size;
 				}
+				pupload->fsize -= block_size;
+				pupload->faddr += block_size;
 #if DEBUGSOO > 4
 				os_printf("trim#%u\n", len);
 				while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
@@ -1509,15 +1540,19 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 				if(syscfg.cfg.b.hi_speed_enable) set_cpu_clk();
 #endif
 				if((ret == 1 || ret == 200)) { // найден конец или новый boundary?
-					if(pupload->status == 3 || pupload->status == 4) WEBFSInit();
+					if(pupload->status == UPL_ST_WEBFS || pupload->status == UPL_ST_FIRMWARE) WEBFSInit();
 					if(pupload->fsize != 0) {
+						if(pupload->status == UPL_ST_EXTMEM) {
+							ret = 0; // not uploaded yet
+							break;
+						}
 						if(!isWEBFSLocked) {
 							SetSCB(SCB_REDIR);
 							rom_xstrcpy(pupload->filename, disk_err1_filename); // os_memcpy(pupload->filename,"/disk_er1.htm\0",14); // не всё передано или неверный формат
 							return 200;
 						}
 						return 400; //  не всё передано или неверный формат
-					} else if(pupload->status == 4) { // OTA firmware loaded
+					} else if(pupload->status == UPL_ST_FIRMWARE) { // OTA firmware loaded
 						#if SIZE_SAVE_SYS_CONST > MAX_SYS_CONST_BLOCK
 							#error SYS_CONST > MAX_SYS_CONST_BLOCK
 						#endif
@@ -1527,14 +1562,17 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 						SetSCB(SCB_REDIR);
 						rom_xstrcpy(pupload->filename, disk_ok_filename); // os_memcpy(pupload->filename,"/disk_ok.htm\0",13);
 					};
-					if(ret == 1) pupload->status = 0; // = 0 найден следующий boundary
+					if(pupload->status == UPL_ST_EXTMEM) { // loaded
+						FRAM_Store_Init();
+					}
+					if(ret == 1) pupload->status = UPL_ST_FIND; // = 0 найден следующий boundary
 					if(ret == 200)	return ret;
 				}
 				break;
 			}
 #ifdef USE_OVERLAY
-			case 5: // загрузка данных/кода оверлея
-			case 6: // загрузка заголовка данных оверлея
+			case UPL_ST_OVL: // загрузка данных/кода оверлея
+			case UPL_ST_OVLH: // загрузка заголовка данных оверлея
 			{
 				uint32 block_size = mMIN(max_len_buf_write_flash + 8 + pupload->sizeboundary, web_conn->content_len);
 				if(ts_conn->sizei < block_size) return 0; // докачивать
@@ -1550,7 +1588,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 #if DEBUGSOO > 5
 					os_printf("blk:%d,st:%d,fs:%d,%d  ", block_size, pupload->status, pupload->fsize, pupload->segs);
 #endif
-					if(pupload->status == 5) {
+					if(pupload->status == UPL_ST_OVLH) {
 						if(block_size >= sizeof(struct SPIFlashHeadSegment)) { // размер данных
 							if(pupload->segs) { //
 								os_memcpy(&pupload->faddr, pstr, 4);
@@ -1578,7 +1616,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 							return 400; //  не всё передано или неверный формат
 						}
 						pupload->segs--; // счет сегментов
-						pupload->status = 4; // загрузка данных/кода оверлея
+						pupload->status = UPL_ST_OVL; // загрузка данных/кода оверлея
 						pstr += sizeof(struct SPIFlashHeadSegment);
 						block_size -= sizeof(struct SPIFlashHeadSegment);
 					};
@@ -1595,7 +1633,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 					};
 					if(pupload->fsize == 0) {
 						if(pupload->segs) { // все сегменты загружены?
-							pupload->status = 5; // загрузка заголовка данных оверлея
+							pupload->status = UPL_ST_OVLH; // загрузка заголовка данных оверлея
 						}
 						else { // все сегменты загружены
 							block_size = 0;
@@ -1634,7 +1672,7 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 							rom_xstrcpy(pupload->filename, disk_ok_filename); // os_memcpy(pupload->filename,"/disk_ok.htm\0",13);
 						};
 					};
-					if(ret == 1) pupload->status = 0; // = 0 найден следующий boundary
+					if(ret == 1) pupload->status = UPL_ST_FIND; // = 0 найден следующий boundary
 					if(ret == 200)	return ret;
 				};
 				break;
