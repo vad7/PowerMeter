@@ -16,7 +16,8 @@ SPI_SPEED?=80
 # SPI_MODE: QIO, DIO, QOUT, DOUT
 SPI_MODE?=QIO
 # SPI_SIZE: 512KB for all size Flash ! (512 kbytes .. 16 Mbytes Flash autodetect)
-SPI_SIZE?=4096
+SPI_SIZE?=512
+#SPI_SIZE?=4096
 # 
 ADDR_FW1 = 0x00000
 ADDR_FW2 = 0x07000

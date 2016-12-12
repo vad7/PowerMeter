@@ -449,9 +449,9 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 	bool packed_flag;
 
     WEB_SRV_CONN *web_conn = (WEB_SRV_CONN *)ts_conn->linkd;
+	uint32 wtimer = system_get_time();
 	#if DEBUGSOO > 2
-    	uint32 ttt = system_get_time();
-		os_printf("History %u, %u (%u): ", web_conn->udata_start, web_conn->udata_stop, ttt);
+		os_printf("History %u, %u (%u): ", web_conn->udata_start, web_conn->udata_stop, wtimer);
 	#endif
     if(CheckSCB(SCB_RETRYCB)==0) {  // Check if this is a first round call
 		hst = os_zalloc(sizeof(history_output));
@@ -510,7 +510,7 @@ void ICACHE_FLASH_ATTR web_get_history(TCP_SERV_CONN *ts_conn)
 		if(hst->PtrCurrent == 0) hst->PtrCurrent = cfg_glo.Fram_Size - StartArrayOfCnts; // jump to the end
 		len = mMIN(sizeof(hst->buf), hst->PtrCurrent);
 		#if DEBUGSOO > 4
-			os_printf(" st %u -> len: %u (+%u), ", hst->PtrCurrent, len, system_get_time() - ttt);
+			os_printf(" st %u -> len: %u (+%u), ", hst->PtrCurrent, len, system_get_time() - wtimer);
 		#endif
 		if(eeprom_read_block(StartArrayOfCnts + hst->PtrCurrent - len, hst->buf, len)) {
 xErrorI2C:
@@ -551,14 +551,15 @@ xEnd:
 				}
 				do {
 xContinue:
-					if(web_conn->msgbuflen + hst->StringSizeMax > web_conn->msgbufsize) { // overflow
+					if((system_get_time() - wtimer > 100000 && web_conn->msgbuflen)
+							|| web_conn->msgbuflen + hst->StringSizeMax > web_conn->msgbufsize) { // overflow or timer > 100000us and buffer is not empty
 xBufferFull:			hst->len = len;
 						hst->i = i;
 						hst->n = n;
 						hst->packed_flag = packed_flag;
 						hst->FlagContinue = 1;
 						#if DEBUGSOO > 4
-							os_printf("Buf full: %d, %d, %d\n", len, i, n);
+							os_printf("Buf full (%u)/wtimer: %d, %d, %d.\n", web_conn->msgbuflen, len, i, n);
 						#endif
 						SetNextFunSCB(web_get_history);
 						SetSCB(SCB_RETRYCB);
