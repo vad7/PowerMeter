@@ -2,6 +2,7 @@
  * FileName: uart_tcp.c
  * Description: UART-TCP driver ESP8266
  * Author: PV`
+ * Modified: vad7
  * (c) PV` 2015
 *******************************************************************************/
 #include "user_config.h"
@@ -12,6 +13,7 @@
 #include "sdk/flash.h"
 #include "flash_eep.h"
 #include "tcp2uart.h"
+#include "user_interface.h"
 #ifdef USE_RS485DRV
 #include "driver/rs485drv.h"
 #endif
@@ -46,10 +48,14 @@ extern void uart0_write_char(char c);
 // Маска MUX
 #define MASK_MUX ((1<<GPIO_MUX_FUN_BIT0)|(1<<GPIO_MUX_FUN_BIT1)|(1<<GPIO_MUX_FUN_BIT2)|(1<<GPIO_MUX_PULLDOWN_BIT)|(1<<GPIO_MUX_PULLUP_BIT))
 //-----------------------------------------------------------------------------
-#ifdef USE_TCP2UART
-
 #define UART_RX_ERR_INTS (UART_BRK_DET_INT_ENA | UART_RXFIFO_OVF_INT_ENA | UART_FRM_ERR_INT_ENA | UART_PARITY_ERR_INT_ENA)
- #define DEBUG_OUT(x)  // UART1_FIFO = x
+#if DEBUGSOO > 4
+#define DEBUG_OUT(x)  os_printf("%c", x);
+#else
+#define DEBUG_OUT(x)  //UART1_FIFO = x
+#endif
+
+#ifdef USE_TCP2UART
 
 #define os_post ets_post
 #define os_task ets_task
@@ -58,6 +64,18 @@ extern void uart0_write_char(char c);
 suart_drv uart_drv DATA_IRAM_ATTR;
 
 void uart_intr_handler(void *para);
+
+#endif
+
+#ifdef USE_UART0
+
+#define uart_recvTaskPrio		0
+#define uart_recvTaskQueueLen	10
+os_event_t uart_recvTaskQueue[uart_recvTaskQueueLen];
+char 	UART_Buffer[UART_Buffer_size];
+uint8_t UART_Buffer_idx;
+
+extern void uart_recvTask(os_event_t *events) ICACHE_FLASH_ATTR;
 
 #endif
 //-----------------------------------------------------------------------------
@@ -256,7 +274,7 @@ void ICACHE_FLASH_ATTR uart_read_fcfg(uint8 set)
 		else PERI_IO_SWAP &= ~PERI_IO_UART0_PIN_SWAP;
 		update_mux_uart0();
 		uart_div_modify(UART0, UART_CLK_FREQ / ux.baud);
-#ifdef USE_TCP2UART
+#if defined(USE_TCP2UART) || defined(USE_UART0)
 		uart0_set_tout();
 #endif
 	}
@@ -289,7 +307,7 @@ void ICACHE_FLASH_ATTR uart_save_fcfg(uint8 set)
 		flash_save_cfg(&ux, ID_CFG_UART1, sizeof(ux));
 	}
 }
-#ifdef USE_TCP2UART
+#if defined(USE_TCP2UART) || defined(USE_UART0)
 /******************************************************************************
  *
  *******************************************************************************/
@@ -311,13 +329,14 @@ void uart0_set_tout(void)
  * ------------------------------------------------------------------------- */
 uint32 uart_tx_buf(uint8 *buf, uint32 count)
 {
-//	DEBUG_OUT('T');
+	#if DEBUGSOO > 4
+		os_printf("TX BUF: %c\n", buf[0]);
+	#endif
 	int len = 0;
 	while(len < count){
 		MEMW(); // синхронизация и ожидание отработки fifo-write на шине CPU
 		if (((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT) >= 127) {
 			// не всё передано - не лезет в буфер fifo UART tx.
-//			DEBUG_OUT('#');
 			ets_intr_lock(); //	ETS_UART_INTR_DISABLE();
 			UART0_INT_ENA |= UART_TXFIFO_EMPTY_INT_ENA; // установим прерывание на пустой fifo tx
 			ets_intr_unlock(); // ETS_UART_INTR_ENABLE();
@@ -339,10 +358,12 @@ void ICACHE_FLASH_ATTR uart_drv_close(void)
 	UART0_CONF0 = conf0 | UART_RXFIFO_RST | UART_TXFIFO_RST;
 	UART0_CONF0 = conf0 & (~ (UART_RXFIFO_RST | UART_TXFIFO_RST));
 	UART0_CONF1 &= ~UART_RX_TOUT_EN;
+#ifdef USE_TCP2UART
 	if(uart_drv.uart_rx_buf != NULL) {
 		os_free(uart_drv.uart_rx_buf);
 		uart_drv.uart_rx_buf = NULL;
 	}
+#endif
 	UART0_INT_CLR = 0xffff;
 	update_rts0(); // update RST
 }
@@ -353,19 +374,25 @@ bool ICACHE_FLASH_ATTR uart_drv_start(void)
 {
 		uart_drv_close();
 		DEBUG_OUT('S');
+#ifdef USE_TCP2UART
 		if(uart_drv.uart_tx_next_chars  == NULL || uart_drv.uart_send_rx_blk  == NULL) return false;
 		uart_drv.uart_rx_buf = os_malloc(UART_RX_BUF_MAX);
 		uart_drv.uart_rx_buf_count = 0;
 		uart_drv.uart_nsnd_buf_count = 0;
 		uart_drv.uart_out_buf_count = 0;
 		if(uart_drv.uart_rx_buf != NULL) {
+#endif
 			update_rts0(); // update RST
 			UART0_CONF1 |= UART_RX_TOUT_EN;
 			UART0_INT_ENA = UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA;
 			return true;
+#ifdef USE_TCP2UART
 		}
 		return false;
+#endif
 }
+#endif
+#ifdef USE_TCP2UART
 /* =========================================================================
  * uart_del_rx_chars
  * ------------------------------------------------------------------------- */
@@ -493,6 +520,53 @@ void uart_intr_handler(void *para)
     };
 }
 #endif // USE_TCP2UART
+#ifdef USE_UART0
+void uart_intr_handler(void *para)
+{
+	DEBUG_OUT('I');
+	if(DPORT_OFF20 & (1<<0)) { // uart0 and uart1 intr combine togther, when interrupt occur, see reg 0x3ff20020, bit2, bit0 represents
+		DEBUG_OUT('i');
+		uint32 ints = UART0_INT_ST;
+		if(ints) {
+			if(UART0_INT_RAW & UART_RX_ERR_INTS) { // ошибки при приеме?
+				DEBUG_OUT('E');
+				UART0_INT_CLR = UART_RX_ERR_INTS;
+				//uart_rx_clr_buf(); // сбросить rx fifo, ошибки приема и буфер
+			}
+			if(ints & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) { // прерывание по приему символов или Rx time-out event? да
+					DEBUG_OUT('R');
+				if(UART_Buffer_idx >= UART_Buffer_size) { // буфер заполнен?
+					DEBUG_OUT('@');
+					// отключим прерывание приема, должен выставиться RTS
+					UART0_INT_ENA &= ~(UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
+				} else { // продожим прием в буфер
+					if((UART0_STATUS >> UART_RXFIFO_CNT_S) & UART_RXFIFO_CNT) {
+						do {
+							if(UART_Buffer_idx >= UART_Buffer_size) { // буфер заполнен?
+								DEBUG_OUT('#');
+								// отключим прерывание приема, должен выставиться RTS
+								UART0_INT_ENA &= ~(UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
+								break;
+							}
+							// скопируем символ в буфер
+							UART_Buffer[UART_Buffer_idx++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+						} while((READ_PERI_REG(UART_STATUS(UART0))>>UART_RXFIFO_CNT_S) & UART_RXFIFO_CNT);
+					}
+					system_os_post(uart_recvTaskPrio, 0, 0);
+				}
+			}
+			if(ints & UART_TXFIFO_EMPTY_INT_ST) { // fifo tx пусто?
+					DEBUG_OUT('W');
+				UART0_INT_ENA &= ~UART_TXFIFO_EMPTY_INT_ENA;
+			}
+	    }
+		UART0_INT_CLR = ints;
+	} else {
+    	UART1_INT_ENA = 0;
+    	UART1_INT_CLR = 0xffff;
+    }
+}
+#endif // USE_UART0
 /******************************************************************************
  * FunctionName : uart_init
  * Description  : user interface for init uart
@@ -502,23 +576,26 @@ void uart_intr_handler(void *para)
 void ICACHE_FLASH_ATTR uarts_init(void)
 {
 		//disable all UARTs interrupt
-#ifdef USE_TCP2UART
+#if defined(USE_TCP2UART) || defined(USE_UART0)
 		ets_isr_mask(1 << ETS_UART_INUM);
+	#ifdef USE_TCP2UART
 		uart_drv_close();
+	#endif
 #endif
 // UART0
-#ifndef USE_RS485DRV
-		UART0_INT_ENA = 0;
-		uart_read_fcfg(1);
-	    // clear all interrupt UART0
-		UART0_INT_CLR = 0xffff;
-#else
+#ifdef USE_RS485DRV
 		if(flash_read_cfg(&rs485cfg, ID_CFG_UART0, sizeof(rs485cfg)) != sizeof(rs485cfg)) {
 			rs485cfg.baud = RS485_DEF_BAUD;
 			rs485cfg.flg.ui = RS485_DEF_FLG;
 			rs485cfg.timeout = RS485_DEF_TWAIT;
 		}
 		rs485_drv_init();
+
+#else
+		UART0_INT_ENA = 0;
+		uart_read_fcfg(1);
+	    // clear all interrupt UART0
+		UART0_INT_CLR = 0xffff;
 #endif
 #ifdef USE_UART1
 // UART1
@@ -529,9 +606,17 @@ void ICACHE_FLASH_ATTR uarts_init(void)
 
 	    os_install_putc1((void *)uart1_write_char); // install uart1 putc callback
 #endif
-#ifdef USE_TCP2UART
+#if defined(USE_TCP2UART) || defined(USE_UART0)
 		ets_isr_attach(ETS_UART_INUM, uart_intr_handler, NULL);
 		ets_isr_unmask(1 << ETS_UART_INUM);
+	#ifdef USE_TCP2UART
 		os_task(uart_task, UART_TASK_PRIO + SDK_TASK_PRIO, uart_drv.taskQueue, UART_TASK_QUEUE_LEN);
+	#else
+		system_os_task(uart_recvTask, uart_recvTaskPrio, uart_recvTaskQueue, uart_recvTaskQueueLen);  // process the uart data
+		#if DEBUGSOO > 4
+			os_printf("Init UART0\n");
+		#endif
+	#endif
 #endif
 }
+

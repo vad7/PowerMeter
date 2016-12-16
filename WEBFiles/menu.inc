@@ -11,7 +11,7 @@
 		<a href="/protect/gpio.htm">GPIO</a>
 		<a href="/protect/hexdmpb.htm">HexDump Bytes</a>
 		<a href="/protect/hexdmpd.htm">HexDump DWord</a>
-		<a href="/protect/dsleep.htm">Deep Sleep</a>
+		<a href="/protect/uart.htm">UART Settings</a>
 		<a href="/protect/debug.htm">Debug and Test</a>
 	</div>
 </div>

@@ -36,9 +36,9 @@
 #include "iot_cloud.h"
 
 uint8 iot_cloud_ini[] = "protect/iot_cloud.ini";
-uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0\r\nHost: %s\r\nAccept: text/html\r\n\r\n";
-uint8 key_http_ok1[] = "HTTP/"; // "1.1"
-uint8 key_http_ok2[] = " 200 OK\r\n";
+const uint8 iot_get_request_tpl[] = "GET %s HTTP/1.0\r\nHost: %s\r\nAccept: text/html\r\n\r\n";
+const uint8 key_http_ok1[] = "HTTP/"; // "1.1"
+const uint8 key_http_ok2[] = " 200 OK\r\n";
 char  iot_last_status[16] = "not runned";
 time_t iot_last_status_time = 0;
 

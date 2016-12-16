@@ -1502,6 +1502,9 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 					#endif
 					if(block_size) { // идут данные файла
 //						tcpsrv_unrecved_win(ts_conn); // для ускорения, пока стрирается-пишется уже обновит окно (включено в web_rx_buf)
+						// DISABLE GPIO interrupts!!
+						ets_isr_mask(1 << ETS_GPIO_INUM);
+						//
 						if(pupload->faddr >= FLASH_MIN_SIZE && (pupload->status == UPL_ST_WEBFS || pupload->status == UPL_ST_FIRMWARE)) { // WebFS or Flash
 							if((pupload->faddr & 0x0000FFFF)==0) {
 								#if DEBUGSOO > 2
@@ -1523,6 +1526,9 @@ LOCAL int ICACHE_FLASH_ATTR upload_boundary(TCP_SERV_CONN *ts_conn) // HTTP_UPLO
 							while((UART0_STATUS >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT);
 						#endif
 						spi_flash_write(pupload->faddr, (uint32 *)pstr, (block_size + 3)&(~3));
+						// ENABLE GPIO interrupts!!
+						ets_isr_unmask(1 << ETS_GPIO_INUM);
+						//
 					}
 				}
 				pupload->fsize -= block_size;

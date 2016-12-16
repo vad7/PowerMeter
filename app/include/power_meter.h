@@ -1,3 +1,11 @@
+/*
+ * Power Meter
+ *
+ * Count pulses from meter.
+ *
+ * Written by vad7
+ */
+
 #ifndef _power_meter_
 #define _power_meter_
 

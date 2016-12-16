@@ -2,8 +2,8 @@
 #define DEFAULT_TC_HOST_PORT 80
 #define TCP_REQUEST_TIMEOUT	15 // sec
 
-extern uint8 iot_get_request_tpl[];
-extern uint8 key_http_ok[];
+extern const uint8 iot_get_request_tpl[];
+extern const uint8 key_http_ok[];
 extern uint8 iot_cloud_ini[];
 extern char iot_last_status[]; // last status/error returned by server
 extern time_t iot_last_status_time;

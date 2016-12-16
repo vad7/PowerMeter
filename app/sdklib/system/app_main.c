@@ -73,7 +73,18 @@ extern bool default_hostname; // in eagle_lwip_if.c
 //=============================================================================
 //  esp_init_data_default.bin
 //-----------------------------------------------------------------------------
-#if DEF_SDK_VERSION >= 1400
+#if DEF_SDK_VERSION >= 1420
+const uint8 esp_init_data_default[128] ICACHE_RODATA_ATTR = {
+	    5,    0,    4,    2,    5,    5,    5,    2,    5,    0,    4,    5,    5,    4,    5,    5,
+	    4, 0xFE, 0xFD, 0xFF, 0xF0, 0xF0, 0xF0, 0xE0, 0xE0, 0xE0, 0xE1,  0xA, 0xFF, 0xFF, 0xF8,    0,
+	 0xF8, 0xF8, 0x52, 0x4E, 0x4A, 0x44, 0x40, 0x38,    0,    0,    1,    1,    2,    3,    4,    5,
+	    1,    0,    0,    0,    0,    0,    2,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+	 0xE1,  0xA,    0,    0,    0,    0,    0,    0,    0,    0,    1, 0x93, 0x43,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    1,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
+};
+#elif DEF_SDK_VERSION >= 1400
 const uint8 esp_init_data_default[128] ICACHE_RODATA_ATTR = {
 	    5,    0,    4,    2,    5,    5,    5,    2,    5,    0,    4,    5,    5,    4,    5,    5,
 	    4, 0xFE, 0xFD, 0xFF, 0xF0, 0xF0, 0xF0, 0xE0, 0xE0, 0xE0, 0xE1,  0xA, 0xFF, 0xFF, 0xF8,    0,
@@ -482,7 +493,9 @@ void ICACHE_FLASH_ATTR tst_cfg_wifi(void)
 	wifi_config->field_880 = 0;
 	wifi_config->field_884 = 0;
 	
-	//g_ic.c[257] = 0; // ?
+#if DEF_SDK_VERSION < 2000	
+	g_ic.c[257] = 0; // ?
+#endif
 
 	if(wifi_config->field_316 >= 6) wifi_config->field_316 = 1;
 	if(wifi_config->field_169 >= 2) wifi_config->field_169 = 0; // +169
@@ -780,7 +793,7 @@ void ICACHE_FLASH_ATTR startup(void)
 //	system_restoreclock(); // STARTUP_CPU_CLK
 	init_wifi(buf, info.st_mac); // инициализация WiFi
 #if DEF_SDK_VERSION >= 1400
-/* skip saving to EEPROM [vad7]
+//* skip saving to EEPROM [vad7]
 	if(buf[0xf8] == 1 || phy_rx_gain_dc_flag == 1) { // сохранить новые калибровки RF/VCC33 ?
 #ifdef DEBUG_UART
 		os_printf("\nSave rx_gain_dc table (%u, %u)\n", buf[0xf8], phy_rx_gain_dc_flag );

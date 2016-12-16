@@ -80,7 +80,7 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Конфигурация для проекта WEB+WEBSOCK
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define USE_WEB		80 // включить в трансялцию порт Web, если =0 - по умолчанию выключен
+#define USE_WEB		80 // включить в трансляцию порт Web, если =0 - по умолчанию выключен
 //#define WEBSOCKET_ENA // включить WEBSOCKET
 //#define USE_NETBIOS	1 // включить в трансялцию драйвер NETBIOS, если =0 - по умолчанию выключен.
 #define USE_SNTP	1 // включить в трансялцию драйвер SNTP, если =0 - по умолчанию выключен, = 1 - по умолчанию включен.
@@ -90,9 +90,13 @@
 
 #define USE_I2C 	  // драйвер I2C
 #define I2C_ID 0x50
-//#define USE_HSPI	  // дрйвер  HSPI
+//#define USE_HSPI	  // драйвер  HSPI
 
 #define UTC_OFFSET +3 // Moscow time
+
+#define USE_UART0	  // UART0 in/out
+#define USE_MERCURY	  // UART0 as interface to Mercury power meter (speed 9600b)
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #endif // PROGECT_NAME
 

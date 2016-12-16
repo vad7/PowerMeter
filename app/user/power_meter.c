@@ -1,3 +1,11 @@
+/*
+ * Power Meter
+ *
+ * Count pulses from meter.
+ *
+ * Written by vad7
+ */
+
 #include "user_config.h"
 #include "bios.h"
 #include "sdk/add_func.h"
