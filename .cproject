@@ -33,8 +33,8 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.base.825475157" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.base">
 								<option id="gnu.c.compiler.option.include.paths.732346299" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/esp8266web/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/esp8266web/app/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/PowerMeter/app/include}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.388131718" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="USE_OPEN_DHCPS"/>
@@ -58,7 +58,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="esp8266web.asm|eagle.app.v6.asm|PVFSlib|PVFS21" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="eagle.app.v6.asm|PVFSlib|PVFS21" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -156,7 +156,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="esp8266web.asm|PVFSlib|PVFS21|MinEspSDKLib.asm|eagle.app.v6.asm|ld|lib|bin|info" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="PVFSlib|PVFS21|MinEspSDKLib.asm|eagle.app.v6.asm|ld|lib|bin|info" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -166,9 +166,9 @@
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.mingw.base.1544080900.2027218786.1772762371.1703441878" moduleId="org.eclipse.cdt.core.settings" name="CreateLib">
 				<externalSettings>
 					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/esp8266web"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/esp8266web/CreateLib"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="esp8266web" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/PowerMeter"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/PowerMeter/CreateLib"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="PowerMeter" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
@@ -243,7 +243,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="app/gdbstub|esp8266web.asm|app/web|app/mdbtcp|app/driver|MinEspSDKLib.asm|app/user|eagle.app.v6.asm|ld|lib|bin|info" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="app/gdbstub|app/web|app/mdbtcp|app/driver|MinEspSDKLib.asm|app/user|eagle.app.v6.asm|ld|lib|bin|info" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -256,16 +256,16 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="GreateLib">
-			<resource resourceType="PROJECT" workspacePath="/esp8266web"/>
+			<resource resourceType="PROJECT" workspacePath="/PowerMeter"/>
 		</configuration>
 		<configuration configurationName="createlib">
-			<resource resourceType="PROJECT" workspacePath="/esp8266web"/>
+			<resource resourceType="PROJECT" workspacePath="/PowerMeter"/>
 		</configuration>
 		<configuration configurationName="AutoMake">
-			<resource resourceType="PROJECT" workspacePath="/esp8266web"/>
+			<resource resourceType="PROJECT" workspacePath="/PowerMeter"/>
 		</configuration>
 		<configuration configurationName="CreateLib">
-			<resource resourceType="PROJECT" workspacePath="/esp8266web"/>
+			<resource resourceType="PROJECT" workspacePath="/PowerMeter"/>
 		</configuration>
 		<configuration configurationName="Default"/>
 	</storageModule>

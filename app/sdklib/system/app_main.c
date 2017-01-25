@@ -793,7 +793,7 @@ void ICACHE_FLASH_ATTR startup(void)
 //	system_restoreclock(); // STARTUP_CPU_CLK
 	init_wifi(buf, info.st_mac); // инициализация WiFi
 #if DEF_SDK_VERSION >= 1400
-//* skip saving to EEPROM [vad7]
+/* skip saving to EEPROM [vad7]
 	if(buf[0xf8] == 1 || phy_rx_gain_dc_flag == 1) { // сохранить новые калибровки RF/VCC33 ?
 #ifdef DEBUG_UART
 		os_printf("\nSave rx_gain_dc table (%u, %u)\n", buf[0xf8], phy_rx_gain_dc_flag );

@@ -94,8 +94,7 @@
 
 #define UTC_OFFSET +3 // Moscow time
 
-#define USE_UART0	  // UART0 in/out
-#define USE_MERCURY	  // UART0 as interface to Mercury power meter (speed 9600b)
+//#define USE_UART0	  // UART0 in/out
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #endif // PROGECT_NAME
