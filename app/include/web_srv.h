@@ -2,17 +2,19 @@
  * File: web_srv.h
  * Description: The web server configration.
  * Small WEB server ESP8266EX
- * Created on: 20 äåê. 2014 ã.
- * Author: PV` 12/2014
+ * Author: PV` 
  */
 
 #ifndef _INCLUDE_WEB_SRV_H_
 #define _INCLUDE_WEB_SRV_H_
 
 #include "tcp_srv_conn.h"
+#ifdef WEBSOCKET_ENA
+#include "websock.h"
+#endif
 
-#define WEB_SVERSION "0.1.3"
-
+#define WEB_SVERSION "0.1.4"
+#define DEFAULT_WEB_PORT USE_WEB // 80
 
 /****************************************************************************
   Section:
@@ -31,6 +33,7 @@ typedef enum
         HTTP_GIF,         // File is GIF image (extension .gif)
         HTTP_PNG,         // File is PNG image (extension .png)
         HTTP_JPG,         // File is JPG image (extension .jpg)
+		HTTP_SVG,		  // File is SVG image (extension .svg)
         HTTP_JAVA,        // File is java (extension .js)
         HTTP_SWF,         // File is ShockWave-Flash (extension .swf)
         HTTP_WAV,         // File is audio (extension .wav)
@@ -51,7 +54,7 @@ typedef struct
     uint16 httpStatus;        // Request method/status
     HTTP_FILE_TYPE fileType;       // File type to return with Content-Type
     uint8 pFilename[FileNameSize];
-	uint8 *puri; 		// óêàçàòåëü íà ñòðîêó ñ ïåðåìåííûìè çàïðîñà ê ôàéëó
+	uint8 *puri; 		// ÑƒÐºÐ°Ð·Ð°Ñ‚ÐµÐ»ÑŒ Ð½Ð° ÑÑ‚Ñ€Ð¾ÐºÑƒ Ñ Ð¿ÐµÑ€ÐµÐ¼ÐµÐ½Ð½Ñ‹Ð¼Ð¸ Ð·Ð°Ð¿Ñ€Ð¾ÑÐ° Ðº Ñ„Ð°Ð¹Ð»Ñƒ
 	uint16 uri_len;
 	uint8 *phead; 		// HTTP Headers
 	uint16 head_len;
@@ -59,26 +62,29 @@ typedef struct
 	uint16 cookie_len;
 	uint8 *pcontent; 	// content
 	uint32 content_len; //
-	uint8 httpver;  // âåðñèÿ HTTP êëèåíòà â BCD (0x00 = íåèçâåñòåí; 0x09 = HTTP/0.9; 0x10 = HTTP/1.0; 0x11 = HTTP/1.1)
+	uint8 httpver;  // Ð²ÐµÑ€ÑÐ¸Ñ HTTP ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð° Ð² BCD (0x00 = Ð½ÐµÐ¸Ð·Ð²ÐµÑÑ‚ÐµÐ½; 0x09 = HTTP/0.9; 0x10 = HTTP/1.0; 0x11 = HTTP/1.1)
 } HTTP_CONN;
 
 
 typedef void (* web_func_cb)(TCP_SERV_CONN *ts_conn);
-typedef uint32 (* web_func_disc_cb)(uint32 flg); // îòëîæåííàÿ ôóíêöèÿ, êîãäà ñîåäèíåíèå çàêðûòî
+typedef uint32 (* web_func_disc_cb)(uint32 flg); // Ð¾Ñ‚Ð»Ð¾Ð¶ÐµÐ½Ð½Ð°Ñ Ñ„ÑƒÐ½ÐºÑ†Ð¸Ñ, ÐºÐ¾Ð³Ð´Ð° ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ðµ Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¾
 
 typedef struct
 {
-	uint32 webflag;		// ôëàãè äëÿ http/web ñåðâåðà
-	uint8  bffiles[4];	// ÷åòûðûå Files pointers äëÿ îðàáîòêè âëîæåííûõ ôàéëîâ include
+	uint32 webflag;		// Ñ„Ð»Ð°Ð³Ð¸ Ð´Ð»Ñ http/web ÑÐµÑ€Ð²ÐµÑ€Ð°
+	uint8  bffiles[4];	// Ñ‡ÐµÑ‚Ñ‹Ñ€Ðµ Files pointers Ð´Ð»Ñ Ð¾Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐ¸ Ð²Ð»Ð¾Ð¶ÐµÐ½Ð½Ñ‹Ñ… Ñ„Ð°Ð¹Ð»Ð¾Ð² include
 	uint32 udata_start;	// udata "start=0x..."
 	uint32 udata_stop;	// udata "stop=0x..."
-	uint8  *msgbuf;		// óêàçàòåëü íà òåêóùèé áóôåð âûâîäà
-	uint16 msgbuflen;	// êîë-âî çàíÿòûõ áàéò â áóôåðå msgbuf
-	uint16 msgbufsize;	// ðàçìåð áóôåðà
-	web_func_cb func_web_cb; // calback ôóíêöèÿ ó httpd äëÿ îáðàáîòêè ïðèåìà/ïåðåäà÷è êóñêàìè
-	uint32 content_len; // ðàçìåð ôàéëà äëÿ ïåðåäà÷è (GET/POST) èëè ïðèåìà, åñëè ïðèíèìàåòñÿ âíåøíèé ôàéë (POST + SCB_RXDATA)
-	web_func_disc_cb web_disc_cb; // ôóíêöèÿ âûçûâàåìàÿ ïî çàêðûòèþ ñîåäèíåíèÿ
-	uint32 web_disc_par; // ïàðàìåòðû ôóíêöèè âûçûâàåìîé ïî çàêðûòèþ ñîåäèíåíèÿ
+	uint8  *msgbuf;		// ÑƒÐºÐ°Ð·Ð°Ñ‚ÐµÐ»ÑŒ Ð½Ð° Ñ‚ÐµÐºÑƒÑ‰Ð¸Ð¹ Ð±ÑƒÑ„ÐµÑ€ Ð²Ñ‹Ð²Ð¾Ð´Ð°
+	uint16 msgbuflen;	// ÐºÐ¾Ð»-Ð²Ð¾ Ð·Ð°Ð½ÑÑ‚Ñ‹Ñ… Ð±Ð°Ð¹Ñ‚ Ð² Ð±ÑƒÑ„ÐµÑ€Ðµ msgbuf
+	uint16 msgbufsize;	// Ñ€Ð°Ð·Ð¼ÐµÑ€ Ð±ÑƒÑ„ÐµÑ€Ð°
+	web_func_cb func_web_cb; // calback Ñ„ÑƒÐ½ÐºÑ†Ð¸Ñ Ñƒ httpd Ð´Ð»Ñ Ð¾Ð±Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐ¸ Ð¿Ñ€Ð¸ÐµÐ¼Ð°/Ð¿ÐµÑ€ÐµÐ´Ð°Ñ‡Ð¸ ÐºÑƒÑÐºÐ°Ð¼Ð¸
+	uint32 content_len; // Ñ€Ð°Ð·Ð¼ÐµÑ€ Ñ„Ð°Ð¹Ð»Ð° Ð´Ð»Ñ Ð¿ÐµÑ€ÐµÐ´Ð°Ñ‡Ð¸ (GET/POST) Ð¸Ð»Ð¸ Ð¿Ñ€Ð¸ÐµÐ¼Ð°, ÐµÑÐ»Ð¸ Ð¿Ñ€Ð¸Ð½Ð¸Ð¼Ð°ÐµÑ‚ÑÑ Ð²Ð½ÐµÑˆÐ½Ð¸Ð¹ Ñ„Ð°Ð¹Ð» (POST + SCB_RXDATA)
+	web_func_disc_cb web_disc_cb; // Ñ„ÑƒÐ½ÐºÑ†Ð¸Ñ Ð²Ñ‹Ð·Ñ‹Ð²Ð°ÐµÐ¼Ð°Ñ Ð¿Ð¾ Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¸ÑŽ ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ñ
+	uint32 web_disc_par; // Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹ Ñ„ÑƒÐ½ÐºÑ†Ð¸Ð¸ Ð²Ñ‹Ð·Ñ‹Ð²Ð°ÐµÐ¼Ð¾Ð¹ Ð¿Ð¾ Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¸ÑŽ ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ñ
+#ifdef WEBSOCKET_ENA
+	WS_FRSTAT ws;	// Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹ websoc
+#endif
 } WEB_SRV_CONN;
 
 typedef enum
@@ -91,24 +97,25 @@ typedef enum
 
 // webflag:
 
-#define  SCB_CLOSED		0x00001 // ñîåäèíåíèå çàêðûòî
-#define  SCB_DISCONNECT	0x00002 // âûõîä íà DISCONNECT
-#define  SCB_FCLOSE		0x00004 // çàêðûòü ôàéëû
-#define  SCB_FOPEN		0x00008 // ôàéë(û) îòêðûò(û)
+#define  SCB_CLOSED		0x00001 // ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ðµ Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¾
+#define  SCB_DISCONNECT	0x00002 // Ð²Ñ‹Ñ…Ð¾Ð´ Ð½Ð° DISCONNECT
+#define  SCB_FCLOSE		0x00004 // Ð·Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð»Ñ‹
+#define  SCB_FOPEN		0x00008 // Ñ„Ð°Ð¹Ð»(Ñ‹) Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚(Ñ‹)
 #define  SCB_FCALBACK	0x00010 // file use ~calback~
-#define  SCB_FGZIP		0x00020 // ôàéë GZIP
-#define  SCB_CHUNKED	0x00040 // ïåðåäà÷à øèíêîâêîé
-#define  SCB_RETRYCB	0x00080 // âûçâàòü ïîâòîð CalBack
+#define  SCB_FGZIP		0x00020 // Ñ„Ð°Ð¹Ð» GZIP
+#define  SCB_CHUNKED	0x00040 // Ð¿ÐµÑ€ÐµÐ´Ð°Ñ‡Ð° ÑˆÐ¸Ð½ÐºÐ¾Ð²ÐºÐ¾Ð¹
+#define  SCB_RETRYCB	0x00080 // Ð²Ñ‹Ð·Ð²Ð°Ñ‚ÑŒ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ CalBack
 #define  SCB_POST		0x00100 // POST
 #define  SCB_GET		0x00200 // GET
-#define  SCB_AUTH		0x00400 // íåîáõîäèìà àâòîðèçàöèÿ
-#define  SCB_FINDCB		0x00800 // èñïîëüçóåòñÿ ïàðñèíãîì ~calback~
-#define  SCB_RXDATA		0x01000 // ïðèåì äàííûõ (ôàéëà)
-#define  SCB_HEAD_OK	0x02000 // çàãîëîâîê HTTP ïðèíÿò è îáðàáîòàí
-#define  SCB_BNDR		0x04000 // ïðèëåïëåí Content-Type: multipart/form-data; boundary="..."
+#define  SCB_AUTH		0x00400 // Ð½ÐµÐ¾Ð±Ñ…Ð¾Ð´Ð¸Ð¼Ð° Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸Ñ
+#define  SCB_FINDCB		0x00800 // Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð¿Ð°Ñ€ÑÐ¸Ð½Ð³Ð¾Ð¼ ~calback~
+#define  SCB_RXDATA		0x01000 // Ð¿Ñ€Ð¸ÐµÐ¼ Ð´Ð°Ð½Ð½Ñ‹Ñ… (Ñ„Ð°Ð¹Ð»Ð°)
+#define  SCB_HEAD_OK	0x02000 // Ð·Ð°Ð³Ð¾Ð»Ð¾Ð²Ð¾Ðº HTTP Ð¿Ñ€Ð¸Ð½ÑÑ‚ Ð¸ Ð¾Ð±Ñ€Ð°Ð±Ð¾Ñ‚Ð°Ð½
+#define  SCB_BNDR		0x04000 // Ð¿Ñ€Ð¸Ð»ÐµÐ¿Ð»ÐµÐ½ Content-Type: multipart/form-data; boundary="..."
 #define  SCB_REDIR		0x08000 // Redirect 302
 #define  SCB_WEBSOC		0x10000 // WebSocket
-#define  SCB_SYSSAVE	0x20000 // ïî çàêðûòèþ ñîåäèíåíèÿ âûçâàòü sys_write_cfg()
+#define  SCB_WSDATA		0x20000 // WebSocket data
+#define  SCB_SYSSAVE	0x40000 // Ð¿Ð¾ Ð·Ð°ÐºÑ€Ñ‹Ñ‚Ð¸ÑŽ ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ñ Ð²Ñ‹Ð·Ð²Ð°Ñ‚ÑŒ sys_write_cfg()
 
 
 #define  SCB_OPEN       0
@@ -130,6 +137,10 @@ typedef struct s_http_upload
   uint16 sizeboundary;
   uint8  name[VarNameSize];
   uint8  filename[VarNameSize];
+#ifdef USE_OVERLAY
+  uint32 segs; // ÐºÐ¾Ð»-Ð²Ð¾ ÑÐµÐ³Ð¼ÐµÐ½Ñ‚Ð¾Ð² Ð¾Ð²ÐµÑ€Ð»ÐµÑ // Ð¿Ð¾ÐºÐ° Ð² web_conn->web_disc_par
+  uint32 start; // Ð°Ð´Ñ€ÐµÑ Ð·Ð°Ð¿ÑƒÑÐºÐ° Ð¾Ð²ÐµÑ€Ð»ÐµÑ
+#endif
   uint32 fsize;
   uint32 faddr;
   uint8 *pbndr;
@@ -138,10 +149,10 @@ typedef struct s_http_upload
 
 typedef struct s_http_response
 {
-  uint16 status;
-  uint16 flag;
-  char * headers;
-  char * default_content;
+  uint32 status;
+  uint32 flag;
+  const char * headers;
+  const char * default_content;
 } HTTP_RESPONSE;
 
 // HTTP_RESPONSE.flags:
@@ -151,17 +162,18 @@ typedef struct s_http_response
 #define HTTP_RESP_FLG_REDIRECT  0x0002
 
 #define tcp_put(a) web_conn->msgbuf[web_conn->msgbuflen++] = a
-#define tcp_puts(...) web_conn->msgbuflen += os_sprintf((char *)&web_conn->msgbuf[web_conn->msgbuflen], __VA_ARGS__)
-#define tcp_strcpy(a) web_conn->msgbuflen += ets_strlen((char *)ets_strcpy((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)a))
 #define tcp_htmlstrcpy(str, len) web_conn->msgbuflen += htmlcode(&web_conn->msgbuf[web_conn->msgbuflen], str, web_conn->msgbufsize - web_conn->msgbuflen - 1, len)
 //#define tcp_urlstrcpy(str, len) web_conn->msgbuflen += urlencode(&web_conn->msgbuf[web_conn->msgbuflen], str, web_conn->msgbufsize - web_conn->msgbuflen - 1, len)
+#define tcp_puts(...) web_conn->msgbuflen += ets_sprintf((char *)&web_conn->msgbuf[web_conn->msgbuflen], __VA_ARGS__)
 #define tcp_puts_fd(fmt, ...) do { \
 		static const char flash_str[] ICACHE_RODATA_ATTR = fmt;	\
-		web_conn->msgbuflen += os_sprintf((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)ets_strcpy((char *)UartDev.rcv_buff.pRcvMsgBuff, (char *)flash_str), ##__VA_ARGS__); \
+		web_conn->msgbuflen += ets_sprintf((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)flash_str, ##__VA_ARGS__); \
 		} while(0)
+//#define tcp_strcpy(a) web_conn->msgbuflen += ets_strlen((char *)ets_strcpy((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)a))
+#define tcp_strcpy(a) web_conn->msgbuflen += rom_xstrcpy((char *)&web_conn->msgbuf[web_conn->msgbuflen], (const char *)a)
 #define tcp_strcpy_fd(fmt) do { \
 		static const char flash_str[] ICACHE_RODATA_ATTR = fmt;	\
-		web_conn->msgbuflen += ets_strlen((char *)ets_strcpy((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)ets_strcpy((char *)UartDev.rcv_buff.pRcvMsgBuff, (char *)flash_str))); \
+		web_conn->msgbuflen += rom_xstrcpy((char *)&web_conn->msgbuf[web_conn->msgbuflen], (char *)flash_str); \
 		} while(0)
 uint32 ahextoul(uint8 *s) ICACHE_FLASH_ATTR;
 err_t webserver_init(uint16 portn) ICACHE_FLASH_ATTR;

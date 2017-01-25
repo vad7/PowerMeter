@@ -46,11 +46,12 @@
 #ifdef USE_SNTP
 
 #include "bios.h"
-#include "add_sdk_func.h"
+#include "sdk/add_func.h"
 #include "ets_sys.h"
 #include "os_type.h"
 #include "osapi.h"
-#include "mem.h"
+#include "sdk/mem_manager.h"
+#include "sdk/rom2ram.h"
 #include "user_interface.h"
 
 #include "lwip/opt.h"
@@ -63,6 +64,8 @@
 
 #include <string.h>
 #include <time.h>
+//#include "localtime.h"
+void _localtime(const time_t * tim_p, struct tm * res) ICACHE_FLASH_ATTR;
 
 #if LWIP_UDP
 
@@ -295,7 +298,7 @@ struct ssntp {
 #endif /* SNTP_SUPPORT_MULTIPLE_SERVERS */
 };
 
-struct ssntp *sntp;
+struct ssntp *sntp DATA_IRAM_ATTR;
 
 
 /* function prototypes */
@@ -330,7 +333,10 @@ static void ICACHE_FLASH_ATTR sntp_process(u32_t *receive_timestamp) {
 #endif /* SNTP_CALC_TIME_US */
 	sntp->sntp_time = t;
 #if DEBUGSOO > 1
-	os_printf("SNTP: Set time: %p\n", t);
+	os_printf("SNTP: Set time: %p - ", t);
+	struct tm tm;
+	_localtime(&t, &tm);
+	os_printf("%04d-%02d-%02d %02d:%02d:%02d\n", 1900+tm.tm_year, 1+tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 #endif
 	os_timer_disarm(&sntp->ntp_timer);
 	ets_timer_arm_new(&sntp->ntp_timer, 1000, 1, 1);
@@ -341,7 +347,7 @@ static void ICACHE_FLASH_ATTR sntp_process(u32_t *receive_timestamp) {
  */
 static void ICACHE_FLASH_ATTR sntp_initialize_request(struct sntp_msg *req)
 {
-	memset(req, 0, SNTP_MSG_LEN);
+	os_memset(req, 0, SNTP_MSG_LEN);
 	req->li_vn_mode = SNTP_LI_NO_WARNING | SNTP_VERSION | SNTP_MODE_CLIENT;
 
 #if SNTP_CHECK_RESPONSE >= 2
@@ -572,25 +578,48 @@ void ICACHE_FLASH_ATTR sntp_request(void *arg)
 	u8_t buf_sntp_server_addresses[DNS_MAX_NAME_LENGTH];
 
 #if SNTP_SUPPORT_MULTIPLE_SERVERS
-	copy_align4(buf_sntp_server_addresses, sntp->sntp_server_addresses[sntp->sntp_current_server], DNS_MAX_NAME_LENGTH);
+	rom_strcpy(buf_sntp_server_addresses, sntp->sntp_server_addresses[sntp->sntp_current_server], DNS_MAX_NAME_LENGTH-1);
 #else
-	copy_align4(buf_sntp_server_addresses, sntp->sntp_server_addresses, DNS_MAX_NAME_LENGTH>>2);
+	rom_strcpy(buf_sntp_server_addresses, sntp->sntp_server_addresses, DNS_MAX_NAME_LENGTH-1);
 #endif
 
 	LWIP_DEBUGF(SNTP_DEBUG_STATE, ("Sending request to %s.\n", buf_sntp_server_addresses));
 	/* initialize SNTP server address */
+	
+#if LWIP_DHCP_NTP
+	ip_addr_t *dhcpntp;
+	dhcpntp = &dhcp_sntp_server_address;
+#endif
+	
 #if SNTP_SERVER_DNS
-	err = dns_gethostbyname(buf_sntp_server_addresses,
-		&sntp_server_address, sntp_dns_found, NULL);
-	if (err == ERR_INPROGRESS) {
-		/* DNS request sent, wait for sntp_dns_found being called */
-		LWIP_DEBUGF(SNTP_DEBUG_STATE, ("sntp_request: Waiting for server address to be resolved.\n"));
-		return;
+#if LWIP_DHCP_NTP
+	if (!ip_addr_isany(dhcpntp)) {
+		sntp_server_address=*dhcpntp;
+		err = ERR_OK;
+	}
+	else 
+#endif	
+	{
+		err = dns_gethostbyname(buf_sntp_server_addresses,
+			&sntp_server_address, sntp_dns_found, NULL);
+		if (err == ERR_INPROGRESS) {
+			/* DNS request sent, wait for sntp_dns_found being called */
+			LWIP_DEBUGF(SNTP_DEBUG_STATE, ("sntp_request: Waiting for server address to be resolved.\n"));
+			return;
+		}
 	}
 #else /* SNTP_SERVER_DNS */
-	err = ipaddr_aton(buf_sntp_server_addresses, &sntp_server_address)
-		? ERR_OK : ERR_ARG;
-
+#if LWIP_DHCP_NTP
+	if (!ip_addr_isany(dhcpntp)) {
+		sntp_server_address=*dhcpntp;
+		err = ERR_OK;
+	}
+	else 
+#endif	
+	{
+		err = ipaddr_aton(buf_sntp_server_addresses, &sntp_server_address)
+			? ERR_OK : ERR_ARG;
+	}
 #endif /* SNTP_SERVER_DNS */
 
 	if (err == ERR_OK) {
@@ -614,7 +643,7 @@ void ICACHE_FLASH_ATTR ntp_time_update(void *ignored)
  * Initialize this module.
  * Send out request instantly or after SNTP_STARTUP_DELAY.
  */
-bool ICACHE_FLASH_ATTR sntp_init(void)
+bool ICACHE_FLASH_ATTR sntp_inits(void)
 {
 	if (sntp == NULL) {
 		sntp = (struct ssntp *)os_zalloc(sizeof(struct ssntp));
@@ -630,6 +659,9 @@ bool ICACHE_FLASH_ATTR sntp_init(void)
 	#error "Not implemented..."
 #else
 		sntp->sntp_server_addresses = (void *)sntp_server_addresses;
+#endif
+#if DEBUGSOO > 0
+		os_printf("SNTP: start\n");
 #endif
 	}
 	if(sntp->sntp_pcb == NULL) {
@@ -650,9 +682,6 @@ bool ICACHE_FLASH_ATTR sntp_init(void)
 			return false;
 		}
 	}
-#if DEBUGSOO > 0
-	os_printf("\nSNTP: start\n");
-#endif
 	return true;
 }
 
@@ -664,8 +693,8 @@ void ICACHE_FLASH_ATTR sntp_close(void)
 	if (sntp != NULL) {
 		os_timer_disarm(&sntp->ntp_timer);
 		if (sntp->sntp_pcb != NULL) {
-#if DEBUGSOO > 0
-			os_printf("\nSNTP: stop\n");
+#if DEBUGSOO > 1
+			os_printf("SNTP: stop\n");
 #endif
 			sys_untimeout(sntp_request, NULL);
 			udp_remove(sntp->sntp_pcb);

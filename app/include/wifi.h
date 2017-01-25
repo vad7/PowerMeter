@@ -2,9 +2,10 @@
 #define __WIFI_H__
 /***********************************
  * FileName: wifi.h
- * PV` ver1.0 25/12/2014  SDK 0.9.4
+ * PV` 
  ***********************************/
 
+#include "user_interface.h"
 // default:
 #ifndef WIFI_AP_NAME
 	#define WIFI_AP_NAME	"ESP8266"
@@ -18,15 +19,30 @@
 #ifndef WIFI_ST_PASSWORD
 	#define WIFI_ST_PASSWORD	"0123456789"
 #endif
-#ifndef WIFI_MODE
-	#define WIFI_MODE  STATIONAP_MODE // STATION_MODE // SOFTAP_MODE
+#ifndef DEFAULT_WIFI_MODE
+	#define DEFAULT_WIFI_MODE STATIONAP_MODE // SOFTAP_MODE // STATION_MODE
 #endif
 #ifndef WIFI_ST_AUTOCONNECT
 	#define WIFI_ST_AUTOCONNECT 0
 #endif
 #ifndef PHY_MODE
-	#define PHY_MODE PHY_MODE_11G // PHY_MODE_11N // PHY_MODE_11B
+	#define PHY_MODE PHY_MODE_11N // PHY_MODE_11G // PHY_MODE_11B
 #endif
+
+#ifndef DEF_WIFI_SLEEP
+	#define DEF_WIFI_SLEEP NONE_SLEEP_T // MODEM_SLEEP_T; // LIGHT_SLEEP_T;
+#endif
+#ifndef DEF_WIFI_AUTH_MODE
+	#define DEF_WIFI_AUTH_MODE AUTH_OPEN // AUTH_WPA_PSK, AUTH_WPA2_PSK, AUTH_WPA_WPA2_PSK
+#endif
+
+#ifndef DEF_ST_RECONNECT_TIME
+	#define DEF_ST_RECONNECT_TIME 30 // ÑÐ»ÐµÐ´ÑƒÑŽÑ‰Ð°Ñ Ð¿Ñ€Ð¾Ð±Ð° ÑÐ¾ÐµÐ´Ð¸Ð½ÐµÐ½Ð¸Ñ ST Ð¿Ñ€Ð¾Ð¸Ð·Ð¾Ð¹Ð´ÐµÑ‚ Ñ‡ÐµÑ€ÐµÐ· reconn_timeout ÑÐµÐºÑƒÐ½Ð´. ÐŸÑ€Ð¸ DEF_ST_RECONNECT_TIME == 1 Ð´Ð°Ð½Ð½Ñ‹Ð¹ Ð°Ð»Ð³Ð¾ Ð¾Ñ‚ÐºÐ»ÑŽÑ‡ÐµÐ½.
+#endif
+
+#define MAX_PHY_TPW 82 // maximum value of RF Tx Power, unit : 0.25dBm, range 0..82
+#define DEF_MAX_PHY_TPW 78 //82 // maximum value of RF Tx Power, unit : 0.25dBm, range 0..82
+
 
 #ifndef DEBUGSOO
 	#define DEBUGSOO 1
@@ -37,7 +53,7 @@ extern uint8 dhcpc_flag;
 extern struct dhcps_lease dhcps_lease;  // use new liblwip.a
 
 
-struct bits_wifi_chg { // ñòðóêòóðà ïåðåäà÷è èçìåíåíèé èëè îøèáîê
+struct bits_wifi_chg { // ÑÑ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ð° Ð¿ÐµÑ€ÐµÐ´Ð°Ñ‡Ð¸ Ð¸Ð·Ð¼ÐµÐ½ÐµÐ½Ð¸Ð¹ Ð¸Ð»Ð¸ Ð¾ÑˆÐ¸Ð±Ð¾Ðº
 	unsigned mode		: 1;	//0  0x00000001
 	unsigned phy		: 1;	//1  0x00000002
 	unsigned chl		: 1;	//2  0x00000004
@@ -52,13 +68,15 @@ struct bits_wifi_chg { // ñòðóêòóðà ïåðåäà÷è èçìåíåíèé èëè îøèáîê
 	unsigned st_dhcp	: 1;	//11 0x00000800
 	unsigned st_autocon	: 1;	//12 0x00001000
 	unsigned st_macaddr	: 1;	//13 0x00002000
-	unsigned st_connect : 1;	//14 0x00004000
-	unsigned none    	: 1;	//15 0x00008000
-	unsigned save_cfg 	: 1;	//16 0x00010000
-	unsigned reboot 	: 1;	//17 0x00020000
+	unsigned st_hostname : 1;	//15 0x00004000
+	unsigned maxtpw    	: 1;	//16 0x00008000
+	unsigned st_connect : 1;	//14 0x00010000
+	unsigned save_cfg 	: 1;	//30 0x00020000
+	unsigned reboot 	: 1;	//31 0x00040000
+
 } __attribute__((packed));
 
-#define WIFI_MASK_ALL		0x00003FFF // 0x00003FFF
+#define WIFI_MASK_ALL		0x0000FFFF // 0x0000FFFF
 #define WIFI_MASK_MODE		0x00000001
 #define WIFI_MASK_PHY		0x00000002
 #define WIFI_MASK_CHL		0x00000004
@@ -73,17 +91,19 @@ struct bits_wifi_chg { // ñòðóêòóðà ïåðåäà÷è èçìåíåíèé èëè îøèáîê
 #define WIFI_MASK_STDHCP	0x00000800
 #define WIFI_MASK_STACN		0x00001000
 #define WIFI_MASK_STMAC		0x00002000
-#define WIFI_MASK_SAVE		0x00010000
-#define WIFI_MASK_REBOOT	0x00020000
+#define WIFI_MASK_STHNM		0x00004000
+#define WIFI_MASK_STMTPW	0x00008000
+#define WIFI_MASK_SAVE		0x00020000
+#define WIFI_MASK_REBOOT	0x00040000
 
-struct wifi_bits_cfg { // îáùèå óñòàíîâêè wifi
+struct wifi_bits_cfg { // Ð¾Ð±Ñ‰Ð¸Ðµ ÑƒÑÑ‚Ð°Ð½Ð¾Ð²ÐºÐ¸ wifi
 	unsigned mode	: 2;
 	unsigned phy	: 2;
 	unsigned chl	: 4;
 	unsigned sleep	: 2;
 	unsigned ap_dhcp_enable	: 1;
 	unsigned st_dhcp_enable	: 1;
-//	unsigned wait_reboot	: 1; // WiFi òðåáåò ïåðåçàãðóçêè, ïîñëå ïîñëåäíèõ óñòàíîâîê
+//	unsigned wait_reboot	: 1; // WiFi Ñ‚Ñ€ÐµÐ±ÐµÑ‚ Ð¿ÐµÑ€ÐµÐ·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¸, Ð¿Ð¾ÑÐ»Ðµ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½Ð¸Ñ… ÑƒÑÑ‚Ð°Ð½Ð¾Ð²Ð¾Ðº
 } __attribute__((packed));
 
 typedef union {
@@ -91,11 +111,8 @@ typedef union {
 	unsigned int ui;
 }uwifi_chg;
 
-struct wifi_config {	// ñòðóêòóðà êîíôèãóðàöèè wifi
-//	uwifi_chg err;
+struct wifi_config {	// ÑÑ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ð° ÐºÐ¾Ð½Ñ„Ð¸Ð³ÑƒÑ€Ð°Ñ†Ð¸Ð¸ wifi
 	struct wifi_bits_cfg b;
-//	uint8 phy_max_tpw; // unit: 0.25dBm, range [0, 82], 34th byte esp_init_data_default.bin
-//	uint16 phy_tpw_via_vdd33; //  Adjust RF TX Power according to VDD33, unit: 1/1024V, range [1900, 3300]
 	struct {
 		struct ip_info ipinfo;
 		struct softap_config config;
@@ -103,28 +120,40 @@ struct wifi_config {	// ñòðóêòóðà êîíôèãóðàöèè wifi
 		uint8 macaddr[6];
 	}ap;
 	struct {
+//		int max_reconn; // ÐµÑÐ»Ð¸ Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ ÑÐ¾ÐµÐ´Ð¸Ð½Ð¸Ñ‚ÑŒÑÑ ST n-Ñ€Ð°Ð·, Ñ‚Ð¾Ð³Ð´Ð° Ð²ÐºÐ»ÑŽÑ‡Ð°ÐµÑ‚ÑÑ SOFTAP_MODE
+		int reconn_timeout; // Ð¿Ð°ÑƒÐ·Ð° Ð² ÑÐµÐº, ÐµÑÐ»Ð¸ Ð½Ðµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ ÑÐ¾ÐµÐ´Ð¸Ð½Ð¸Ñ‚ÑŒÑÑ ST n-Ñ€Ð°Ð·
 		struct ip_info ipinfo;
 		struct station_config config;
 	    uint8  auto_connect;
 	    uint8 macaddr[6];
+	    uint8 hostname[32];
 	}st;
+	uint8 phy_max_tpw; // unit: 0.25dBm, range [0, 82], 34th byte esp_init_data_default.bin
+//	uint16 phy_tpw_via_vdd33; //  Adjust RF TX Power according to VDD33, unit: 1/1024V, range [1900, 3300]
 };
 
-struct bss_scan_info { // ñòðóêòóðû, ñîõðàíÿìûå äëÿ âûâîäà scan.xml (â iram)
+struct bss_scan_info { // ÑÑ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ñ‹, ÑÐ¾Ñ…Ñ€Ð°Ð½ÑÐ¼Ñ‹Ðµ Ð´Ð»Ñ Ð²Ñ‹Ð²Ð¾Ð´Ð° scan.xml (Ð² iram)
     uint8 bssid[6];
     uint8 ssid[32];
+    uint8 ssid_len;
     uint8 channel;
     sint8 rssi;
     AUTH_MODE authmode;
     uint8 is_hidden;
+    sint16 freq_offset;
+    sint16 freqcal_val;
+	uint8 *esp_mesh_ie;
 };
 
-#define total_scan_infos (*eraminfo.base) // #include "flash_header.h"
-#define ptr_scan_infos ((uint8 *)eraminfo.base + 4) // #include "flash_header.h"
+//#define total_scan_infos (*eraminfo.base) // #include "flash_header.h"
+//#define ptr_scan_infos ((uint8 *)eraminfo.base + 4) // #include "flash_header.h"
+#define max_scan_bss 32
+extern uint32 total_scan_infos;
+extern struct bss_scan_info buf_scan_infos[max_scan_bss];
 
 extern struct wifi_config wificonfig;
 
-uint32 Setup_WiFi(void) ICACHE_FLASH_ATTR; // return bits_wifi_chg/err
+void Setup_WiFi(void) ICACHE_FLASH_ATTR;
 uint32 New_WiFi_config(uint32 set_mask) ICACHE_FLASH_ATTR; // return bits_wifi_chg/err
 uint32 Read_WiFi_config(struct wifi_config *wcfg, uint32 set_mask) ICACHE_FLASH_ATTR; // return bits_wifi_chg/err
 uint32 Set_WiFi(struct wifi_config *wcfg, uint32 wifi_set_mask) ICACHE_FLASH_ATTR; // return bits_wifi_chg/err
@@ -133,7 +162,12 @@ void Set_default_wificfg(struct wifi_config *wcfg, uint32 wifi_set_mask) ICACHE_
 bool wifi_save_fcfg(uint32 rdmask) ICACHE_FLASH_ATTR;
 bool wifi_read_fcfg(void) ICACHE_FLASH_ATTR;
 void wifi_start_scan(void) ICACHE_FLASH_ATTR;
+void WiFi_go_to_sleep(enum sleep_type mode, uint32 time_us) ICACHE_FLASH_ATTR;
+void WiFi_up_from_sleep(void) ICACHE_FLASH_ATTR;
 
 void get_macaddr_from_otp(uint8 *mac) ICACHE_FLASH_ATTR;
 
+#if DEBUGSOO > 1
+void print_wifi_config(void) ICACHE_FLASH_ATTR;
+#endif
 #endif // __WIFI_H__

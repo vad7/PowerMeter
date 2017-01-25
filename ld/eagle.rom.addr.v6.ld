@@ -1,5 +1,7 @@
 PROVIDE ( Cache_Read_Disable = 0x400047f0 );
 PROVIDE ( Cache_Read_Enable = 0x40004678 );
+PROVIDE ( Enable_QMode = 0x400044c0 );
+PROVIDE ( Disable_QMode = 0x40004508 );
 PROVIDE ( FilePacketSendReqMsgProc = 0x400035a0 );
 PROVIDE ( FlashDwnLdParamCfgMsgProc = 0x4000368c );
 PROVIDE ( FlashDwnLdStartMsgProc = 0x40003538 );
@@ -16,6 +18,9 @@ PROVIDE ( SHA1Final = 0x4000b648 );
 PROVIDE ( SHA1Init = 0x4000b584 );
 PROVIDE ( SHA1Transform = 0x4000a364 );
 PROVIDE ( SHA1Update = 0x4000b5a8 );
+PROVIDE ( SPI_sector_erase = 0x400040c0 );
+PROVIDE ( SPI_page_program = 0x40004174 );
+PROVIDE ( SPI_read_data = 0x400042ac );
 PROVIDE ( SPI_read_status = 0x400043c8 );
 PROVIDE ( SPI_write_status = 0x40004400 );
 PROVIDE ( SPI_write_enable = 0x4000443c );
@@ -31,6 +36,7 @@ PROVIDE ( SPIReadModeCnfig = 0x400048ec );
 PROVIDE ( SPIUnlock = 0x40004878 );
 PROVIDE ( SPIWrite = 0x40004a4c );
 PROVIDE ( SelectSpiFunction = 0x40003f58 );
+PROVIDE ( SPILoader = 40001308 );
 PROVIDE ( SendMsg = 0x40003cf4 );
 PROVIDE ( UartConnCheck = 0x40003230 );
 PROVIDE ( UartConnectProc = 0x400037a0 );
@@ -131,7 +137,7 @@ PROVIDE ( ets_isr_unmask = 0x40000fa8 );
 PROVIDE ( ets_memcmp = 0x400018d4 );
 PROVIDE ( ets_memcpy = 0x400018b4 );
 PROVIDE ( ets_memmove = 0x400018c4 );
-PROVIDE ( ets_memset = 0x400018a4 );
+PROVIDE ( ets_memset = 0x400018a4 ); 
 PROVIDE ( ets_post = 0x40000e24 );
 PROVIDE ( ets_printf = 0x400024cc );
 PROVIDE ( ets_putc = 0x40002be8 );
@@ -342,8 +348,13 @@ PROVIDE ( xthal_spill_registers_into_stack_nw = 0x4000e320 );
 PROVIDE ( xthal_window_spill = 0x4000e324 );
 PROVIDE ( xthal_window_spill_nw = 0x4000e320 );
 
+PROVIDE ( Td0 = 0x3fffd100 );
+PROVIDE ( Td4s = 0x3fffd500);
+PROVIDE ( rcons = 0x3fffd0f0);
+
 PROVIDE ( Te0 = 0x3fffccf0 );
 PROVIDE ( UartDev = 0x3fffde10 );
+PROVIDE ( rtc_calib = 0x3fffc700 );
 PROVIDE ( cpu_clk_mhz = 0x3fffc704 );
 PROVIDE ( wdt_info = 0x3fffc708 );
 PROVIDE ( flashchip = 0x3fffc714 );
@@ -355,7 +366,26 @@ PROVIDE ( esp_exception9 = 0x400017E0 );
 PROVIDE ( SPIFlashCnfig = 0x40004568 );
 PROVIDE ( _putc1 = 0x40001dcc );
 PROVIDE ( _putc2_def = 0x400024A8 );
+PROVIDE ( base64_table = 0x3FFFD600 );
+PROVIDE ( printf_buf_len = 0x3FFFDD58 );
+PROVIDE ( printf_pbuf = 0x3FFFDD5C );
 PROVIDE ( user_start_proc = 0x3FFFDCD0 );
+PROVIDE ( dtm_params = 0x3FFFDD64 );
+
+PROVIDE ( ets_bit_task_priority = 0x3FFFC6FC );
+PROVIDE ( ets_idle_cb = 0x3FFFDAB0 );
+PROVIDE ( ets_idle_arg = 0x3FFFDAB4 ); 
+PROVIDE ( ets_bit_count_task = 0x3FFFDAB8 );
+PROVIDE ( ets_tab_task = 0x3FFFDAC0 );
+
+PROVIDE ( timer_list = 0x3FFFDDB0 );
+/*PROVIDE ( debug_timer = 0x3FFFDDB4 );
+PROVIDE ( debug_timerfn = 0x3FFFDDB8 ); */
+PROVIDE ( rom_bss_end = 0x3FFFEB30 ); /* stask: 0x3FFFEB30..0x3FFFFFFF 0x14D0 = 5328 bytes */
+
+/* 0x3FFFE360..0x3FFFEA80 ram buf max 1824 bytes */
+PROVIDE ( _sprintf_buf = 0x3FFFE360 ); /* char * _sprintf_buf; - use ets_sprintf */
+PROVIDE ( print_mem_buf = 0x3FFFE364 ); /* os_printf_plus() + ets_sprintf() buf 1820 bytes */
 
 PROVIDE ( dport_	= 0x3ff00000);
 PROVIDE ( io2_regs_	= 0x3ff20000);
@@ -363,11 +393,15 @@ PROVIDE ( uart0_	= 0x60000000);
 PROVIDE ( spi1_		= 0x60000100);
 PROVIDE ( spi0_		= 0x60000200);
 PROVIDE ( gpio_		= 0x60000300);
+PROVIDE ( hdrf_		= 0x60000500);
 PROVIDE ( timer_	= 0x60000600);
 PROVIDE ( rtc_		= 0x60000700);
 PROVIDE ( iomux_	= 0x60000800);
 PROVIDE ( wdt_		= 0x60000900);
+PROVIDE ( sdio_		= 0x60000A00);
+PROVIDE ( scl_		= 0x60000B00);
 PROVIDE ( sar_		= 0x60000D00);
+PROVIDE ( i2s_		= 0x60000E00);
 PROVIDE ( uart1_	= 0x60000F00);
 PROVIDE ( rtc_ram_	= 0x60001000);
 PROVIDE ( rtc_mem_	= 0x60001100);

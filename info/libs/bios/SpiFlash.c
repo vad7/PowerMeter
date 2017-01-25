@@ -61,7 +61,7 @@ SpiFlashOpResult spi_flash_attach(void){
 }
 
 // ROM:40004B44
-// ВНИМАНИЕ! имеет внутренную ошибку. Не используйте SPIEraseArea() функцию ROM-BIOS!
+// Р’РќРРњРђРќРР•! РёРјРµРµС‚ РІРЅСѓС‚СЂРµРЅРЅСѓСЋ РѕС€РёР±РєСѓ. РќРµ РёСЃРїРѕР»СЊР·СѓР№С‚Рµ SPIEraseArea() С„СѓРЅРєС†РёСЋ ROM-BIOS!
 SpiFlashOpResult SPIEraseArea (uint32 start_addr, uint32 lenght)
 {
     uint32 num_sec_in_block;	// *(a1 + 0xC) = SP + 0xC
@@ -82,21 +82,21 @@ SpiFlashOpResult SPIEraseArea (uint32 start_addr, uint32 lenght)
 				first_sec_erase = start_addr / flashchip.sector_size; 			// First sector to erase
 				num_sec_in_block = flashchip.block_size / flashchip.sector_size; 	// Number of sectors in block
 				num_sec_erase = lenght / flashchip.sector_size;				// Number of sectors to erase
-				// Округляем количество секторов для стирания в большую сторону.
+				// РћРєСЂСѓРіР»СЏРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРєС‚РѕСЂРѕРІ РґР»СЏ СЃС‚РёСЂР°РЅРёСЏ РІ Р±РѕР»СЊС€СѓСЋ СЃС‚РѕСЂРѕРЅСѓ.
 				if ((lenght % flashchip.sector_size) != 0) num_sec_erase ++; //
 				var_r_13 = num_sec_erase;  // 9
-				// Стираем посекторно до адреса кратного блочному стиранию.
-				var_r_0 = num_sec_in_block - (first_sec_erase % num_sec_in_block); // кол-во секторов до адреса кратного блочному стиранию.
-				if (var_r_0 < num_sec_erase) var_r_13 = var_r_0; // запомнить кол-во секторов до стирания
+				// РЎС‚РёСЂР°РµРј РїРѕСЃРµРєС‚РѕСЂРЅРѕ РґРѕ Р°РґСЂРµСЃР° РєСЂР°С‚РЅРѕРіРѕ Р±Р»РѕС‡РЅРѕРјСѓ СЃС‚РёСЂР°РЅРёСЋ.
+				var_r_0 = num_sec_in_block - (first_sec_erase % num_sec_in_block); // РєРѕР»-РІРѕ СЃРµРєС‚РѕСЂРѕРІ РґРѕ Р°РґСЂРµСЃР° РєСЂР°С‚РЅРѕРіРѕ Р±Р»РѕС‡РЅРѕРјСѓ СЃС‚РёСЂР°РЅРёСЋ.
+				if (var_r_0 < num_sec_erase) var_r_13 = var_r_0; // Р·Р°РїРѕРјРЅРёС‚СЊ РєРѕР»-РІРѕ СЃРµРєС‚РѕСЂРѕРІ РґРѕ СЃС‚РёСЂР°РЅРёСЏ
 
 				for ( ; var_r_13 != 0; first_sec_erase++, var_r_13--)
 					if (SPIEraseSector (first_sec_erase) != 0) return 1;
-				// Если оставшеестя количество секторов для стирания помещается в n-блоков,
-				// то стираем n-блоков.
+				// Р•СЃР»Рё РѕСЃС‚Р°РІС€РµРµСЃС‚СЏ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРєС‚РѕСЂРѕРІ РґР»СЏ СЃС‚РёСЂР°РЅРёСЏ РїРѕРјРµС‰Р°РµС‚СЃСЏ РІ n-Р±Р»РѕРєРѕРІ,
+				// С‚Рѕ СЃС‚РёСЂР°РµРј n-Р±Р»РѕРєРѕРІ.
 				var_r_13 = num_sec_erase - var_r_13; // var_r_13 = num_sec_erase - 0
 				for ( ; num_sec_in_block < var_r_13; first_sec_erase += num_sec_in_block, var_r_13 -= num_sec_in_block)
 					if (SPIEraseBlock(first_sec_erase / num_sec_in_block) != 0) return 1;
-				// Стираем оставшиеся сектора в конце.
+				// РЎС‚РёСЂР°РµРј РѕСЃС‚Р°РІС€РёРµСЃСЏ СЃРµРєС‚РѕСЂР° РІ РєРѕРЅС†Рµ.
 				for ( ; var_r_13 != 0; first_sec_erase ++,  var_r_13 --)
 					if (SPIEraseSector (first_sec_erase) != 0) return 1;
                 return SPI_FLASH_RESULT_OK;
@@ -205,15 +205,15 @@ void SPIFlashCnfig(uint32_t spi_interface, uint32_t spi_freg)
 	//	IOMUX_BASE = 0x205
 	uint32 a6 = 0; // spi_interface > 4
 	uint32 a2;
-	SPI0_USER |= 4;
-	if(spi_interface == 0) a6 = 1<<24; // SPI_QIO_MODE
-	else if(spi_interface == 1) a6 = 1<<20; // SPI_QOUT_MODE
-	else if(spi_interface == 2) a6 = 1<<23; // SPI_DIO_MODE
-	else if(spi_interface == 3) a6 = 1<<14; // SPI_DOUT_MODE
-	else if(spi_interface == 4) a6 = 1<<13; // SPI_FASTRD_MODE
+	SPI0_USER |= 4;	// SPI_CS_SETUP
+	if(spi_interface == 0) a6 = 1<<24; // SPI_QIO_MODE			0x1000000
+	else if(spi_interface == 1) a6 = 1<<20; // SPI_QOUT_MODE	0x0100000
+	else if(spi_interface == 2) a6 = 1<<23; // SPI_DIO_MODE		0x0800000
+	else if(spi_interface == 3) a6 = 1<<14; // SPI_DOUT_MODE	0x0004000
+	else if(spi_interface == 4) a6 = 1<<13; // SPI_FASTRD_MODE	0x0002000
 	if(spi_freg < 2) {
 		a2 = 0x100;
-		SPI0_CTRL |= 0x1000; // ???
+		SPI0_CTRL |= 0x1000; // 80MHz CLC
 		GPIO_MUX_CFG |= a2;
 	}
 	else {
@@ -226,13 +226,10 @@ void SPIFlashCnfig(uint32_t spi_interface, uint32_t spi_freg)
 	SPI0_CTRL |= a2;
 	SPI0_CMD = 0x100000;
 	while(SPI0_CMD != 0);
-	// [0x60000208] = 0x016aa101;
-	//				  0x00288000
-	//				  0x00411000 // BIT12 BIT16 BIT22
 }
 
 // ROM:400042AC
-SpiFlashOpResult spi_flash_read(SpiFlashChip *fchip, uint32_t faddr, uint32_t *dst, size_t size)
+SpiFlashOpResult _spi_flash_read(SpiFlashChip *fchip, uint32_t faddr, uint32_t *dst, size_t size)
 {
 	if(faddr + size > fchip->chip_size) return SPI_FLASH_RESULT_ERR;
 	Wait_SPI_Idle(fchip);
@@ -254,7 +251,7 @@ SpiFlashOpResult spi_flash_read(SpiFlashChip *fchip, uint32_t faddr, uint32_t *d
 // ROM:40004B1C
 SpiFlashOpResult SPIRead(uint32_t faddr, uint32_t *dst, size_t size)
 {
-	return spi_flash_read(flashchip, faddr, dst, size);
+	return _spi_flash_read(flashchip, faddr, dst, size);
 }
 
 // ROM:400047F0
@@ -276,27 +273,27 @@ void Cache_Read_Enable(uint32 a2, uint32 a3, uint32 a4)
 	while(DPORT_BASE[3] & (1<<8)) { // 0x3FF0000C
 		 DPORT_BASE[3] &= 0xEFF;
 	}
-	SPI0_CTRL &= ~SPI_ENABLE_AHB;
+	SPI0_CTRL &= ~SPI_ENABLE_AHB; // РѕС‚РєР»СЋС‡РёС‚СЊ Р°РїРїР°СЂР°С‚ "РєРµС€РёСЂРѕРІР°РЅРёСЏ" flash
 	DPORT_BASE[3] |= 1;
 	while((DPORT_BASE[3] & 1) == 0);
 	DPORT_BASE[3] &= 0x7E;
-	SPI0_CTRL |= SPI_ENABLE_AHB;
+	SPI0_CTRL |= SPI_ENABLE_AHB; // РІРєР»СЋС‡РёС‚СЊ Р°РїРїР°СЂР°С‚ "РєРµС€РёСЂРѕРІР°РЅРёСЏ" flash
 	uint32 a6 = DPORT_BASE[3];
 	if(a2 == 0) {
 		DPORT_BASE[3] &= 0xFCFFFFFF;
 	}
 	else if(a2 == 1) {
 		DPORT_BASE[3] &= 0xFEFFFFFF;
-		DPORT_BASE[3] |= 0x2000000;
+		DPORT_BASE[3] |= 0x02000000;
 	}
 	else {
 		DPORT_BASE[3] &= 0xFDFFFFFF;
-		DPORT_BASE[3] |= 0x1000000;
+		DPORT_BASE[3] |= 0x01000000;
 	}
 	DPORT_BASE[3] &= 0xFBF8FFFF;
 	DPORT_BASE[3] |= (a4 << 26) | (a3 << 16);
-	if(a4 == 0) DPORT_BASE[9] |= 8; // 0x3FF00024
-	else DPORT_BASE[9] |= 0x18;
+	if(a4 == 0) DPORT_BASE[9] |= 8; // 0x3FF00024 РІРєР»СЋС‡РёС‚СЊ Р±Р»РѕРє 16k IRAM РІ РєСЌС€ SPI Flash
+	else DPORT_BASE[9] |= 0x18; // 0x3FF00024 РІРєР»СЋС‡РёС‚СЊ Р±Р»РѕРє РІ 32k IRAM РІ РєСЌС€ SPI Flash
 	if((a6 & 0x100) == 0) do {
 		DPORT_BASE[3] |= 0x100;
 	} while((DPORT_BASE[3] &0x100) == 0);

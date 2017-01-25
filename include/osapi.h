@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2010 Espressif System
  */
 
 #ifndef _OSAPI_H_
@@ -7,6 +6,8 @@
 
 #include <string.h>
 #include "user_config.h"
+#include "bios.h"
+#include "sdk/os_printf.h"
 
 #define os_bzero ets_bzero
 #define os_delay_us ets_delay_us
@@ -23,14 +24,17 @@
 #define os_memset ets_memset
 #define os_putc ets_putc
 #define os_str2macaddr ets_str2macaddr
-#define os_strcat strcat
-#define os_strchr strchr
+//#define os_strcat strcat
+#define os_strchr rom_strchr
+#define os_strrchr ets_strrchr
 #define os_strcmp ets_strcmp
 #define os_strcpy ets_strcpy
 #define os_strlen ets_strlen
 #define os_strncmp ets_strncmp
 #define os_strncpy ets_strncpy
 #define os_strstr ets_strstr
+#define os_random phy_get_rand
+extern uint32 phy_get_rand(void);
 #ifdef USE_US_TIMER
 #define os_timer_arm_us(a, b, c) ets_timer_arm_new(a, b, c, 0)
 #endif
@@ -41,16 +45,22 @@
 #define os_timer_init ets_timer_init
 #define os_timer_setfn ets_timer_setfn
 
-#define os_sprintf  ets_sprintf
 #define os_update_cpu_frequency ets_update_cpu_frequency
+
+//#define os_sprintf ets_sprintf
 
 #ifdef USE_OPTIMIZE_PRINTF
 #define os_printf(fmt, ...) do {	\
 	static const char flash_str[] ICACHE_RODATA_ATTR = fmt;	\
-	os_printf_plus(flash_str, ##__VA_ARGS__);	\
+	__wrap_os_printf_plus(flash_str, ##__VA_ARGS__);	\
 	} while(0)
+#define os_sprintf_fd(des, fmt, ...) do {	\
+	static const char flash_str[] ICACHE_RODATA_ATTR = fmt;	\
+	ets_sprintf(des, flash_str, ##__VA_ARGS__);	\
+	} while(0)
+#define os_printf_plus __wrap_os_printf_plus
 #else
-#define os_printf	os_printf_plus
+#define os_printf	__wrap_os_printf_plus
 #endif
 
 #endif

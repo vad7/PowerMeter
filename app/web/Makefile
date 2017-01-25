@@ -15,7 +15,6 @@ ifndef PDIR
 GEN_LIBS = libweb.a
 endif
 
-
 #############################################################
 # Configuration i.e. compile options etc.
 # Target specific stuff (defines etc.) goes in here!
@@ -37,7 +36,7 @@ endif
 # Required for each makefile to inherit from the parent
 #
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include
+#INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./include
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile

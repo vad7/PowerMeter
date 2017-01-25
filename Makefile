@@ -4,21 +4,42 @@
 #
 #############################################################
 
-ESPOPTION ?= -p COM2 -b 230400
+ESPOPTION ?= -p COM9 -b 460800
 
-USERFADDR = 0x0A000
-USERFBIN = ./webbin/WEBFiles.bin
-GENIMAGEOPTION = -ff 80m -fm qio -fs 4m
+UPLOADADDR = http://aesp8266/fsupload
 
+UPLOADOVL = ./ovls/bin/udplog.ovl 
+
+# SPI_SPEED = 40MHz or 80MHz
+SPI_SPEED?=80
+# SPI_MODE: QIO, DIO, QOUT, DOUT
+SPI_MODE?=QIO
+# SPI_SIZE: 512KB for all size Flash ! (512 kbytes .. 16 Mbytes Flash autodetect)
+SPI_SIZE?=512
+# 
 ADDR_FW1 = 0x00000
-ADDR_FW2 = 0x40000
+ADDR_FW2 = 0x07000
+# 
+#USERFADDR = 0x3E000
+USERFADDR = $(shell printf '0x%X\n' $$(( ($$(stat --printf="%s" $(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000) )) )
+USERFBIN = ./webbin/WEBFiles.bin
+#
+FIRMWAREDIR := bin
+CLREEPBIN := ./$(FIRMWAREDIR)/clear_eep.bin
+CLREEPADDR := 0x79000
+DEFAULTBIN := ./$(FIRMWAREDIR)/esp_init_data_default.bin
+DEFAULTADDR := 0x7C000
+BLANKBIN := ./$(FIRMWAREDIR)/blank.bin
+BLANKADDR := 0x7E000
+
+WEB_BASE := $(subst \,/,$(CWD))
 
 # Base directory for the compiler
 XTENSA_TOOLS_ROOT ?= c:/Espressif/xtensa-lx106-elf/bin
-#PATH := $(XTENSA_TOOLS_ROOT);$(PATH)
 
+#PATH := $(XTENSA_TOOLS_ROOT);$(PATH)
 # base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= c:/Espressif/ESP8266_SDK
+#SDK_BASE	?= c:/Espressif/ESP8266_SDK
 
 # select which tools to use as compiler, librarian and linker
 CC := $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
@@ -27,26 +48,14 @@ LD := $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
 NM := $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-nm
 CPP = $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-cpp
 OBJCOPY = $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-objcopy
-CCFLAGS += -Os -O2 -Wall -Wno-pointer-sign -mno-target-align -mno-serialize-volatile -foptimize-register-move
-#
-# -Os -O2 -Wall -Wno-pointer-sign -mno-target-align -mno-serialize-volatile -foptimize-register-move
-# -fomit-frame-pointer -fmerge-all-constants
-#
-# https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-# https://gcc.gnu.org/onlinedocs/gcc-4.8.2/gcc/Xtensa-Options.html#Xtensa-Options
-#
-
-FIRMWAREDIR := bin
-DEFAULTBIN := ./$(FIRMWAREDIR)/esp_init_data_default.bin
-DEFAULTADDR := 0x7C000
-BLANKBIN := ./$(FIRMWAREDIR)/blank.bin
-BLANKADDR := 0x7E000
-CLREEPBIN := ./$(FIRMWAREDIR)/clear_eep.bin
-CLREEPADDR := 0x79000
+OBJDUMP := $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-objdump
 
 SDK_TOOLS	?= c:/Espressif/utils
 #ESPTOOL		?= $(SDK_TOOLS)/esptool
-ESPTOOL		?= C:/Python27/python.exe $(SDK_TOOLS)/esptool.py
+PYTHON  ?= C:/Python27/python.exe
+ESPTOOL	?= $(PYTHON) $(CWD)esptool.py
+OVLTOOL ?= $(PYTHON) $(CWD)ovls.py
+UPLOADTOOL ?= $(PYTHON) $(WEB_BASE)uploader.py
 
 CSRCS ?= $(wildcard *.c)
 ASRCs ?= $(wildcard *.s)
@@ -76,21 +85,92 @@ OBINS := $(GEN_BINS:%=$(BINODIR)/%)
 OUTBIN1 := ./$(FIRMWAREDIR)/$(ADDR_FW1).bin
 OUTBIN2 := ./$(FIRMWAREDIR)/$(ADDR_FW2).bin
 
-CCFLAGS += \
-	-Wundef			\
-	-Wpointer-arith	\
+CCFLAGS += -g \
+	-std=gnu90	\
+	-Os	\
+	-Wall	\
 	-Werror	\
-	-Wl,-EL	\
-	-fno-inline-functions	\
-	-nostdlib	\
+	-Wno-pointer-sign	\
+	-mtarget-align	\
 	-mlongcalls	\
-	-mtext-section-literals
-#	-Wall	\
-#
+	-mno-serialize-volatile	\
+	-mtext-section-literals	\
+	-fno-tree-ccp	\
+	-foptimize-register-move	\
+	-fno-inline-functions	\
+	-Wl,--wrap=os_printf_plus	\
+	-Wl,-EL	\
+	-nostdlib
 
+ifeq ($(SPI_SPEED), 26.7)
+    freqdiv = 1
+	flashimageoptions = -ff 26m
+else
+    ifeq ($(SPI_SPEED), 20)
+        freqdiv = 2
+        flashimageoptions = -ff 20m
+    else
+        ifeq ($(SPI_SPEED), 80)
+            freqdiv = 15
+			flashimageoptions = -ff 80m
+        else
+            freqdiv = 0
+			flashimageoptions = -ff 40m
+        endif
+    endif
+endif
 
-CFLAGS = $(CCFLAGS) $(DEFINES) $(EXTRA_CCFLAGS) $(INCLUDES)
-DFLAGS = $(CCFLAGS) $(DDEFINES) $(EXTRA_CCFLAGS) $(INCLUDES)
+ifeq ($(SPI_MODE), QOUT)
+    mode = 1
+	flashimageoptions += -fm qout
+else
+    ifeq ($(SPI_MODE), DIO)
+        mode = 2
+		flashimageoptions += -fm dio
+    else
+        ifeq ($(SPI_MODE), DOUT)
+            mode = 3
+			flashimageoptions += -fm dout
+        else
+            mode = 0
+			flashimageoptions += -fm qio
+        endif
+    endif
+endif
+
+# flash larger than 1024KB only use 1024KB to storage user1.bin and user2.bin
+ifeq ($(SPI_SIZE), 256)
+    size = 1
+    flash = 256
+	flashimageoptions += -fs 2m
+else
+    ifeq ($(SPI_SIZE), 1024)
+        size = 2
+        flash = 1024
+		flashimageoptions += -fs 8m
+    else
+        ifeq ($(SPI_SIZE), 2048)
+            size = 3
+            flash = 1024
+			flashimageoptions += -fs 16m
+        else
+            ifeq ($(SPI_SIZE), 4096)
+                size = 4
+                flash = 1024
+				flashimageoptions += -fs 32m
+            else
+                size = 0
+                flash = 512
+				flashimageoptions += -fs 4m
+            endif
+        endif
+    endif
+endif
+
+CCFLAGS += -DUSE_FIX_QSPI_FLASH=$(SPI_SPEED)
+
+CFLAGS = $(CCFLAGS) $(DEFINES) $(INCLUDES)
+DFLAGS = $(CCFLAGS) $(DDEFINES) $(INCLUDES)
 
 define ShortcutRule
 $(1): .subdirs $(2)/$(1)
@@ -101,10 +181,10 @@ DEP_LIBS_$(1) = $$(foreach lib,$$(filter %.a,$$(COMPONENTS_$(1))),$$(dir $$(lib)
 DEP_OBJS_$(1) = $$(foreach obj,$$(filter %.o,$$(COMPONENTS_$(1))),$$(dir $$(obj))$$(OBJODIR)/$$(notdir $$(obj)))
 $$(LIBODIR)/$(1).a: $$(OBJS) $$(DEP_OBJS_$(1)) $$(DEP_LIBS_$(1)) $$(DEPENDS_$(1))
 	@mkdir -p $$(LIBODIR)
-	$$(if $$(filter %.a,$$?),mkdir -p $$(EXTRACT_DIR)_$(1))
-	$$(if $$(filter %.a,$$?),cd $$(EXTRACT_DIR)_$(1); $$(foreach lib,$$(filter %.a,$$?),$$(AR) xo $$(UP_EXTRACT_DIR)/$$(lib);))
-	$$(AR) ru $$@ $$(filter %.o,$$?) $$(if $$(filter %.a,$$?),$$(EXTRACT_DIR)_$(1)/*.o)
-	$$(if $$(filter %.a,$$?),$$(RM) -r $$(EXTRACT_DIR)_$(1))
+	@$$(if $$(filter %.a,$$?),mkdir -p $$(EXTRACT_DIR)_$(1))
+	@$$(if $$(filter %.a,$$?),cd $$(EXTRACT_DIR)_$(1); $$(foreach lib,$$(filter %.a,$$?),$$(AR) xo $$(UP_EXTRACT_DIR)/$$(lib);))
+	@$$(AR) ru $$@ $$(filter %.o,$$?) $$(if $$(filter %.a,$$?),$$(EXTRACT_DIR)_$(1)/*.o)
+	@$$(if $$(filter %.a,$$?),$$(RM) -r $$(EXTRACT_DIR)_$(1))
 endef
 
 define MakeImage
@@ -116,39 +196,68 @@ $$(IMAGEODIR)/$(1).out: $$(OBJS) $$(DEP_OBJS_$(1)) $$(DEP_LIBS_$(1)) $$(DEPENDS_
 endef
 
 $(BINODIR)/%.bin: $(IMAGEODIR)/%.out
+	@echo "------------------------------------------------------------------------------"
 	@mkdir -p ../$(FIRMWAREDIR)
-	@echo "FW ../$(FIRMWAREDIR)/$(ADDR_FW1).bin + ../$(FIRMWAREDIR)/$(ADDR_FW2).bin"
-	$(ESPTOOL) elf2image -o ../$(FIRMWAREDIR)/ $(GENIMAGEOPTION) $<
-	$(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-size $(OIMAGES)
+	@$(ESPTOOL) elf2image -o ../$(FIRMWAREDIR)/ $(flashimageoptions) $<
+	@echo "------------------------------------------------------------------------------"
+	@echo "Add rapid_loader..."
+	@mv -f ../bin/$(ADDR_FW1).bin ../bin/0.bin 
+ifeq ($(freqdiv), 15)	
+	@dd if=../bin/rapid_loader.bin >../bin/$(ADDR_FW1).bin
+else
+	@dd if=../bin/rapid_loader_40m.bin >../bin/$(ADDR_FW1).bin
+endif	
+	@dd if=../bin/0.bin >>../bin/$(ADDR_FW1).bin
+	@$(PYTHON) ../bin/make_firmware_image.py ../bin/
+	$(OVLTOOL) $< ../ld/labels.ld
+	@make -C ../ovls
+	@echo "Fullflash firmware.bin size  : " $(shell printf '%u\n' $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )
+	@echo "Max firmware.bin size for OTA: " $(shell printf '%u\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) )) )
+	@echo "*Space available to allow OTA: " $(shell printf '%d\n' $$((0x7B000 - (($$(stat --printf="%s" ../$(OUTBIN2)) + 0xFFF + $(ADDR_FW2)) & (0xFFFFF000)) - $$(stat --printf="%s" ../$(FIRMWAREDIR)/firmware.bin) )) )
 
+all: .subdirs $(OBJS) $(OLIBS) $(SPECIAL_MKTARGETS) $(OIMAGES) $(OBINS) 
 
-#	$(ESPTOOL-CK) -eo $< -bo $(FIRMWAREDIR)/$(ADDR_FW1).bin -bs .text -bs .data -bs .rodata -bc -ec
-#	$(ESPTOOL-CK) -eo $< -es .irom0.text $(FIRMWAREDIR)/$(ADDR_FW2).bin -ec
-
-all: .subdirs $(OBJS) $(OLIBS) $(OIMAGES) $(OBINS) $(SPECIAL_MKTARGETS)
+$(SPECIAL_MKTARGETS): $(INPLIB) 
+	@$(RM) -f $@
+	@mkdir -p _temp
+	cd _temp; $(AR) xo ../$<; $(foreach lib,$(ADDLIBS_libsdk),$(AR) xo ../$(ADDLIBDIR)$(lib);)
+	@$(AR) ru $@ _temp/*.o
+	@$(RM) -r _temp
 
 clean:
-	$(foreach d, $(SUBDIRS), $(MAKE) -C $(d) clean;)
-	$(RM) -r $(ODIR)/$(TARGET)
+	@$(foreach d, $(SUBDIRS), $(MAKE) -C $(d) clean;)
+	@$(RM) -r $(ODIR)/$(TARGET)
+	@$(RM) -f lib/libsdk.a
 
 clobber: $(SPECIAL_CLOBBER)
-	$(foreach d, $(SUBDIRS), $(MAKE) -C $(d) clobber;)
-	$(RM) -r $(ODIR)
+	@$(foreach d, $(SUBDIRS), $(MAKE) -C $(d) clobber;)
+	@$(RM) -r $(ODIR)
+	@$(RM) -f lib/libsdk.a
 
 FlashUserFiles: $(USERFBIN)
-	$(ESPTOOL) $(ESPOPTION) write_flash $(GENIMAGEOPTION) $(USERFADDR) $(USERFBIN)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(USERFADDR) $(USERFBIN)
 
 FlashAll: $(OUTBIN1)  $(USERFBIN) $(OUTBIN2) $(DEFAULTBIN) $(BLANKBIN) $(CLREEPBIN)
-	$(ESPTOOL) $(ESPOPTION) write_flash $(GENIMAGEOPTION) $(ADDR_FW1) $(OUTBIN1) $(USERFADDR) $(USERFBIN) $(ADDR_FW2) $(OUTBIN2) $(CLREEPADDR) $(CLREEPBIN) $(DEFAULTADDR) $(DEFAULTBIN) $(BLANKADDR) $(BLANKBIN)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2) $(USERFADDR) $(USERFBIN)  $(CLREEPADDR) $(CLREEPBIN) $(DEFAULTADDR) $(DEFAULTBIN) $(BLANKADDR) $(BLANKBIN)
 
 FlashClearSetings: $(CLREEPBIN) $(DEFAULTBIN) $(BLANKBIN)
-	$(ESPTOOL) $(ESPOPTION) write_flash $(GENIMAGEOPTION) $(CLREEPADDR) $(CLREEPBIN) $(DEFAULTADDR) $(DEFAULTBIN) $(BLANKADDR) $(BLANKBIN)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(CLREEPADDR) $(CLREEPBIN) $(DEFAULTADDR) $(DEFAULTBIN) $(BLANKADDR) $(BLANKBIN)
 
 FlashCode: $(OUTBIN1) $(OUTBIN2)
-	$(ESPTOOL) $(ESPOPTION) write_flash $(GENIMAGEOPTION) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2)
+
+FlashCode+User: $(OUTBIN1) $(OUTBIN2) $(USERFBIN)
+	$(ESPTOOL) $(ESPOPTION) write_flash $(flashimageoptions) $(ADDR_FW1) $(OUTBIN1) $(ADDR_FW2) $(OUTBIN2) $(USERFADDR) $(USERFBIN)
+
+UploadOvl:
+	$(UPLOADTOOL) overlay $(UPLOADOVL) $(UPLOADADDR)
+
+UploadWeb: $(USERFBIN)
+	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
+	$(UPLOADTOOL) file ./webbin/WEBFiles.bin $(UPLOADADDR)
 
 $(USERFBIN):
-	./PVFS2.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib" ./WEBFiles ./webbin WEBFiles.bin
+	./WEBFS22.exe -h "*.htm, *.html, *.cgi, *.xml, *.bin, *.txt, *.wav" -z "*.inc, snmp.bib, *.ovl, *.ini" ./WEBFiles ./webbin WEBFiles.bin
 
 .subdirs:
 	@set -e; $(foreach d, $(SUBDIRS), $(MAKE) -C $(d);)
@@ -163,11 +272,10 @@ endif
 
 $(OBJODIR)/%.o: %.c
 	@mkdir -p $(OBJODIR);
-	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -o $@ -c $<
+	$(CC) $(if $(findstring $<,$(DSRCS)),$(DFLAGS),$(CFLAGS)) $(COPTS_$(*F)) -o $@ -c $< 
 
 $(OBJODIR)/%.d: %.c
 	@mkdir -p $(OBJODIR);
-	@echo DEPEND: $(CC) -M $(CFLAGS) $<
 	@set -e; rm -f $@; \
 	$(CC) -M $(CFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\.o\)[ :]*,$(OBJODIR)/\1 $@ : ,g' < $@.$$$$ > $@; \
@@ -205,6 +313,6 @@ $(foreach lib,$(GEN_LIBS),$(eval $(call MakeLibrary,$(basename $(lib)))))
 
 $(foreach image,$(GEN_IMAGES),$(eval $(call MakeImage,$(basename $(image)))))
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include -I $(PDIR)include/$(TARGET)
+INCLUDES := $(INCLUDES) -I $(PDIR)include
 #PDIR := ../$(PDIR)
 #sinclude $(PDIR)Makefile

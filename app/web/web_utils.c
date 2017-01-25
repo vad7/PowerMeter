@@ -1,24 +1,38 @@
 /*
  * web_utils.c
  *
- *  Created on: 25 дек. 2014 г.
+ *  Created on: 25 РґРµРє. 2014 Рі.
  *      Author: PV`
  */
 #include "user_config.h"
 #include "bios.h"
-#include "add_sdk_func.h"
+#include "sdk/add_func.h"
 #include "ets_sys.h"
 #include "os_type.h"
 #include "osapi.h"
 #include "user_interface.h"
-
+#include "web_utils.h"
 
 #define mMIN(a, b)  ((a<b)?a:b)
+
+int ICACHE_FLASH_ATTR rom_atoi(const char *s)
+{
+	int n=0, neg=0;
+	while (*s == ' ') s++;
+	switch (*s) {
+	case '-': neg=1;
+	case '+': s++;
+	}
+	/* Compute n as a negative number to avoid overflow on INT_MIN */
+	while (*s >= '0' && *s <= '9')
+		n = 10*n - (*s++ - '0');
+	return neg ? n : -n;
+}
 /******************************************************************************
  * copy_align4
- * копирует данные из области кеширования flash и т.д.
+ * РєРѕРїРёСЂСѓРµС‚ РґР°РЅРЅС‹Рµ РёР· РѕР±Р»Р°СЃС‚Рё РєРµС€РёСЂРѕРІР°РЅРёСЏ flash Рё С‚.Рґ.
 *******************************************************************************/
-void copy_align4(void *ptrd, void *ptrs, uint32 len)
+void ICACHE_FLASH_ATTR copy_align4(void *ptrd, void *ptrs, uint32 len)
 {
 	union {
 		uint8 uc[4];
@@ -106,18 +120,18 @@ uint32 ICACHE_FLASH_ATTR ahextoul(uint8 *s)
 	return ret;
 */
 	if((s[0]=='0') && ((s[1] | 0x20) =='x')) return hextoul(s+2);
-	return atoi(s);
+	return rom_atoi(s);
 }
 /******************************************************************************
  * FunctionName : cmpcpystr
- * Description  : выбирает слово из строки текста с заданными начальным символом
- *                и конечным терминатором. Терминатор и стартовый символ не копирует, если заданы.
- * Parameters   : При задании начального символа = '\0' берется любой символ (>' ').
-                  Копирует до символа <' ' или терминатора.
-                  Задается ограничение размера буфера для копируемого слова (с дописыванием в буфер '\0'!).
- * Returns      : Зависит от значения терминатора, указывает на терминатор в строке,
-                  если терминатор найден.
-                  Если NULL, то начальный или конечный терминатор не найден.
+ * Description  : РІС‹Р±РёСЂР°РµС‚ СЃР»РѕРІРѕ РёР· СЃС‚СЂРѕРєРё С‚РµРєСЃС‚Р° СЃ Р·Р°РґР°РЅРЅС‹РјРё РЅР°С‡Р°Р»СЊРЅС‹Рј СЃРёРјРІРѕР»РѕРј
+ *                Рё РєРѕРЅРµС‡РЅС‹Рј С‚РµСЂРјРёРЅР°С‚РѕСЂРѕРј. РўРµСЂРјРёРЅР°С‚РѕСЂ Рё СЃС‚Р°СЂС‚РѕРІС‹Р№ СЃРёРјРІРѕР» РЅРµ РєРѕРїРёСЂСѓРµС‚, РµСЃР»Рё Р·Р°РґР°РЅС‹.
+ * Parameters   : РџСЂРё Р·Р°РґР°РЅРёРё РЅР°С‡Р°Р»СЊРЅРѕРіРѕ СЃРёРјРІРѕР»Р° = '\0' Р±РµСЂРµС‚СЃСЏ Р»СЋР±РѕР№ СЃРёРјРІРѕР» (>' ').
+                  РљРѕРїРёСЂСѓРµС‚ РґРѕ СЃРёРјРІРѕР»Р° <' ' РёР»Рё С‚РµСЂРјРёРЅР°С‚РѕСЂР°.
+                  Р—Р°РґР°РµС‚СЃСЏ РѕРіСЂР°РЅРёС‡РµРЅРёРµ СЂР°Р·РјРµСЂР° Р±СѓС„РµСЂР° РґР»СЏ РєРѕРїРёСЂСѓРµРјРѕРіРѕ СЃР»РѕРІР° (СЃ РґРѕРїРёСЃС‹РІР°РЅРёРµРј РІ Р±СѓС„РµСЂ '\0'!).
+ * Returns      : Р—Р°РІРёСЃРёС‚ РѕС‚ Р·РЅР°С‡РµРЅРёСЏ С‚РµСЂРјРёРЅР°С‚РѕСЂР°, СѓРєР°Р·С‹РІР°РµС‚ РЅР° С‚РµСЂРјРёРЅР°С‚РѕСЂ РІ СЃС‚СЂРѕРєРµ,
+                  РµСЃР»Рё С‚РµСЂРјРёРЅР°С‚РѕСЂ РЅР°Р№РґРµРЅ.
+                  Р•СЃР»Рё NULL, С‚Рѕ РЅР°С‡Р°Р»СЊРЅС‹Р№ РёР»Рё РєРѕРЅРµС‡РЅС‹Р№ С‚РµСЂРјРёРЅР°С‚РѕСЂ РЅРµ РЅР°Р№РґРµРЅ.
 *******************************************************************************/
 uint8 * ICACHE_FLASH_ATTR cmpcpystr(uint8 *pbuf, uint8 *pstr, uint8 a, uint8 b, uint16 len)
 {
@@ -129,56 +143,124 @@ uint8 * ICACHE_FLASH_ATTR cmpcpystr(uint8 *pbuf, uint8 *pstr, uint8 a, uint8 b, 
             uint8 c;
             do {
               c = *pstr;
-              if(c < ' ') { // строка кончилась
+              if(c < ' ') { // СЃС‚СЂРѕРєР° РєРѕРЅС‡РёР»Р°СЃСЊ
                 if(pbuf != NULL) *pbuf='\0';
-                return NULL; // id не найден
+                return NULL; // id РЅРµ РЅР°Р№РґРµРЅ
               };
-              if((a == '\0')&&(c > ' ')) break; // не задан -> любой символ
+              if((a == '\0')&&(c > ' ')) break; // РЅРµ Р·Р°РґР°РЅ -> Р»СЋР±РѕР№ СЃРёРјРІРѕР»
               pstr++;
-              if(c == a) break; // нашли стартовый символ (некопируемый в буфер)
+              if(c == a) break; // РЅР°С€Р»Рё СЃС‚Р°СЂС‚РѕРІС‹Р№ СЃРёРјРІРѕР» (РЅРµРєРѕРїРёСЂСѓРµРјС‹Р№ РІ Р±СѓС„РµСЂ)
             }while(1);
             if(pbuf != NULL) {
               while(len--) {
                 c = *pstr;
-                if(c == b) { // нашли терминирующий символ (некопируемый в буфер)
+                if(c == b) { // РЅР°С€Р»Рё С‚РµСЂРјРёРЅРёСЂСѓСЋС‰РёР№ СЃРёРјРІРѕР» (РЅРµРєРѕРїРёСЂСѓРµРјС‹Р№ РІ Р±СѓС„РµСЂ)
                   *pbuf='\0';
-                  return pstr; // конечный терминатор найден
+                  return pstr; // РєРѕРЅРµС‡РЅС‹Р№ С‚РµСЂРјРёРЅР°С‚РѕСЂ РЅР°Р№РґРµРЅ
                 };
-//                if(c <= ' ') { // строка кончилась или пробел
-                if(c < ' ') { // строка кончилась или пробел
+//                if(c <= ' ') { // СЃС‚СЂРѕРєР° РєРѕРЅС‡РёР»Р°СЃСЊ РёР»Рё РїСЂРѕР±РµР»
+                if(c < ' ') { // СЃС‚СЂРѕРєР° РєРѕРЅС‡РёР»Р°СЃСЊ РёР»Рё РїСЂРѕР±РµР»
                   *pbuf='\0';
-                  return NULL; // конечный терминатор не найден
+                  return NULL; // РєРѕРЅРµС‡РЅС‹Р№ С‚РµСЂРјРёРЅР°С‚РѕСЂ РЅРµ РЅР°Р№РґРµРЅ
                 };
                 pstr++;
                 *pbuf++ = c;
               };
-              *--pbuf='\0'; // закрыть буфер
+              *--pbuf='\0'; // Р·Р°РєСЂС‹С‚СЊ Р±СѓС„РµСЂ
             };
             do {
               c = *pstr;
-              if(c == b) return pstr; // нашли терминирующий символ
-//              if(c <= ' ') return NULL; // строка кончилась
-              if(c < ' ') return NULL; // строка кончилась
+              if(c == b) return pstr; // РЅР°С€Р»Рё С‚РµСЂРјРёРЅРёСЂСѓСЋС‰РёР№ СЃРёРјРІРѕР»
+//              if(c <= ' ') return NULL; // СЃС‚СЂРѕРєР° РєРѕРЅС‡РёР»Р°СЃСЊ
+              if(c < ' ') return NULL; // СЃС‚СЂРѕРєР° РєРѕРЅС‡РёР»Р°СЃСЊ
               pstr++;
             }while(1);
 }
 /******************************************************************************
- * FunctionName : strtoip (192.168.4.1 = 0x01040A8C0)
+ * FunctionName : str_array
+ * РќР°Р±РёСЂР°РµС‚ РёР· СЃС‚СЂРѕРєРё s РјР°СЃСЃРёРІ СЃР»РѕРІ РІ buf РІ РєРѕР»-РІРµ РґРѕ max_buf
+ * РІРѕР·РІСЂР°С‚ - РєРѕР»-РІРѕ РїРµСЂРµРјРµРЅРЅС‹С… РІ СЃС‚СЂРѕРєРµ
+ * Р Р°Р·РґРµР»РёС‚РµР»СЊ РїРµСЂРµРјРµРЅРЅС‹С… РІ СЃС‚СЂРѕРєРµ ','
+ * Р•СЃР»Рё РЅРµС‚ РїРµСЂРµРјРµРЅРЅРѕР№, С‚Рѕ РїСЂРѕРїСѓСЃРєР°РµС‚ РёР·РјРµРЅРµРЅРёРµ РІ buf
+ * РџСЂРёРјРµСЂС‹:
+ * РЎС‚СЂРѕРєР° "1,2,3,4" -> buf = 0x01 0x02 0x03 0x04
+ * РЎС‚СЂРѕРєР° "1,,3," -> buf = 0x01 (РЅРµ РёР·РјРµРЅРµРЅРѕ) 0x03 (РЅРµ РёР·РјРµРЅРµРЅРѕ)
 *******************************************************************************/
-/* uint32 ICACHE_FLASH_ATTR strtoip(uint8 *s)
+uint32 ICACHE_FLASH_ATTR str_array(uint8 *s, uint32 *buf, uint32 max_buf)
 {
-	uint32 val = 0;
-	uint8 pbuf[4];
-	s = cmpcpystr(pbuf, s, '\0', '.', 4);
-	val = atoi(pbuf)&0xFF;
-	s = cmpcpystr(pbuf, s, '.', '.', 4);
-	val += (atoi(pbuf)&0xFF) << 8;
-	s = cmpcpystr(pbuf, s, '.', '.', 4);
-	val += (atoi(pbuf)&0xFF) << 16;
-	s = cmpcpystr(pbuf, s, '.', ' ', 4);
-	val += (atoi(pbuf)&0xFF) << 24;
-	return val;
-} */
+	uint32 ret = 0;
+	uint8 *sval = NULL;
+	while(max_buf > ret) {
+		if(sval == NULL) {
+			if (*s == '-' && s[1] >= '0' && s[1] <= '9') {
+				sval = s;
+				s++;
+			}
+			else if (*s >= '0' && *s <= '9') sval = s;
+		}
+		if(*s == ',' || *s <= ')') {
+			if(sval != NULL) {
+				*buf = ahextoul(sval);
+				sval = NULL;
+			}
+			buf++;
+			ret++;
+			if(*s < ')') return ret;
+		}
+		s++;
+	}
+	return ret;
+}
+uint32 ICACHE_FLASH_ATTR str_array_w(uint8 *s, uint16 *buf, uint32 max_buf)
+{
+	uint32 ret = 0;
+	uint8 *sval = NULL;
+	while(max_buf > ret) {
+		if(sval == NULL) {
+			if (*s == '-' && s[1] >= '0' && s[1] <= '9') {
+				sval = s;
+				s++;
+			}
+			else if (*s >= '0' && *s <= '9') sval = s;
+		}
+		if(*s == ',' || *s <= ')') {
+			if(sval != NULL) {
+				*buf = ahextoul(sval);
+				sval = NULL;
+			}
+			buf++;
+			ret++;
+			if(*s < ')') return ret;
+		}
+		s++;
+	}
+	return ret;
+}
+uint32 ICACHE_FLASH_ATTR str_array_b(uint8 *s, uint8 *buf, uint32 max_buf)
+{
+	uint32 ret = 0;
+	uint8 *sval = NULL;
+	while(max_buf > ret) {
+		if(sval == NULL) {
+			if (*s == '-' && s[1] >= '0' && s[1] <= '9') {
+				sval = s;
+				s++;
+			}
+			else if (*s >= '0' && *s <= '9') sval = s;
+		}
+		if(*s == ',' || *s == '.' || *s <= ')') {
+			if(sval != NULL) {
+				*buf = ahextoul(sval);
+				sval = NULL;
+			}
+			buf++;
+			ret++;
+			if(*s < ')') return ret;
+		}
+		s++;
+	}
+	return ret;
+}
 /******************************************************************************
  * FunctionName : strtmac
 *******************************************************************************/
@@ -372,7 +454,7 @@ static const uint8_t base64map[128] ICACHE_RODATA_ATTR =
 //=============================================================================
 bool ICACHE_FLASH_ATTR base64decode(const uint8 *in, int len, uint8_t *out, int *outlen)
 {
-	uint8 *map = UartDev.rcv_buff.pRcvMsgBuff;
+	uint8 *map = (uint8 *)UartDev.rcv_buff.pRcvMsgBuff;
 	ets_memcpy(map, base64map, 128);
     int g, t, x, y, z;
     uint8_t c;
@@ -411,7 +493,8 @@ const u8_t base64_table[] = {
   '+', '/'
 };
 */
-#define base64_table ((const uint8 * )(0x3FFFD600))
+// ld: PROVIDE ( base64_table = 0x3FFFD600 );
+extern const u8_t base64_table[];
 //=============================================================================
 /** Base64 encoding */
 size_t ICACHE_FLASH_ATTR base64encode(char* target, size_t target_len, const char* source, size_t source_len)
@@ -445,19 +528,41 @@ size_t ICACHE_FLASH_ATTR base64encode(char* target, size_t target_len, const cha
   return len;
 }
 //=============================================================================
-
 void ICACHE_FLASH_ATTR print_hex_dump(uint8 *buf, uint32 len, uint8 k)
 {
 	if(!system_get_os_print()) return; // if(*((uint8 *)(0x3FFE8000)) == 0) return;
 	uint32 ss[2];
-	ss[0] = 0x78323025;
-	ss[1] = k;
+	ss[0] = 0x78323025; // "%02x"
+	ss[1] = k;	// ","...'\0'
 	uint8* ptr = buf;
-//	uint32 i = 0;
 	while(len--) {
 		if(len == 0) ss[1] = 0;
-//		else if((++i & 0x0F) == 0) ss[1] = 0x0d;
-//		else ss[1] = k;
 		ets_printf((uint8 *)&ss[0], *ptr++);
 	}
 }
+//=============================================================================
+#define LowerCase(a) ((('A' <= a) && (a <= 'Z')) ? a + 32 : a)
+
+char* ICACHE_FLASH_ATTR word_to_lower_case(char* text) {
+	for(; *text ==' '; text++);
+	char* p = text;
+	for (; *p >= ' '; ++p) {
+		*p = LowerCase(*p);
+	}
+	return text;
+}
+#if 0
+//=============================================================================
+/* char UpperCase(char ch) {
+	return (('a' <= ch) && (ch <= 'z')) ? ch - 32 : ch; }*/
+#define UpperCase(a) ((('a' <= a) && (a <= 'z')) ? a - 32 : a)
+
+char* ICACHE_FLASH_ATTR str_to_upper_case(char* text) {
+	char* p = text;
+	for (; *p; ++p) {
+		*p = UpperCase(*p);
+	}
+	return text;
+}
+#endif
+

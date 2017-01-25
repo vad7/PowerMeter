@@ -37,7 +37,7 @@
 
 /* https://tools.ietf.org/html/rfc1002 */
 #include "bios.h"
-#include "add_sdk_func.h"
+#include "sdk/add_func.h"
 
 #include "lwip/opt.h"
 #include "netbios.h"
@@ -280,7 +280,7 @@ netbios_recv(void *arg, struct udp_pcb *upcb, struct pbuf *p, ip_addr_t *addr, u
 			uint32 ip = 0;
 			{
 				struct ip_info wifi_info;
-				uint8 opmode = wifi_get_opmode();
+				WIFI_MODE opmode = wifi_get_opmode();
 				if((opmode & STATION_MODE)
 					&& wifi_get_ip_info(STATION_IF, &wifi_info)
 					&& wifi_info.ip.addr == ip_current_netif()->ip_addr.addr) {
@@ -297,7 +297,7 @@ netbios_recv(void *arg, struct udp_pcb *upcb, struct pbuf *p, ip_addr_t *addr, u
 		        os_printf("nbx:" IPSTR ",\t'%s'\n", IP2STR(&ip), netbios_name );
 #endif
        		};
-			if((ip != 0) && (((ip^addr->addr) & ip_current_netif()->netmask.addr) == 0)) { // запрет ответа другой подсети
+			if((ip != 0) && (((ip^addr->addr) & ip_current_netif()->netmask.addr) == 0)) { // Р·Р°РїСЂРµС‚ РѕС‚РІРµС‚Р° РґСЂСѓРіРѕР№ РїРѕРґСЃРµС‚Рё
 				char   netbiosname[NETBIOS_NAME_LEN+1];
 				struct netbios_hdr*      netbios_hdr      = (struct netbios_hdr*)p->payload;
 				struct netbios_name_hdr* netbios_name_hdr = (struct netbios_name_hdr*)(netbios_hdr+1);
@@ -368,6 +368,8 @@ struct udp_pcb * ICACHE_FLASH_ATTR netbios_pcb(void)
 	return NULL;
 }
 
+#define UpperCase(a) ((('a' <= a) && (a <= 'z')) ? a - 32 : a)
+
 void ICACHE_FLASH_ATTR netbios_set_name(uint8 * name)
 {
 	uint8 * pnbn = netbios_name;
@@ -377,7 +379,8 @@ void ICACHE_FLASH_ATTR netbios_set_name(uint8 * name)
 	uint8 * pmane = name;
 	for(i = 0; i < NETBIOS_NAME_LEN; i++) {
 		if(*pmane <= ' ') break;
-		*pnbn++ = *pmane++;
+		*pnbn++ = UpperCase(*pmane);
+		pmane++;
 	};
 	*pnbn='\0';
 }
@@ -404,7 +407,7 @@ void ICACHE_FLASH_ATTR netbios_init(void)
 	if(netbios_pcb() != NULL) return;
 
 #if DEBUGSOO > 0
-	os_printf("\nNetBIOS init, name '%s'\n", netbios_name);
+	os_printf("NetBIOS init, name '%s'\n", netbios_name);
 #endif
 
 	pcb = udp_new();
