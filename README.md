@@ -16,15 +16,7 @@ must be switched in user_config.h - set USE_HSPI and remark USE_I2C, set SPI_SPE
  
 ![SCH](https://github.com/vad7/PowerMeter/blob/master/PowerMeter-SPI.jpg)
 
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
 ESP-01 module: 
-=======
-From [Espressif SDK](http://bbs.espressif.com/) ver 1.5.4 used only:<br> 
-libpp.a, libwpa.a, libnet80211.a, parts libphy.a, libcrypto.a, user_interface.o<br>
-Из [Espressif SDK](http://bbs.espressif.com/) ver 1.5.4 используются только описанные части.<br>
-Остальные части даны с исходными кодами.<br>
-LwIP based on [Open source LWIP for ESP_IOT_SDK_V1.5.2](http://bbs.espressif.com/viewtopic.php?f=46&t=1221).<br> 
->>>>>>> 79ffb81 up SDK 1.5.4
 
 ![alt tag](https://github.com/vad7/PowerMeter/blob/master/esp-01.jpg)
 

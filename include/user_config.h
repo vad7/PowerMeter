@@ -3,15 +3,7 @@
 
 #include "sdk/sdk_config.h"
 
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-<<<<<<< Upstream, based on 5ee9b049c02408d69696958a56fa91865e9d3ab1
-#define SYS_VERSION "0.6.1"
-=======
 #define SYS_VERSION "0.6.2"
->>>>>>> f4a498e SPI overlap, speed = 40Mhz 
-=======
-#define SYS_VERSION "0.6.2"
->>>>>>> 79ffb81 up SDK 1.5.4
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define WEB_DEFAULT_SOFTAP_IP	DEFAULT_SOFTAP_IP // ip 192.168.4.1
