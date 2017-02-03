@@ -73,7 +73,7 @@ var area2 = d3.svg.area()
 	.y0(height2)
 	.y1(function(d) { return y2(d.value); });
 
-if("~ShowBy~" == "2") {
+if("~ShowBy~" >= 1) {
 	area.interpolate("step-after");
 	area2.interpolate("step-after");
 }

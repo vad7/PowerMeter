@@ -166,14 +166,14 @@ else
             size = 3
             flash = 1024
 			flashimageoptions += -fs 16m
-			CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576			
+			CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576
 			USERFADDR = 0x80000
         else
             ifeq ($(SPI_SIZE), 4096)
                 size = 4
                 flash = 1024
 				flashimageoptions += -fs 32m
-				CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576			
+				CCFLAGS += -DFIX_SDK_FLASH_SIZE=1048576
 				USERFADDR = 0x80000
             else
                 size = 0

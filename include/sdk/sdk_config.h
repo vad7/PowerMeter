@@ -15,7 +15,7 @@
 #define DEBUG_UART0_BAUD 921600 //74880 //115200
 #define DEBUG_UART1_BAUD 921600
 
-//#define STARTUP_CPU_CLK 160 // 80
+#define STARTUP_CPU_CLK 160 // 80
 
 #ifndef ICACHE_FLASH // (назначается в MakeFile -DICACHE_FLASH)
 	#define ICACHE_FLASH

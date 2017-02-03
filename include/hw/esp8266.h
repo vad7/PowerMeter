@@ -412,6 +412,7 @@ typedef enum {
 #define WDT_FEED		wdt_[5]
 #define WDT_FEED_MAGIC	0x73
 
+#if 0 // disabled - cause exception
 /* I2S:0x60000E00 registers */
 /* I2STXFIFO:0x60000E00 */
 #define I2STXFIFO	i2s_[0]
@@ -437,6 +438,7 @@ typedef enum {
 #define I2SCONF_SIGLE_DATA	i2s_[10]
 /* I2SCONF_CHAN:0x60000E2C */
 #define I2SCONF_CHAN	i2s_[11]
+#endif
 
 #define IDX_GPIO_PIN	10
 /* GPIO:0x60000300 registers */
