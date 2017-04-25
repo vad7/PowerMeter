@@ -21,9 +21,9 @@ ESP-01 module:
 ![alt tag](https://github.com/vad7/PowerMeter/blob/master/esp-01.jpg)
 
 
-Based on [esp8266web](https://github.com/pvvx/esp8266web.git)
+Based on esp8266web
 
-Доработки и изменения esp8266web:
+Доработки и изменения:
 
 1. Обновление прошивки по WiFi (firmware.bin). Загружается на место Web диска, затем при загрузке (Rapid_Loader_OTA) копируется на основное место. 
 2. Уменьшен до 1 сектора (4096 байт) блок сохранения конфигурации в 0x7B000 (flash_epp), добавлена функция current_cfg_length().  
